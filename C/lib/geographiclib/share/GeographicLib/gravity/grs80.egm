@@ -1,0 +1,21 @@
+EGMF-1
+# An Earth Gravity Model (Format 1) file.  For documentation on the
+# format of this file see
+# http://geographiclib.sf.net/html/gravity.html#gravityformat
+Name            grs80
+Publisher       International Union of Geodesy and Geophysics
+Description     GRS80 Reference Ellipsoid
+URL             http://dx.doi.org/10.1007/S001900050278
+ReleaseDate     1980-01-01
+ConversionDate  2014-07-18
+DataVersion     1
+ModelRadius     6378137
+ModelMass       3986005e8
+AngularVelocity 7292115e-11
+ReferenceRadius 6378137
+ReferenceMass   3986005e8
+DynamicalFormFactor 108263e-8
+
+# Coefficients are computed for normal gravity using
+# the GRS80 ellipsoid with Nmax = 20.
+ID              GRS1980A
