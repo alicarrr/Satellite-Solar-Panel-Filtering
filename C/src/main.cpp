@@ -6,6 +6,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include "spectra.hpp"
 
 
 /*
@@ -21,6 +22,9 @@ int main()
     {
         return 1;
     }
+    
+    // std::cout<<getSunSpectrum("hi")<<std::endl;
+
     for (int i=0; i<3; i++)
     {
         simMessages::sim_data_t test;

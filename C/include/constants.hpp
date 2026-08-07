@@ -27,3 +27,6 @@ inline constexpr double HOUR2MINUTE = 60;
 // Vectors/arrays cannot be constexpr values, because they are lists in memory. 
 // When you want to define a vector/list as constant you can define it as an inline const
 inline const Eigen::Vector3d x_hat = Eigen::Vector3d(1, 0, 0);
+
+// Number of frequencies with data for input and output spectra
+inline const int N_samples_spectra = 100;

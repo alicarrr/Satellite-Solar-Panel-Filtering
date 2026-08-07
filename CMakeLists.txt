@@ -83,6 +83,7 @@ FetchContent_MakeAvailable(geographiclib)
 # Now we can define our own Libraries by telling the compiler about all the C/C++ files that contain functions that we would like to use.
 add_library(stuff ${CODE_DIR}/src/stuff.cpp)
 add_library(coordTransforms ${CODE_DIR}/src/transforms/coordTransforms.cpp)
+add_library(spectra ${CODE_DIR}/src/spectra.cpp)
 
 # We can also add more include directories to each library specifically rather than globally, for instance
 # target_include_directories(stuff
@@ -99,6 +100,9 @@ target_link_libraries(stuff PUBLIC
     GeographicLib::GeographicLib
 ) # We have now defined that stuff needs to be linked to coordTransforms and GeographicLib::GeographicLib (needs their code to work)
 
+target_link_libraries(spectra PUBLIC 
+    m
+)
 
 # If instead we want to add a dependency to an external library that is pre-compiled we add a dependency
 add_dependencies(stuff cspice_build) # This add dependency guarantees that cspice is built fully before it attempts to build stuff
@@ -111,4 +115,5 @@ target_link_libraries(simulation PRIVATE
     stuff
     coordTransforms
     lcm
+    spectra
 )
