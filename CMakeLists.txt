@@ -11,6 +11,7 @@ include(ExternalProject) # Include the CMake command ExternalProject
 
 # Search for system packages
 find_package(Eigen3 3.4 REQUIRED) # Make sure that the compiler goes and finds Eigen with min version 3.4 in our system packages, define the path variable ${EIGEN3_INCLUDE_DIR}
+find_package(lcm REQUIRED)
 
 
 # Add include directories, these are the directories when you #include "package"
@@ -19,6 +20,7 @@ include_directories(
     ${CODE_DIR}
     ${CODE_DIR}/include
     ${CODE_DIR}/lib
+    ${CMAKE_SOURCE_DIR}/LCM
 )
 
 # Add the correct locations for GeographicLib to be found by the linker
@@ -108,4 +110,5 @@ add_executable(simulation ${CODE_DIR}/src/main.cpp)
 target_link_libraries(simulation PRIVATE
     stuff
     coordTransforms
+    lcm
 )

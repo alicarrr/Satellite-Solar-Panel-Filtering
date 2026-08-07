@@ -1,0 +1,9 @@
+package simMessages;
+
+
+// Each message type is a new struct
+struct sim_data_t
+{
+    double t;
+    double pos[3];
+}
