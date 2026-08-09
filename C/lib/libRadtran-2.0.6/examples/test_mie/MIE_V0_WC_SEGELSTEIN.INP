@@ -1,0 +1,6 @@
+mie_program MIEV0              # Select Mie code by Wiscombe
+r_eff 10.                      # Specify particle radius
+wavelength  200. 1099.         # Define wavelength
+wavelength_step 0.1
+refrac water                   # Specify refractive index
+water_properties segelstein    # Select tabulated values of refractive index (from Segelstein 1981)

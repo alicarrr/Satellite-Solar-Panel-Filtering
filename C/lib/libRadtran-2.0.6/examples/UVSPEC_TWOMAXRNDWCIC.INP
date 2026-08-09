@@ -1,0 +1,19 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar
+
+albedo 0.2               # Surface albedo
+sza 32.0                 # Solar zenith angle
+
+wavelength 550 560
+
+wc_file 1D ../examples/WCCOMPLEX.DAT # Location of water cloud file
+ic_file 1D ../examples/ICCOMPLEX.DAT # Location of ice cloud file
+
+cloud_fraction_file ../examples/WCCLOUDFRACTION.DAT
+
+rte_solver twomaxrnd
+
+output_user wavelength edir edn eup
+
+quiet
+

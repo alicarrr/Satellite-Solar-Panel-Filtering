@@ -1,0 +1,10 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 550 550
+mol_abs_param crs
+
+ic_file 1D ../examples/IC.DAT
+
+ic_modify tau550 set 2
+
+write_optical_properties

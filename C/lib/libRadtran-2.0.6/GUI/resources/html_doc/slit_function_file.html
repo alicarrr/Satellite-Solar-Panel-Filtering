@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">If specified, the calculated spectrum is convolved with the function found
+in the <span style="" class="text typewriter">slit_function_file</span>.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">slit_function_file file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The file must contain two columns. Column 1 is the wavelength, in nm, and relative to the
+center wavelength. Column 2 is the corresponding slit function value. It must
+be unity at the maximum. The wavelength steps in the slit function file must
+be equidistant. Comments start with #. Empty lines are ignored. Please
+note that prior to convolution the spectrum is interpolated to the wavelength
+steps of the slit function. For this reason, make sure that the resolution
+of the slit function is high enough even if the slit function is e.g. a
+simple triangle which could in principle be described with 3 grid points. For an
+example see <span style="" class="text typewriter">examples/TRI_SLIT.DAT</span> and the <span style="" class="text typewriter">make_slitfunction</span> tool.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

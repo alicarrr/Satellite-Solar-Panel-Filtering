@@ -1,0 +1,12 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 350           # Wavelength considered
+wc_file 1D ../examples/WC50.DAT
+
+
+### For rte_solver mystic, the verbose output is not correct, 
+### Water cloud assymetrie parameter is zero but should be 0.862
+### However, results seem to be correct!
+
+wc_properties mie interpolate
+write_optical_properties

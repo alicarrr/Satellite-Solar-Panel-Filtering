@@ -1,0 +1,93 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Use this option only together with <span style="" class="text typewriter">mc_panorama_view</span>.</p>
+  </div>
+
+  <div class="para" id="">
+<br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mc_panorama distr_photons_over_pixel
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">With only <span style="" class="text typewriter">mc_panorama_view</span> all photons for the same pixel
+are emitted into exactly the same direction. The finite solid angle that
+is covered by one pixel is not accounted for. With
+<span style="" class="text typewriter">mc_panorama distr_photons_over_pixel</span> the photons are distributed
+over the FOV covered by the pixel.</p>
+  </div>
+
+  <div class="para" id="">
+<br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mc_panorama no_pixel
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Useful for calculation of radiance distributions which shall be exactly
+charted. Originally <span style="" class="text typewriter">mc_panorama_view</span> was meant to calculate images
+like produced by a CCD camera. You set the edges of your desired image
+and the resolution of the sensor. MYSTIC will then calculate the
+radiances at the center of each pixel. This implies that values for
+the edges of the image as given by the input file are never
+computed. The border angles for which radiances are computed are
+shifted half a pixel to the inside of the domain. With
+<span style="" class="text typewriter">mc_panorama no_pixel</span> the edging values as given in the input
+file are directly hit. A short example: Assume you only have three
+pixels. You choose your edges to be at <img src="mi/mi36.png" width="49" height="22" alt="\phi=0" class="math"> and <img src="mi/mi35.png" width="66" height="22" alt="\phi=180" class="math">. With
+<span style="" class="text typewriter">mc_panorama no_pixel</span> MYSTIC will calculate radiances at
+<img src="mi/mi36.png" width="49" height="22" alt="\phi=0" class="math">, <img src="mi/mi40.png" width="57" height="22" alt="\phi=90" class="math"> and <img src="mi/mi35.png" width="66" height="22" alt="\phi=180" class="math">. Without this option you will get
+values for <img src="mi/mi41.png" width="57" height="22" alt="\phi=30" class="math">, <img src="mi/mi40.png" width="57" height="22" alt="\phi=90" class="math"> and <img src="mi/mi42.png" width="66" height="22" alt="\phi=150" class="math">.</p>
+  </div>
+
+  <div class="para" id="">
+<br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mc_panorama quicklook
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">This option allows to do a fast calculation in order to see whether you
+have set your parameters right. All panorama pixels are run in a fast
+mode: only one photon is started per pixel, it is moved till to a
+fixed optical depth (0.1), and then a local estimate is performed. In
+case the local estimate is done scattering (i.e. the photon has not
+hit a surface before reaching tau=0.1), isotropic scattering is
+assumed. Then the photon is killed. We suggest you turn off Rayleigh
+scattering and aerosols while using this option. The result lets you
+see roughly where your panorama is looking at surface, sunlit clouds,
+shaded clouds, or slanted clouds.</p>
+  </div>
+
+  <div class="para" id="">
+<br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mc_panorama with_direct_rad
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Output is direct plus diffuse radiance.
+Use together with <span style="" class="text typewriter">mc_panorama distr_photons_over_pixel</span>.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

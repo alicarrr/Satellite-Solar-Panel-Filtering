@@ -1,0 +1,9 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 500           # Wavelength considered
+
+no_absorption mol
+no_scattering mol
+
+wc_file 3D ../examples/WCSIMPLE_NETCDF_2.NC
+write_optical_properties

@@ -1,0 +1,3 @@
+# benchmark run to create 1D thermal output which we compare monte carlo results against
+include DISORT_THERMAL_AG.5.INP
+no_scattering

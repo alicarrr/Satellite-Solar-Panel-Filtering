@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Set the radiation source type
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">source  type
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">type</span> is either <span style="" class="text typewriter">solar</span> or <span style="" class="text typewriter">thermal</span>.
+Solar radiation is per default output in W/(m2 nm) for spectral and
+<span style="" class="text typewriter">mol_abs_param</span> LOWTRAN calculations. For all other <span style="" class="text typewriter">mol_abs_param</span> options
+the output is integrated over the wavelength band.
+Thermal radiation is per default output in W/(m2 cm-1), if the bandwidth
+is equal to 1 cm-1 (default for <span style="" class="text typewriter">mol_abs_param LOWTRAN</span> calculations).
+Otherwise the output is the integrated flux over the
+wavenumber interval specified by <span style="" class="text typewriter">thermal_bandwidth</span>, <span style="" class="text typewriter">thermal_bands_file</span>,
+or by the <span style="" class="text typewriter">mol_abs_param</span> option (<span style="" class="text typewriter">kato</span>, <span style="" class="text typewriter">kato2</span>, <span style="" class="text typewriter">kato2.96</span>,
+<span style="" class="text typewriter">fu</span>, or <span style="" class="text typewriter">avhrr_kratz</span>).
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">source solar [file] [unit]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The optional second argument <span style="" class="text typewriter">file</span> specifies the location of file holding the extraterrestrial spectrum.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file must contain two columns. Column 1 is the wavelength in nm, and column 2
+the corresponding extraterrestrial flux. The user may freely use any units
+he/she wants for the extraterrestrial flux. The wavelength  specified grid
+defines the wavelength resolution at which results are returned. However,
+the wavelength range is determined by <span style="" class="text typewriter">wavelength</span>. <span style="" class="text typewriter">source solar file</span> may be
+omitted for thermal radiation calculations (<span style="" class="text typewriter">source thermal</span>) as well as
+<span style="" class="text typewriter">transmittance</span> and <span style="" class="text typewriter">reflectivity</span> calculations. If omitted, the
+output resolution equals the internal wavelength grid which the model chooses
+for the radiative transfer calculation.
+Comments start with #. Empty lines are ignored.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">For some purposes it is useful to tell libRadtran the units of the spectrum.
+This can be done with the optional third argument.
+Possible choises for <span style="" class="text typewriter">unit</span> are <span style="" class="text typewriter">per_nm</span>, <span style="" class="text typewriter">per_cm-1</span> or <span style="" class="text typewriter">per_ck_band</span>.
+If <span style="" class="text typewriter">unit</span> is set to <span style="" class="text typewriter">per_nm</span>
+libRadtran assumes that the unit of the spectrum is W/(m2 nm), if set to <span style="" class="text typewriter">per_cm-1</span>
+it assumes W/(m2 cm-1).</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Note that <span style="" class="text typewriter">source solar file</span> is ignored if <span style="" class="text typewriter">mol_abs_param</span> is specified.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

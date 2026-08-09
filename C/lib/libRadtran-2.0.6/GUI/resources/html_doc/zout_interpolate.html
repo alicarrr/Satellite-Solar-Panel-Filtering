@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">The z-grid of optical properties is determined by the <span style="" class="text typewriter">atmosphere_file</span>,
+and, if specified, by other profile files like <span style="" class="text typewriter">mol_file</span>, <span style="" class="text typewriter">rh_file</span>,
+or <span style="" class="text typewriter">refractive_index_file</span>.
+Additional levels might be introduced by the <span style="" class="text typewriter">zout</span>
+option and the second argument of the <span style="" class="text typewriter">altitude</span> option. By default
+(if <span style="" class="text typewriter">zout_interpolate</span> is not specified) levels introduced
+by the <span style="" class="text typewriter">zout</span> option will not affect the optical property
+profiles, that is, the optical properties are constant within the layers specified by
+the <span style="" class="text typewriter">atmosphere_file</span> and profile files.
+If <span style="" class="text typewriter">zout_interpolate</span> is specified, the atmospheric profiles (tracegases, temperature …)
+are interpolated to the levels introduced by <span style="" class="text typewriter">zout</span>, and optical
+properties are determined from the interpolated atmospheric properties.
+If <span style="" class="text typewriter">heating_rate</span>, <span style="" class="text typewriter">rte_solver polradtran</span>, <span style="" class="text typewriter">rte_solver rodents</span>,
+or <span style="" class="text typewriter">rte_solver twostrebe</span>
+is specified, <span style="" class="text typewriter">zout_interpolate</span>
+will also be automatically activated.
+<span style="" class="text typewriter">zout_interpolate</span> generally causes smoother variation of the optical properties.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

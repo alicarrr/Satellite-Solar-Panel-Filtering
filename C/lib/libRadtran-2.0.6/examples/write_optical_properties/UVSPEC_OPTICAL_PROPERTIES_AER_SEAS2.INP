@@ -1,0 +1,6 @@
+include ../examples/UVSPEC_SIMPLE.INP
+aerosol_default          # switch on aerosol
+                         # specify aerosol mixture file
+aerosol_season 2	 # Fall-winter profile
+
+write_optical_properties

@@ -1,0 +1,19 @@
+cloud_type CASCADE2D
+
+Nx 200
+Ny 200
+
+cascade2D_step 7
+cascade2D_p1   0.26
+cascade2D_p2   0.34
+cascade2D_H    0.333333333
+
+atmosphere_file_input ../data/atmmod/afglus.dat
+
+cloud_tau 1
+cloud_ssa 1
+cloud_asy 0.85
+
+cloud_bottom  8000
+cloud_top    10000
+

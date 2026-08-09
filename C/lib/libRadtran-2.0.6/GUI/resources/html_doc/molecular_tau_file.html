@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Location of molecular absorption optical depth file.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">molecular_file file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Usually, molecular absorption
+is calculated from trace gas concentrations provided in <span style="" class="text typewriter">atmosphere_file</span>
+(scaled with <span style="" class="text typewriter">ozone_column</span>, etc. Use this option only if you want to specify
+the optical depth directly (e.g. for a model intercomparison) or for a line-by-line
+calculation. If a spectral <span style="" class="text typewriter">molecular_tau_file</span> is specified, the wavelength
+grid defined there is used as the internal wavelength grid for the radiative transfer
+calculation, if not defined otherwise with <span style="" class="text typewriter">transmittance_wl_file</span>.
+<span style="" class="text typewriter">molecular_tau_file</span> can be either of the following three formats:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">Monochromatic</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Column 1 is the altitude in km
+Column 2 is the absorption optical depth of each layer.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">Spectral, ASCII</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">The first line contains the level altitudes in decreasing order; the following lines
+contain the wavelength [nm] in the first column and then the absorption optical depths
+of each layer.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">Spectral,  netcdf</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">An example is available at the libRadtran homepage,
+the file <span style="" class="text typewriter">UVSPEC.O2A.afglms.cdf</span> is a line-by-line spectrum of the oxygen A-Band
+around 760nm, calculated for the mid-latitude summer
+atmosphere. The advantage of
+netcdf compared to ASCII is that it is much faster to read, and that the file
+is a self-contained, including data and a description of the variables and arrays.
+It is therefore particularly useful for line-by-line calculations where usually
+many spectral data points are involved.
+</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">Comments start with #. Empty lines are ignored.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

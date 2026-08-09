@@ -1,0 +1,80 @@
+#
+# Makefile for libRadtran's example/triangular_srfc directory
+#
+
+TOPDIR = ../../..
+
+srcdir = @srcdir@
+VPATH = $(srcdir)
+
+THISDIR = $(notdir $(CURDIR))
+
+SUBDIRS =
+
+EXAMPLEFILES = \
+	atm.dat           \
+	uvspec.inp        \
+	triangle_input.nc \
+	99_flat_surface_solar.testuite_output \
+
+DISTFILES = Makefile.in $(EXAMPLEFILES)
+
+include $(TOPDIR)/Makeconf
+
+all:
+	for dir in $(SUBDIRS); do $(MAKE) -C $$dir $@ || exit $$?; done
+.PHONY: all
+
+dist: all
+	for dir in $(SUBDIRS); do mkdir $(TOPDIR)/`cat $(TOPDIR)/.fname`/examples/triangular_srfc/$(THISDIR)/$$dir; $(MAKE) -C $$dir $@ || exit $$?; done; \
+	ln $(DISTFILES) $(TOPDIR)/`cat $(TOPDIR)/.fname`/examples/triangular_srfc/$(THISDIR)
+.PHONY: dist
+
+mystic-dist: dist
+.PHONY: mystic-dist
+
+install: all
+	$(MKPATH) $(examplesdir)/$(THISDIR)
+	$(INSTALL_DATA) $(EXAMPLEFILES) $(examplesdir)/$(THISDIR)
+.PHONY: install
+
+clean:
+	rm -f mc* randomseed *.xmf hdf5_compatible_mc.flx.triangle.nc
+.PHONY: clean
+
+mostlyclean: clean
+.PHONY: mostlyclean
+
+distclean: mostlyclean
+	rm -f Makefile
+.PHONY: distclean
+
+realclean: distclean
+.PHONY: realclean
+
+Makefile: Makefile.in $(TOPDIR)/config.status
+	cd $(TOPDIR); sh config.status
+# end default targets
+
+triangle_input.nc: ../02_gen_flat_surface.py
+	python $< $@ -half_area
+
+triangle_input.nc.xmf: triangle_input.nc
+	python ${TOPDIR}/external/xmftools/xmftool.py $<
+
+mc.flx.triangle.nc: uvspec.inp triangle_input.nc
+	make -C $(TOPDIR) uvspec
+	$(TOPDIR)/bin/uvspec -f $<
+
+mc.flx.triangle.nc.xmf: mc.flx.triangle.nc triangle_input.nc
+	rm -f hdf5_compatible_mc.flx.triangle.nc && \
+	python ${TOPDIR}/external/xmftools/xmftool.py $^
+
+mc.rad.spc: uvspec.inp triangle_input.nc
+	$(TOPDIR)/bin/uvspec -f $<
+
+mc.rad.spc.nc: mc.rad.spc
+	python ../convert_mystic_data_to_netcdf.py $< $@
+
+run_example: mc.flx.triangle.nc.xmf mc.rad.spc.nc
+.PHONY: run_example

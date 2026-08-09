@@ -1,0 +1,261 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Defines how ice water content and effective particle radius are translated
+to optical properties.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">ic_properties property [interpolate]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Possible choices for <span style="" class="text typewriter">property</span> are</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">fu</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Parameterization by <span style="" class="text typewriter">Fu1996,Fu1998</span>, see <span style="" class="text typewriter">ic_file</span>;
+this is the default setting. Note that this is a parameterization
+which has been created to calculate fluxes but not radiances.
+Note also that the optical properties in the solar range provided by
+<span style="" class="text typewriter">Fu1996</span> are delta-scaled properties (that is, the forward peak of
+the phase function is truncated and optical thickness, asymmetry
+parameter, and single scattering albedo are reduced accordingly),
+whereas <span style="" class="text typewriter">uvspec</span> uses non delta-scaled properties unless the option
+<span style="" class="text typewriter">ic_fu deltascaling on</span> is specified. By default the parameterization
+by <span style="" class="text typewriter">Fu1996</span> is treated consistently with all other ice cloud
+parameterizations.
+For wavelengths up to 4 micrometer <span style="" class="text typewriter">Fu1996</span> is used while for wavelengths
+larger than 4 micrometer <span style="" class="text typewriter">Fu1998</span> is chosen. Please note that
+<span style="" class="text typewriter">Fu1996</span> is based on ray-tracing calculations while <span style="" class="text typewriter">Fu1998</span>
+is a mixture of ray-tracing and Mie calculations (which is required for
+the infrared wavelengths where the geometrical assumption does not hold).
+Hence, both parameterizations are not fully consistent. Rather, differences
+of some % are to be expected in the wavelength region where both
+parameterizations overlap. Also, the wavelength dependence in the solar
+and infrared parts is treated differently: In the solar part <span style="" class="text typewriter">Fu1996</span>
+the optical properties are defined for wavelength bands - hence they
+are assumed constant within each band. In the infrared <span style="" class="text typewriter">Fu1998</span>
+they are defined at certain wavelengths and linearely interpolated
+in between. If you use this option, please see also the
+discussion of <span style="" class="text typewriter">ic_fu deltascaling</span> and <span style="" class="text typewriter">ic_fu reff_def</span>.
+The allowed range for the effective radius is from 9.315 -  65.120 micrometer.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">echam4</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Use the simple two-band parameterization of the ECHAM4 climate model, described
+in <cite class="cite">[]</cite>; this is probably only meaningful if you want to compare
+your results with ECHAM4, the two bands are 0.2 - 0.68 micrometer and 0.68 - 4.0 micrometer.
+Within the two ECHAM4 bands, the optical properties are assumed constant.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">key</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Parameterization by <span style="" class="text typewriter">Key2002</span>. This parameterization can also
+be used to calculate radiances because it uses a
+double-Henyey-Greenstein phase function which better represents both
+forward and backward peaks. This parameterization covers the wavelength region
+from 0.2 to 5.0 micrometer and is available for the following <span style="" class="text typewriter">habit</span>:
+<span style="" class="text typewriter">solid-column</span>, <span style="" class="text typewriter">hollow-column</span>, <span style="" class="text typewriter">rough-aggregate</span>, <span style="" class="text typewriter">rosette-4</span>,
+<span style="" class="text typewriter">rosette-6</span>, and <span style="" class="text typewriter">plate</span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">yang</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Parameterization similar to <span style="" class="text typewriter">Key2002</span> but based on more recent
+single scattering calculations. Below 3.4 micrometer it actually equals
+the <span style="" class="text typewriter">Key2002</span> parameterization while from 3.4 - 100 micrometer new
+coefficients have been calculated with much higher wavelength
+resolution and better accuracy. Hence, <span style="" class="text typewriter">yang</span> should give a reasonably
+consistent approximation from 0.2 - 100 micrometer, suitable for spectrally
+resolved calculations of radiance and irradiance.
+The covered range for the effective radius depends on the <span style="" class="text typewriter">ic_habit</span>.
+(In micrometer: <span style="" class="text typewriter">solid-column</span> [5.96, 84.22], <span style="" class="text typewriter">hollow-column</span> [4.97, 70.24],
+<span style="" class="text typewriter">rough-aggregate</span> [3.55, 108.10], <span style="" class="text typewriter">rosettes-4</span> [2.77, 45.30],
+<span style="" class="text typewriter">rosettes-6</span> [2.85, 46.01], <span style="" class="text typewriter">plate</span> [4.87, 48.18], <span style="" class="text typewriter">dendrites</span>
+[0.45, 1.88], <span style="" class="text typewriter">droxtal</span> [9.48, 293.32],
+<span style="" class="text typewriter">spheroid</span>  [6.58, 203.39]).</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">baum</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Use ice cloud parameterization from <span style="" class="text typewriter">baum05a:_bulk,baum05b:_bulk</span>,
+<a href="http://www.ssec.wisc.edu/%5C~baum/Cirrus/IceCloudModels.html" title="" class="ref url"><span style="" class="text typewriter">http://www.ssec.wisc.edu/\~baum/Cirrus/IceCloudModels.html</span></a>.
+In combination with the radiative transfer solvers <span style="" class="text typewriter">cdisort</span>, 
+<span style="" class="text typewriter">montecarlo</span>,
+and <span style="" class="text typewriter">fdisort2</span>, accurate phase functions are used.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">baum_hufit</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Similar to the option <span style="" class="text typewriter">baum</span> but here the phase function
+is parameterized by 128 Legendre coefficients, calculated with the
+delta-fit method from
+<span style="" class="text typewriter">Hu2000</span>. This parameterization covers the region
+from 0.4 to 2.2 micrometer. If high accuracy is needed e.g. in the vicinity of the halo,
+the forward peak, or the backscatter peak, <span style="" class="text typewriter">ic_properties baum</span>
+is recommended.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">hey</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Use pre-calculated ice cloud optical properties including full phase
+matrices. This option has newly been implemented and is not yet well
+validated. Please check your results carefully!!
+The parameterization
+is currently only available for the spectral region from 0.2 to 5
+micrometers. The single scattering
+properties have been been generated by Hong Gang using the
+models by <span style="" class="text typewriter">Yang2000</span>. The parameterization is based on
+simple gamma distributions</p>
+  <table class="equation" id="">
+      
+      
+	<tr valign="baseline" class="equation" id="">
+	<td class="eqpad"></td>
+	<td nowrap align="center" colspan="1"><img src="mi/mi31.png" width="245" height="48" alt="n(r)=n_{0}r^{{\alpha}}\exp\left(-\frac{(\alpha+3)r}{r_{e}}\right)," class="math"></td>
+	<td class="eqpad"></td>
+<td rowspan="1" nowrap valign="middle" align="right">(<span class="refnum">1</span>)</td>
+	</tr>
+      
+      </table>
+    <p class="p">where <img src="mi/mi22.png" width="25" height="16" alt="n_{0}" class="math"> is found by normalization and <img src="mi/mi32.png" width="18" height="14" alt="\alpha" class="math"> is set to 1. In case of
+spherical particles the parameter <img src="mi/mi29.png" width="22" height="16" alt="r_{e}" class="math"> would be the effective
+radius. For aspherical particles, the parameter <img src="mi/mi29.png" width="22" height="16" alt="r_{e}" class="math"> is found
+iteratively so that the size distribution yields the required
+effective radius. The
+parameterization is availabe for the following habits: <span style="" class="text typewriter">solid-column</span>,
+<span style="" class="text typewriter">hollow-column</span>, <span style="" class="text typewriter">rough-aggregate</span>, <span style="" class="text typewriter">rosette-6</span>,
+<span style="" class="text typewriter">plate</span>, and <span style="" class="text typewriter">droxtal</span>. The
+default habit is <span style="" class="text typewriter">solid-column</span>. The habit can be specified using the option
+<span style="" class="text typewriter">ic_habit</span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">ic-mie</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Use pre-calculated Mie tables; useful for <span style="" class="text typewriter">mol_abs_param</span>;
+the tables are expected in <span style="" class="text typewriter">data_files_path/correlated_k/.../</span>.
+For spectral or pseudo-spectral
+calculations the optional argument <span style="" class="text typewriter">interpolate</span> has to be defined explicitely to
+initiate the interpolation of the optical properties to the internal wavelength grid.
+Note that a Mie calculation assumes spherical ice particles, the scattering function of
+which differs systematically from non-spherical particles. Hence, <span style="" class="text typewriter">ic_properties mie</span>
+is usually not representative of natural ice clouds.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">filename</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Read optical properties from specified filename; file format is as produced
+by the <span style="" class="text typewriter">mie</span> tool of <span style="" class="text slanted">libRadtran</span> (see <span style="" class="text typewriter">output_user netcdf</span>).
+</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">The default property is <span style="" class="text typewriter">fu</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Please note also that, in contrast to spherical particles, there is no unique
+definition of effective size for non-spherical particles. In particular, the
+above parameterizations use different definitions which, however, differ only by
+a constant factor.
+<span style="" class="text typewriter">Yang2000</span>, citeKey2002, and <span style="" class="text typewriter">baum05a:_bulk,baum05b:_bulk</span>
+use the general definition</p>
+  <table class="equation" id="">
+      
+      
+	<tr valign="baseline" class="equation" id="">
+	<td class="eqpad"></td>
+	<td nowrap align="center" colspan="1"><img src="mi/mi27.png" width="176" height="50" alt="r_{{\rm eff}}={{3}\over{4}}{{\int V(h)n(h)dh}\over{\int A(h)n(h)dh}}" class="math"></td>
+	<td class="eqpad"></td>
+<td rowspan="1" nowrap valign="middle" align="right">(<span class="refnum">2</span>)</td>
+	</tr>
+      
+      </table>
+    <p class="p">where <img src="mi/mi28.png" width="16" height="20" alt="h" class="math"> is the maximum dimension of an ice crystal, <img src="mi/mi25.png" width="40" height="24" alt="n(h)" class="math"> is the
+number of particles with maximum dimension <img src="mi/mi28.png" width="16" height="20" alt="h" class="math"> in the size distribution,
+and <img src="mi/mi18.png" width="20" height="20" alt="V" class="math"> and <img src="mi/mi26.png" width="19" height="20" alt="A" class="math"> are the volume and mean
+projected area of the particles, respectively. The volume and area are
+based on the spherical diameter with equivalent volume and the
+spherical diameter with equivalent projected area as defined by
+<span style="" class="text typewriter">Yang2000</span>. On the other hand, <span style="" class="text typewriter">Fu1996,Fu1998</span> use
+hexagonal columns and use the following definition</p>
+  <table class="equation" id="">
+      
+      
+	<tr valign="baseline" class="equation" id="">
+	<td class="eqpad"></td>
+	<td nowrap align="center" colspan="1"><img src="mi/mi24.png" width="245" height="55" alt="r_{{\rm eff}}={{\int D^{2}Ln(L)dL}\over{2\int(DL+{\sqrt{3}\over{4}}D^{2})n(L)dL}}" class="math"></td>
+	<td class="eqpad"></td>
+<td rowspan="1" nowrap valign="middle" align="right">(<span class="refnum">3</span>)</td>
+	</tr>
+      
+      </table>
+    <p class="p">where <img src="mi/mi23.png" width="21" height="20" alt="D" class="math"> is the width of the ice crystal (that is, the maximum diameter of the
+hexagonal area) and <img src="mi/mi19.png" width="18" height="20" alt="L" class="math"> is the length. The integrand in the numerator is proportional
+to the volume while that in the denominator is proportional to the projected area.
+Evaluating these formulas one finds that, for the same hexagonal particle, the effective
+radius would be <img src="mi/mi21.png" width="119" height="27" alt="3\sqrt{3}/4=1.299" class="math"> times larger following the
+<span style="" class="text typewriter">Yang2000</span>, <span style="" class="text typewriter">Key2002</span> definition rather than the <span style="" class="text typewriter">Fu1996,Fu1998</span> definition.
+As an example, an effective radius of 20<img src="mi/mi20.png" width="32" height="17" alt="\mu m" class="math"> with
+<span style="" class="text typewriter">ic_properties fu</span> and <span style="" class="text typewriter">ic_fu reff_def on</span> and
+1.299 <img src="mi/mi30.png" width="11" height="14" alt="\cdot" class="math"> 20<img src="mi/mi20.png" width="32" height="17" alt="\mu m" class="math"> = 26<img src="mi/mi20.png" width="32" height="17" alt="\mu m" class="math"> with <span style="" class="text typewriter">ic_properties yang</span> would give comparable results
+for hexagonal columns.
+To use the original definition of the effective radius by <span style="" class="text typewriter">Fu1996,Fu1998</span> use
+<span style="" class="text typewriter">ic_fu reff_def on</span>!</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">With the optional argument <span style="" class="text typewriter">interpolate</span> the ice cloud optical properties are interpolated
+over wavelength; useful for precalculated optical property files defined with <span style="" class="text typewriter">ic_properties</span>.
+Please note that this option may be extremely memory-consuming because for each internal wavelength
+a full set of Legendre moments of the phase function is stored (up to several thousands).</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

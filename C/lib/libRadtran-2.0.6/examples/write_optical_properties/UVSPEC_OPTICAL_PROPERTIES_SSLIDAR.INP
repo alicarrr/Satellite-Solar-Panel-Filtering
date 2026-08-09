@@ -1,0 +1,3 @@
+include ../examples/UVSPEC_SSLIDAR.INP
+write_optical_properties
+

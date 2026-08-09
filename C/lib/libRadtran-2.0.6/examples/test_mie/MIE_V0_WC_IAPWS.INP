@@ -1,0 +1,7 @@
+mie_program MIEV0              # Select Mie code by Wiscombe
+r_eff 10.                      # Specify particle radius
+wavelength  200. 1099.         # Define wavelength
+wavelength_step 0.1
+refrac water                   # Specify refractive index
+water_properties iapws         # Select IAPWS formula for refractive index
+temperature 293.15	       # Select temperature (parameter of the IAPWS formula)

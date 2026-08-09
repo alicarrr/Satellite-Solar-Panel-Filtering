@@ -1,0 +1,22 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar      ../data/solar_flux/kurudz_1.0nm.dat
+
+albedo 0.2               # Surface albedo
+sza 30.0                 # Solar zenith angle
+
+rte_solver twostr       # Radiative transfer equation solver
+pseudospherical
+wavelength 580.0 600.0   # Wavelength range
+
+mol_abs_param LOWTRAN    # select LOWTRAN molecular absorption 
+
+aerosol_default        
+aerosol_visibility 20
+
+# no water clouds in this column
+ic_file 1D  ../examples/IC50_C_R.DAT 
+
+mol_file H2O ../examples/RH50_C_WC_IC.DAT RH
+
+quiet
+#verbose

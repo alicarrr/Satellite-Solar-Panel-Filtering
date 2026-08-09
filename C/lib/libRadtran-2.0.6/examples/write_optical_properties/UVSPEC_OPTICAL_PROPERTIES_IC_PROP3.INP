@@ -1,0 +1,8 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 550
+ic_file 1D ../examples/IC.DAT
+
+ic_properties echam4
+
+write_optical_properties

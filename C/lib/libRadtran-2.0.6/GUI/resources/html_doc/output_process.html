@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Decide how the output from <span style="" class="text typewriter">uvspec</span> is processed:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">output_process type
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where type is one of</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">sum</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Sum output over wavelength. Useful in combination with the
+<span style="" class="text typewriter">mol_abs_param</span> option (<span style="" class="text typewriter">kato</span>, <span style="" class="text typewriter">kato2</span>, <span style="" class="text typewriter">kato2.96</span>,
+<span style="" class="text typewriter">Fu</span>, <span style="" class="text typewriter">avhrr_kratz</span>).</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">integrate</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Integrate output over wavelength for solar and over wavenumber for thermal simulations.
+Useful for spectral calculations and <span style="" class="text typewriter">mol_abs_param lowtran</span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">per_nm </dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Output is given in W/(m<img src="mi/mi7.png" width="14" height="24" alt="{}^{2}" class="math"> nm) or mW/(m<img src="mi/mi7.png" width="14" height="24" alt="{}^{2}" class="math"> nm) (W or mW is determined by the extraterrestrial spectrum.)</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">per_cm-1 </dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Output is given in W/(m<img src="mi/mi7.png" width="14" height="24" alt="{}^{2}" class="math"> cm<img src="mi/mi43.png" width="32" height="25" alt="{}^{{-1}})" class="math"> or mW/(m<img src="mi/mi7.png" width="14" height="24" alt="{}^{2}" class="math"> cm<img src="mi/mi11.png" width="25" height="24" alt="{}^{{-1}}" class="math">).</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">per_ck_band </dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Output is given in W/m<img src="mi/mi7.png" width="14" height="24" alt="{}^{2}" class="math"> or mW/m<img src="mi/mi7.png" width="14" height="24" alt="{}^{2}" class="math"> per correlated-k band. (This option can not be used for
+spectral calculations and <span style="" class="text typewriter">mol_abs_param</span> LOWTRAN in the solar range.)
+</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">none</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">No processing - output spectral information (default).</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

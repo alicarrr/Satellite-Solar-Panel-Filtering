@@ -1,0 +1,61 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Switch off absorption. Please note that this option simply sets
+the absorption optical thickness to 0.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">no_absorption [name]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">If <span style="" class="text typewriter">name</span> is not set, all absorption (molecular, aerosol, cloud, ice cloud, and any profile) is switched off.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">If used together with <span style="" class="text typewriter">xxx_modify set tau</span> this might be a bit confusing but
+probably the most logical way. E.g. when using <span style="" class="text typewriter">aerosol_default</span> and
+<span style="" class="text typewriter">aerosol_modify set tau 1</span>, the aerosol optical thickness is set to 1,
+with 0.940539 scattering and 0.059461 absorption. If <span style="" class="text typewriter">no_absorption</span>
+is added, the absorption optical thickness is set to 0 while the scattering
+optical thickness is preserved at 0.940539 (even though 1 was specified by
+the user). We find this the most logical solution of the problem because
+by switching <span style="" class="text typewriter">no_absorption</span> off and on one tests the effect of the
+absorber in an isolated way, rather than mixing absorption and scattering.
+The same is true for water and ice clouds. Note, that thermal emission of
+molecules is also switched off.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Possible choises for the optional argument <span style="" class="text typewriter">name</span> are:
+</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">mol</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Switch off molecular absorption.</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

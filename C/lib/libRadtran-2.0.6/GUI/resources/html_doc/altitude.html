@@ -1,0 +1,61 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Set the bottom level in the model atmosphere provided in
+<span style="" class="text typewriter">atmosphere_file</span> to be at the given altitude above sea level (km).
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">altitude 0.73   # Altitude of IFU, Garmisch-Partenkirchen
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The profiles of pressure, temperature, molecular absorbers,
+ice and water clouds are cut at the specified altitude.
+The aerosol profile is not affected by <span style="" class="text typewriter">altitude</span> but starts
+right from the model surface. This is a convenient way for the user to calculate the
+radiation at other altitudes than sealevel. Note that <span style="" class="text typewriter">altitude</span> is very different
+from <span style="" class="text typewriter">zout</span> where the radiation is calculated at an altitude of zout
+above the surface. E.g. to calculate the radiation field 1 km above the surface
+at a location at 0.73 km above sealevel, one would specify '<span style="" class="text typewriter">altitude</span> 0.73'
+and '<span style="" class="text typewriter">zout</span> 1.0'.
+If an altitude is specified which is below the lowest level in the
+<span style="" class="text typewriter">atmosphere_file</span>, the atmospheric profiles are extrapolated assuming a constant
+gradient for temperature and mixing ratios.
+A second optional argument may be given to <span style="" class="text typewriter">altitude</span> as e.g.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">altitude 0.73 0.5
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Here the bottom level will be at 0.73 km and the vertical resolution
+of the model atmosphere will be redistributed to have a spacing
+between levels specified by the second number, here 0.5 km, starting
+however from 0km. (Levels 0.73, 1., 1.5 … will be added to the
+original atmosphere grid and optical properties are devided into the
+new layers. In order to use interpolated properties use
+<span style="" class="text typewriter">zout_interpolate</span>.  See verbose output for details.)  Be aware
+that specifying a fine vertical spacing will produce many layers thus
+increasing the computing time. Also the radiative transfer equation
+solvers implemented in Fortran 77 might need to have some array sizes
+increased (see <span style="" class="text typewriter">src_f/DISORT.MXD</span>).</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

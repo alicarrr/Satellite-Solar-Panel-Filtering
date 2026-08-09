@@ -1,0 +1,45 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Specify wind speed (in m/s) for the <span style="" class="text typewriter">cox54a,cox54b</span>
+ocean BRDF with the help of an <em class="emph">netCDF</em> file, which is used in combinition
+with the options <span style="" class="text typewriter">latitude</span>, <span style="" class="text typewriter">longitude</span>, and <span style="" class="text typewriter">time</span>.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">cox_and_munk_u10_map file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">file</span> is the location of the <em class="emph">netCDF</em> file.
+<span style="" class="text slanted">libRadtran</span> reads the value at the nearest pixel to the given <span style="" class="text typewriter">latitude</span> and
+<span style="" class="text typewriter">longitude</span>. No spatial interpolation or averaging of the values is done.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file must contain the elements of the wind vector <span style="" class="text typewriter">U10</span> and
+<span style="" class="text typewriter">V10</span>.  These must be specified as functions of <span style="" class="text typewriter">latitude</span>
+and <span style="" class="text typewriter">longitude</span> <span style="" class="text typewriter">U10(lat, lon)</span>, <span style="" class="text typewriter">V10(lat, lon)</span>, or
+additionally may also depent on time <span style="" class="text typewriter">U10(time, lat, lon)</span>,
+<span style="" class="text typewriter">V10(time, lat, lon)</span>.  If the variable time is present in the
+file, the wind speed will be interpolated according to the option
+<span style="" class="text typewriter">time_interpolate</span>. All grids must be provided as <span style="" class="text typewriter">double
+lat(lat)</span>, <span style="" class="text typewriter">double lon(lon)</span>, and <span style="" class="text typewriter">double time(time)</span>.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

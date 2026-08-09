@@ -1,0 +1,48 @@
+# Input file to calculate image of planet
+
+atmosphere_file us-standard
+source solar kurudz_0.1nm.dat
+mol_abs_param reptran  # gas absorption parameterization
+
+# Specify solver options
+rte_solver mystic
+mc_spherical 3D
+mc_surface_reflectalways
+mc_vroom on
+mc_backward
+mc_panorama distr_photons_over_pixel
+mc_minphotons 1
+mc_photons 100000
+mc_polarisation  # netcdf surface maps currently work only with polarization
+
+# Sensor position (longitute, latitude, altitude (measured from planetary surface)
+mc_satellite_position   -20 -15 389468000.0  # Moon position
+# satellite (moon) field of view
+mc_satellite_view -1.05 1.05 -1.05 1.05
+# Sun position (longitude, latitde)
+mc_sun_position         40 0
+
+# 3D scene for surface albedo defintion
+mc_spherical3D_scene -180 180 -90 90 
+# Dummy grid required for 3D spherical geometry
+wc_file 3D ../examples/SPHER3D_GRID.DAT
+wc_properties mie interpolate
+
+# monochromatic simulation at 800nm
+wavelength 800 
+
+# Output grid
+mc_sample_grid 1 1
+
+# Surface file for Earth including hyperspectral albedo map for Land and BPDF for ocean
+mc_netcdf_surface_file ../data/albedo/hamster/earth_model_1440_720.nc ../data/albedo/hamster/DOY001.nc 
+
+quiet
+
+
+# Output in mc.rad.spc, increase resolution (e.g.,"mc_sample_grid 500 500") to get a nice image and decrease photons run per pixel (e.g., "mc_photons 100")
+# Plot in python: data=loadtxt('mc.rad.spc')[::,4]; imshow(flipud(transpose(reshape(data[0::1], (500,500)))), cmap='gist_earth'))
+
+#mc_sample_grid 500 500
+#mc_photons 100
+#write_output_as_netcdf

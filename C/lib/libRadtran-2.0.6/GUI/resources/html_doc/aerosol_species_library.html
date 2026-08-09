@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">With this option the <em class="emph">directory</em> is specified where the optical property
+files for all aerosols species used in the <span style="" class="text typewriter">aerosol_species_file</span> are
+expected: For each species defined in <span style="" class="text typewriter">aerosol_species_file</span>,
+<em class="emph">netCDF</em>-file <em class="emph">species_name</em><span style="" class="text typewriter">.nc</span>,
+(e.g. <span style="" class="text typewriter">INSO.nc</span>), which contains the optical properties of the aerosol
+species, has to be provided. The netcdf format is the one produced by
+the <span style="" class="text slanted">libRadtran</span> <span style="" class="text typewriter">mie</span> tool.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">At the libRadtran webpage we provide the OPAC data set
+<span style="" class="text typewriter">hess98:_optic_proper_aeros_cloud</span>
+which can be directly used with <span style="" class="text typewriter">uvspec</span>:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">aerosol_species_library OPAC
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">OPAC contains following aerosol species:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">INSO   insoluble <br class="break">
+WASO   water_soluble<br class="break">
+SOOT   soot<br class="break">
+SSAM   sea_salt_accumulation_mode<br class="break">
+SSCM   sea_salt_coarse_mode<br class="break">
+MINM   mineral_nucleation_mode<br class="break">
+MIAM   mineral_accumulation_mode<br class="break">
+MICM   mineral_coarse_mode<br class="break">
+MITR   mineral_transported<br class="break">
+SUSO   sulfate_droplets<br class="break">
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Variations of the mineral aerosol species containing nonspherical particles are:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">MINM_SPHEROIDS   mineral_nucleation_mode<br class="break">
+MIAM_SPHEROIDS   mineral_accumulation_mode<br class="break">
+MICM_SPHEROIDS   mineral_coarse_mode<br class="break">
+MITR_SPHEROIDS   mineral_transported
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The aspect ratio distribution from <span style="" class="text typewriter">kandler2009</span> is adapted.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

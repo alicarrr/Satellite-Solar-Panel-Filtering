@@ -1,0 +1,14 @@
+atmosphere_file ../examples/UVSPEC_MC_ATM.DAT
+source thermal
+rte_solver montecarlo    # Radiative transfer equation solver MYSTIC
+mc_photons 10000       # MYSTIC number of photons
+wavelength 10000.0          # Wavelengths considered
+zout 3
+mc_sample_grid 1 1 1 1
+mol_abs_param lowtran
+wc_file 3D ../examples/UVSPEC_MC_THERMAL_WC.DAT
+mc_backward
+mc_backward_output abs
+quiet
+
+# The result can usually be found in mc.abs.spc, column 5

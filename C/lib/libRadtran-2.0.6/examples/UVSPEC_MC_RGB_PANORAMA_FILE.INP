@@ -1,0 +1,121 @@
+# This example demonstrates the usage of the 'output_process rgb' option
+# together with the mc_panorama_file option
+
+atmosphere_file ../data/atmmod/afglus.dat   # Atmospheric profiles
+source solar
+
+
+albedo_file ../examples/UVSPEC_ALBEDO_GRASS.DAT
+
+sza 45
+phi0 180
+
+output_process RGB
+
+# umu and phi define "viewing pole"
+umu -1
+phi 0
+
+### solver and tricks
+
+rte_solver montecarlo
+mc_backward
+mc_photons   200000
+mc_minphotons 1000
+mc_vroom on
+# only necessary as there is no other x-y grid/domain specification (e.g. wc_file 3D, ...)
+mc_sample_grid 1 1 1 1
+
+
+mc_sensorposition 0 0 1                 # position of camera [m]
+
+# the same, but with mc_panorama_file
+mc_panorama_file ../examples/UVSPEC_MC_RGB_PANORAMA_ANGLES2x3.DAT
+mc_panorama_alignment mu
+
+#verbose
+quiet
+
+
+# Example python code for manual postprocessing with output_process rgbraw
+# Functions for constrain, norm and gamma correction
+#
+# import numpy as np
+# 
+# 
+# def constrain_rgb(img, w=None):
+#     """
+#     Constrains/Desaturates img by adding white if negative RGB values
+#     are in the raw output.
+#     
+#     Either uses given white value to add or
+#     adds the absolute value of the minimum if this
+#     is found to be negative.
+# 
+#     Does not do anything if w is None or img.min() >= 0.
+#     
+#     Parameters
+#     ----------
+#     img : np.ndarray
+#         Image of unconstrained RGB values (directly after XYZ->RGB conversion)
+#     w : float, optional
+#         White value to add for constrain/desaturation. If not given,
+#         the absolute value of the minimum is used in case this is negative.
+#         
+#     Returns
+#     -------
+#     Constrained/desaturated RGB img.
+#     """
+#     if w is None:
+#         w = img.min()
+#         w = max(-w, 0)
+# 
+#     img += w
+#     return img
+# 
+# 
+# def norm_rgb(img, norm_max=None):
+#     """
+#     Norms RGB values to a maximum value.
+#     If norm_max is None, the maximum value within the given array is used.
+#     
+#     Parameters
+#     ----------
+#     img : np.ndarray
+#         Image of not yet normed rgb values.
+#     norm_max: float, optional
+#         Value to norm to. If not given, the maximum of img is used.
+#         
+#     Returns
+#     -------
+#     Normed img with values in range [0, 1].
+#     """
+#     """
+#     
+#     """
+#     if norm_max is None:
+#         norm_max = img.max()
+#     img = img / norm_max
+#     img = np.clip(img, 0, 1)
+#     return img
+# 
+# 
+# def gamma_correct(img):
+#     """
+#     Applies sRGB gamma correction to supplied img.
+# 
+#     Parameters
+#     ----------
+#     img: np.ndarray
+#         Image of values in range[0, 1] to corrrect
+# 
+#     Returns
+#     -------
+#     Gamma corrected img
+#     """
+#     cThresh = 0.00304
+#     img = np.where(img <= cThresh,
+#                    img * 12.92,
+#                    1.055 * img ** (1.0 / 2.4) - 0.055)
+#     return img
+

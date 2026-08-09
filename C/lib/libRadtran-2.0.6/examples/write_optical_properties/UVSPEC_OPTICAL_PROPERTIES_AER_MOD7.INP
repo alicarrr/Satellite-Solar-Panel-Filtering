@@ -1,0 +1,9 @@
+include ../examples/UVSPEC_SIMPLE.INP 
+aerosol_default 
+
+aerosol_set_tau_at_wvl 310 2 #TODO: Should do the same as aerosol_modify tau set 2 at wvl 310! BUG!
+
+write_optical_properties
+
+mol_abs_param crs
+

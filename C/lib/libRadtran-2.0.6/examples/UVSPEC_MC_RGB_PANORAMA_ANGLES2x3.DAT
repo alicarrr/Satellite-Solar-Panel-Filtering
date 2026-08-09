@@ -1,0 +1,9 @@
+# 2x3 Angles field for mc_panorama_file
+# Columns are phi, theta in degree.
+# Note, that these angles are relative to umu and phi in uvspec input.
+91.0 135.0
+91.0 179.0
+179.0 135.0
+179.0 179.0
+269.0 135.0
+269.0 179.0

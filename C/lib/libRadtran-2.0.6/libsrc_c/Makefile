@@ -1,0 +1,215 @@
+#
+# Makefile for libRadtran's libsrc_c directory
+#
+# Arve Kylling
+# arve.kylling@gmail.com
+
+TOPDIR = ..
+
+include $(TOPDIR)/Makeconf
+
+srcdir = .
+
+
+COREFINDER_SOURCES = Corefinder.c Stack.c LinArray.c
+KEY56_CSOURCES     = yang56.c
+
+SOS_INCLUDES    = $(patsubst %.c, %.h, $(SOS_SOURCES))
+KEY56_INCLUDES  = $(patsubst %.c, %.h, $(KEY56_CSOURCES))
+CLDGEN_CINCLUDES= $(patsubst %.c, %.h, $(CLDGEN_CSOURCES))
+COREFINDER_INCLUDES= $(patsubst %.c, %.h, $(COREFINDER_SOURCES))
+
+ifeq (no,yes)
+TENSTREAM_INCLUDES= tenstream.h
+TENSTREAM_SOURCES= tenstream.c
+endif
+
+
+# BM 9.12.2018 - removed getopt.h. getopt() is part of libc anyway
+INCLUDES = \
+	alis.h \
+	allocnd.h \
+	ambralsfor.h \
+	ascii.h \
+	bandec.h \
+	bpdf.h \
+	cdisort.h \
+	cnv.h \
+	common_math.h \
+	triangle_surface.h \
+	c_tzs.h \
+	equation.h \
+	errors.h \
+	fortran_and_c.h \
+	function.h \
+	GLmystic.h \
+	integrat.h \
+	lidar.h \
+	linear.h \
+	locate.h \
+	matrix_operations.h \
+	miecalc.h \
+	misc.h \
+	mystic_3d.h \
+	mystic.h \
+	nca.h \
+	netCDF_surface.h \
+	netCDF_functions.h \
+	numeric.h \
+	ocean.h \
+	phasetable.h \
+	rayleigh.h \
+	raytracing.h \
+	regress.h \
+	rodents.h \
+	schwarzschild.h \
+	snow.h \
+	sofi.h \
+	specrend_uvspec.h \
+	spl.h \
+	sslidar.h \
+	sun.h \
+	sunpos.h \
+	table.h \
+	tribox3.h \
+	twomaxrnd.h \
+	dynamic_twostream.h \
+	dynamic_tenstream.h \
+	twostrebe.h \
+	uvspecrandom.h \
+	vroom.h \
+	wavelength.h \
+	wcloud3d.h \
+	$(CLDGEN_CINCLUDES) \
+	$(COREFINDER_INCLUDES) \
+	$(KEY56_INCLUDES) \
+	$(SOS_INCLUDES) \
+	$(TENSTREAM_INCLUDES) \
+	$(TWOMAXRND3C_INCLUDES)
+
+# BM 9.12.2018 - removed getopt.c. getopt() is part of libc anyway
+SOURCES = \
+	allocnd.c \
+	ascii.c \
+	bandec.c \
+	bpdf.c \
+	cdisort.c \
+	cnv.c \
+	common_math.c \
+	triangle_surface.c \
+	c_tzs.c \
+	equation.c \
+	errors.c \
+	fortran_and_c.c \
+	function.c \
+	integrat.c \
+	linear.c \
+	locate.c \
+	miecalc.c \
+	nca.c \
+	netCDF_surface.c \
+	netCDF_functions.c \
+	phasetable.c \
+	rayleigh.c \
+	raytracing.c \
+	regress.c \
+	rodents.c \
+	schwarzschild.c \
+	snow.c \
+	sofi.c \
+	specrend_uvspec.c \
+	spl.c \
+	sslidar.c \
+	sun.c \
+	sunpos.c \
+	table.c \
+	tribox3.c \
+	twomaxrnd.c \
+	twostrebe.c \
+	dynamic_twostream.c \
+	dynamic_tenstream.c \
+	uvspecrandom.c \
+	wavelength.c \
+	wcloud3d.c
+
+ALL_SOURCES = $(SOURCES) $(MYSTIC_SOURCES) $(MYSTIC3D_SOURCES) $(LIDAR_SOURCES) $(SOS_SOURCES) \
+              $(KEY56_CSOURCES) $(CLDGEN_CSOURCES) $(CDF2C_SOURCES) $(VROOM_SOURCES) $(BRDF_SOURCES) \
+              $(TENSTREAM_SOURCES) $(COREFINDER_SOURCES) $(TWOMAXRND3C_SOURCES) 
+
+OBJECTS  = $(patsubst %.c, %.o, $(ALL_SOURCES))
+
+RADTRAN_C_LIB =  ../lib/libRadtran_c.a
+
+DISTFILES = Makefile.in .depend \
+	$(INCLUDES) $(SOURCES) $(KEY56_CSOURCES) $(SOS_SOURCES) \
+	$(BRDF_SOURCES) $(MYSTIC_SOURCES) $(VROOM_SOURCES) $(COREFINDER_SOURCES) $(TWOMAXRND3C_SOURCES) disotest.c
+
+MYSTICDISTFILES = $(DISTFILES) $(CLDGEN_CSOURCES) $(CDF2C_SOURCES) $(MYSTIC3D_SOURCES) 
+
+# do we want BRDF here???
+CDISORTDISTFILES = cdisort.c cdisort.h disotest.c locate.h locate.c README_cdisort \
+	Makefile_cdisort ../libsrc_f/DISORT2.doc HOWTO_cdisort ../COPYING
+
+all:  dep $(OBJECTS) $(RADTRAN_C_LIB)
+.PHONY: all
+
+dep: $(ALL_SOURCES)
+	$(CC) $(CPPFLAGS) $(ALL_CFLAGS) -MM $^  > .depend
+.PHONY: dep
+
+$(RADTRAN_C_LIB): $(OBJECTS) 
+	$(gcommand)
+	$(RM) -f $(RADTRAN_C_LIB)
+	$(AR) $(ARFLAGS) $(RADTRAN_C_LIB) $(OBJECTS) 
+	$(RANLIB) $(RADTRAN_C_LIB)
+
+
+install: all
+	$(MKPATH) $(libdir)
+	$(RM) -f $(libdir)/libRadtran_c.a
+	$(INSTALL_DATA) $(RADTRAN_C_LIB) $(libdir)/libRadtran_c.a
+	$(RANLIB) $(libdir)/libRadtran_c.a
+	$(MKPATH) $(includedir)/libRadtran
+	$(INSTALL) -m 644 $(INCLUDES) $(includedir)/libRadtran
+.PHONY: install
+
+uninstall:
+	$(RM) -f $(libdir)/libRadtran_c.a
+	for f in $(INCLUDES); do \
+	  fbase=`basename $$f`; \
+	  $(RM) -f $(includedir)/libRadtran/$$fbase; \
+	done
+.PHONY: uninstall
+
+clean:
+	$(RM) -f *.a *.o .depend *.gcno *.gcda
+.PHONY: clean
+
+mostlyclean:
+	$(RM) -f *.o
+.PHONY: mostlyclean
+
+distclean: clean
+	$(RM) -f Makefile Radtran .fname *.d
+.PHONY: distclean
+
+realclean: distclean
+	$(RM) -f *.o
+.PHONY: realclean
+
+dist:
+	ln $(DISTFILES) ../`cat ../.fname`/libsrc_c
+.PHONY: dist
+
+mystic-dist:
+	ln $(MYSTICDISTFILES) ../`cat ../.fname`/libsrc_c
+.PHONY: mystic-dist
+
+cdisort-dist:
+	ln $(CDISORTDISTFILES) ../`cat ../.cname`/
+.PHONY: cdisort-dist
+
+Makefile: Makefile.in ../config.status
+	cd ..; sh config.status
+
+-include .depend

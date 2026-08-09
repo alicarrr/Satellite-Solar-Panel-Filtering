@@ -1,0 +1,24 @@
+                        # Location of atmospheric profile file. 
+atmosphere_file ../data/atmmod/afglus.dat
+data_files_path ../data 
+
+source thermal 
+
+mol_abs_param fu
+wavelength_index 7 18
+
+mc_nca nca2019_triangle
+
+rte_solver mystic
+mc_photons 2
+mc_minphotons 2
+
+wc_file 3D ../examples/UVSPEC_MC_BACKWARD_HEAT_WC.DAT
+
+mc_forward_output heating K_per_day
+
+output_process sum
+zout all
+quiet
+
+# The result can usually be found in mc.abs.spc, column 5

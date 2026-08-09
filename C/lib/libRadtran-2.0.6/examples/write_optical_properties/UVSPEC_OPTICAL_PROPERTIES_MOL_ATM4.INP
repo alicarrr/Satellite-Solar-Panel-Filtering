@@ -1,0 +1,10 @@
+atmosphere_file midlatitude_winter
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 300           # Wavelength considered
+albedo 0.2
+
+mol_file o4 ../data/atmmod/afglus_co_vmr.dat
+crs_model o3 bass_and_paur
+crs_model no2 bogumil
+
+write_optical_properties

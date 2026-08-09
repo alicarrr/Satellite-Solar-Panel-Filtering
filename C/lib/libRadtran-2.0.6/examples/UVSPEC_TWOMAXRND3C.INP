@@ -1,0 +1,25 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar
+
+albedo 0.2               # Surface albedo
+sza 32.0                 # Solar zenith angle
+
+wavelength 550 560
+
+profile_file wck 1D ../examples/WCCOMPLEX.DAT # Location of water cloud file
+profile_file wcn 1d ../examples/WCCOMPLEXTHIN.DAT # Location of water cloud file
+
+profile_properties wck hu # could be mie, hu, ...
+profile_properties wcn hu # could be mie, hu, ...
+
+twomaxrnd3C_scale_cf 0.4
+
+cloud_fraction_file ../examples/WCCLOUDFRACTION.DAT
+
+rte_solver twomaxrnd3c  # This override what is specified in above file
+                        # and files included in that file etc.
+
+output_user wavelength edir edn eup
+
+quiet
+

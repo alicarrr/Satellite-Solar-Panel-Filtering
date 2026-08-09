@@ -1,0 +1,14 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 550           # Wavelength considered
+albedo 0.2
+
+wc_file 1D ../examples/WC50.DAT
+ic_file 1D ../examples/IC.DAT
+aerosol_default          # switch on aerosol
+profile_file wolke 1D ../examples/IC50_C_R.DAT
+profile_properties wolke hu
+
+atm_z_grid 0 1 2 3 4 6 8 10 15 20 50 120
+
+write_optical_properties

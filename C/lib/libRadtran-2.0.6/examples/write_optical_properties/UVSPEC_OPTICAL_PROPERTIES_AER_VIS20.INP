@@ -1,0 +1,6 @@
+include ../examples/UVSPEC_SIMPLE.INP
+aerosol_default          # switch on aerosol
+                         # specify aerosol mixture file
+aerosol_visibility 20
+
+write_optical_properties

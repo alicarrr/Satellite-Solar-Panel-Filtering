@@ -1,0 +1,49 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Use this option only together with <span style="" class="text typewriter">mc_panorama_view</span>. This
+option has been introduced to facilitate e.g. the calculation of
+circum solar radiation. Three sub-options are available, <span style="" class="text typewriter">sun</span>,
+<span style="" class="text typewriter">mu</span>, and <span style="" class="text typewriter">zenith</span>. When set <span style="" class="text typewriter">sun</span>, the camera is
+aligned to sun (i.e. using the options <span style="" class="text typewriter">sza</span> and
+<span style="" class="text typewriter">phi0</span>). <img src="mi/mi39.png" width="15" height="20" alt="\theta" class="math"> and <img src="mi/mi33.png" width="17" height="17" alt="\mu" class="math"> as given by the option
+<span style="" class="text typewriter">mc_panorama_view</span> now relates to the sun's position. <img src="mi/mi33.png" width="17" height="17" alt="\mu" class="math"> sets
+cosine of the angular distance from the center of the sun. <img src="mi/mi38.png" width="35" height="17" alt="\mu=" class="math">-1
+implies looking directly into the sun. With <img src="mi/mi34.png" width="17" height="22" alt="\phi" class="math"> we select the
+direction around the sun on a circle with angular distance <img src="mi/mi37.png" width="62" height="24" alt="{\rm acos}(\mu)" class="math"> from the center of the sun. <img src="mi/mi36.png" width="49" height="22" alt="\phi=0" class="math"> implies that the
+camera pixel is looking in a direction exactly below the sun, at
+<img src="mi/mi35.png" width="66" height="22" alt="\phi=180" class="math"> the camera pixel will be looking exactly above the
+sun. Increasing <img src="mi/mi34.png" width="17" height="22" alt="\phi" class="math"> means the direction of looking moves clock-wise
+around the sun-camera-line (seen from the sun). If the sun is in the
+zenith, the definition of <img src="mi/mi34.png" width="17" height="22" alt="\phi" class="math"> is identical to that in <span style="" class="text typewriter">phi</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The sub-option <span style="" class="text typewriter">mu</span> aligns the camera geometry according to the
+options <span style="" class="text typewriter">umu</span> and <span style="" class="text typewriter">phi</span>. Be aware that <span style="" class="text typewriter">phi0</span> and
+<span style="" class="text typewriter">phi</span> are defined differently!
+</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The sub-option <span style="" class="text typewriter">zenith</span> makes only sense when using
+<span style="" class="text typewriter">mc_spherical 3D</span>. Then the camera is aligned to the zenith with
+respect to the lon-lat position of the camera.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

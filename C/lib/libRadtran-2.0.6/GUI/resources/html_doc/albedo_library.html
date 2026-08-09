@@ -1,0 +1,86 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Albedo libraries are a collection of spectral albedos of different surface types.
+This option must be used either with <span style="" class="text typewriter">surface_type</span>
+or <span style="" class="text typewriter">surface_type_map</span>, in order to select the specific surface type.
+There are two possibilities for libraries:
+the built-in IGBP library or a user defined albedo library.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The built-in library of the International Geosphere Biosphere Programme is
+selected with
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">albedo_library IGBP
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The IGBP library contains 20 surface types which are set by <span style="" class="text typewriter">surface_type</span>:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">1 evergreen_needle_forest<br class="break">
+2 evergreen_broad_forest<br class="break">
+3 deciduous_needle_forest<br class="break">
+4 deciduous_broad_forest<br class="break">
+5 mixed_forest<br class="break">
+6 closed_shrub<br class="break">
+7 open_shrubs<br class="break">
+8 woody_savanna<br class="break">
+9 savanna<br class="break">
+10 grassland<br class="break">
+11 wetland<br class="break">
+12 cropland<br class="break">
+13 urban<br class="break">
+14 crop_mosaic<br class="break">
+15 antarctic_snow<br class="break">
+16 desert<br class="break">
+17 ocean_water<br class="break">
+18 tundra<br class="break">
+19 fresh_snow<br class="break">
+20 sea_ice<br class="break">
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Surface types 1 - 17 are defined by the International Geosphere Biosphere
+Programme (IGBP); additionally there are tundra, fresh_snow, and sea_ice surface types.
+The spectral albedo of the ground is determined as a function of solar
+zenith angle, precitable water, and clouds. The spectral resolution
+equals the grid of the correlated-k Fu/Liou parameterisation.
+This library originates from the NASA CERES/SARB Surface Properties Project,
+see <span style="" class="text typewriter">Belward1996</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">For creating your own albedo library use <span style="" class="text typewriter">albedo_library path</span>, where <span style="" class="text typewriter">path</span> is
+the path of the directory where the albedo data is stored. The files are expected to have the
+names <span style="" class="text typewriter">albedo_01.dat, albedo_02.dat, ...</span> If <span style="" class="text typewriter">surface_type 1</span> is specified
+the albedo from <span style="" class="text typewriter">albedo_01.dat</span> will be used, and so on.
+Each file is required to have two columns:
+Column 1 is the wavelength in nm, and column 2 the corresponding
+Lambertian surface albedo. The wavelength grid may be freely set. The
+albedo will be interpolated linearely to the wavelength grid used for the
+radiation calculation. Comments start with #. Empty lines are ignored.
+This option is similar to <span style="" class="text typewriter">albedo_file</span>, except that it offers an
+easy way to use the option <span style="" class="text typewriter">surface_type_map</span> in combinition with albedo files.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

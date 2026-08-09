@@ -1,0 +1,8 @@
+atmosphere_file tropics
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 550           # Wavelength considered
+albedo 0.2
+
+mol_file no2 ../data/atmmod/afglus_no2.dat
+
+write_optical_properties

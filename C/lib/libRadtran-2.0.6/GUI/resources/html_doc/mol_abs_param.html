@@ -1,0 +1,147 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">To calculate integrated shortwave or longwave irradiance, or to simulate
+satellite instrument channels, use
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mol_abs_param type
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">to choose between the following types of correlated-k schemes:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">kato</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p"><span style="" class="text typewriter">Kato1999b</span> correlated-k distribution, shortwave; based on HITRAN 96. Please note that the
+bands above 2.5 micrometer are not very reliable which, however, this has only little impact
+on integrated shortwave radiation.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">kato2</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p"><span style="" class="text typewriter">Kato1999b</span>, shortwave; optimized version (Seiji Kato, personal communication, 2003);
+please note that <span style="" class="text typewriter">kato2</span> only has 148 subbands (that is, calls to the <span style="" class="text typewriter">rte_solver</span>)
+compared to 575 for <span style="" class="text typewriter">kato</span> which translates to a increase in computational speed by
+up to a factor of 4 with only little increase in uncertainty. The absorption data are
+based on HITRAN 2000. Please note that the bands above 2.5 micrometer are not very reliable which,
+however, this has only little impact on integrated shortwave radiation.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">kato2.96</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p"><span style="" class="text typewriter">Kato1999b</span>, shortwave; optimized version (Seiji Kato, personal communication, 2003);
+similar to <span style="" class="text typewriter">kato2</span> but based on HITRAN96. Please note that the bands above 2.5 micrometer
+are not very reliable which, however, has only little impact on integrated shortwave radiation.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">fu</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p"><span style="" class="text typewriter">fu92,fu93</span>, shortwave and longwave; fast parameterization, developed for climate models.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">avhrr_kratz</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p"><span style="" class="text typewriter">Kratz1995</span>, AVHRR instrument channels</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">lowtran</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Gas absorption parameterization from LOWTRAN; code adopted from SBDART <span style="" class="text typewriter">Ricchiazzi1998b</span>;
+please see the section on ”Spectral resolution”.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">sbdart</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Identical to LOWTRAN.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">repwvl</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Representative wavelengths parameterization <span style="" class="text typewriter">Buehler2010</span> adapted for spectral bands.
+Different band widths may be selected by
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mol_abs_param repwvl [fine|medium|coarse]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">(fine: 1cm<img src="mi/mi11.png" width="25" height="24" alt="{}^{{-1}}" class="math">; medium: 5cm<img src="mi/mi11.png" width="25" height="24" alt="{}^{{-1}}" class="math">; coarse: 15cm<img src="mi/mi11.png" width="25" height="24" alt="{}^{{-1}}" class="math">; default: coarse).
+The data files are provided at the libRadtran homepage.
+Absorption data are based on HITRAN 2004. Absorption by H2O, CO2, O3, N2O, CO, CH4, O2, and N2 is
+considered, and absorption by all other gases is zero.
+By default volume mixing ratios of N2O, CO, CH4, and N2 (those are not in the
+<span style="" class="text typewriter">atmosphere_file</span>) from the US standard atmosphere are applied.
+Use <span style="" class="text typewriter">mol_file</span> or <span style="" class="text typewriter">mol_modify</span> to change the profiles.
+In case of radiative transfer problems with solar source, the extraterrestrial spectrum from
+Kurudz is applied by default.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">repwvl_channel</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Representative wavelengths parameterization <span style="" class="text typewriter">Buehler2010</span> for satellite channels. Usage
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mol_abs_param repwvl_channel channel_name
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Channel-integrated quantities are obtained using <span style="" class="text typewriter">output per_ck_band</span>.
+The file <span style="" class="text typewriter">data/correlated_k/repwvl/channel_list.txt</span> provides a list of available channels;
+more information on the channels is provided in <span style="" class="text typewriter">data/filter/</span>.</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">If <span style="" class="text typewriter">mol_abs_param</span> kato/kato2/kato2.96/fu/avhrr_kratz is specified, the extraterrestrial
+flux is taken from
+internally defined files specific for each parameterization, not
+from <span style="" class="text typewriter">source solar file</span>. The output is the integrated irradiance for
+each band. To get e.g. integrated shortwave irradiance, simply add all
+bands of the <span style="" class="text typewriter">Kato1999b</span> or the <span style="" class="text typewriter">fu92,fu93</span>
+parameterization. The five AVHRR channels are weighted sums of the
+libRadtran output. Examples how to integrate the output in the
+<span style="" class="text typewriter">avhrr_kratz</span> case are included in the <span style="" class="text typewriter">uvspec</span> self check
+which is initiated with
+<span style="" class="text typewriter">make check</span>.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

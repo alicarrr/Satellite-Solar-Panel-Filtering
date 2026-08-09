@@ -1,0 +1,9 @@
+atmosphere_file midlatitude_summer
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 550           # Wavelength considered
+albedo 0.2
+
+pressure 1000
+crs_model rayleigh nicolet 
+
+write_optical_properties

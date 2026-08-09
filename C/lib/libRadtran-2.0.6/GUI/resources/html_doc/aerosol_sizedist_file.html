@@ -1,0 +1,36 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Aerosol size distribution. Two columns are expected: The radius
+[micrometer] and the particle number. Together with <span style="" class="text typewriter">aerosol_refrac_index</span> or
+<span style="" class="text typewriter">aerosol_refrac_file</span> this forms the input to Mie calculations of the
+aerosol optical properties. Please note that
+only the single-scattering albedo, the scattering phase function, and the
+wavelength-dependence of the extinction coefficient are affected by the Mie calculation
+while the absolute value of the extinction coefficient is taken from other sources;
+generally, the extinction coefficient at the first <em class="emph">internal</em> wavelength is
+taken from whatever is available (either default <span style="" class="text typewriter">shettle89</span> or user-defined);
+the extinction at all other wavelengths is scaled according to the Mie calculation.
+For this reason, the absolute numbers are not relevant - only the shape of the
+size distribution matters. For details see also the description of <span style="" class="text typewriter">aerosol_refrac_file</span>.
+<em class="emph">It is recommended to avoid this option and rather to calculate the aerosol optical
+properties externally e.g. with mie and to pass them to <span style="" class="text typewriter">uvspec</span> with
+<span style="" class="text typewriter">aerosol_files</span></em>.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">File with the center wavelengths and the wavelength band intervals to be used for
+calculations in the thermal range.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">thermal_bands_file file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The following three columns are expected:
+center (or reference) wavelength, lower wavelength limit, upper wavelength limit [nm].
+<span style="" class="text typewriter">thermal_bands_file</span> defines the wavelength grid for the radiative transfer
+calculation. The RTE solver is called for each of the wavelengths in the first column.
+The atmospheric (scattering, absorption, etc) properties are also evaluated at these
+wavelengths. For thermal radiation calculations, the Planck function is integrated
+over the wavelength bands defined in the second and third columns. The result will
+therefore be a band-integrated irradiance which does only make sense when the
+<span style="" class="text typewriter">source solar file</span> grid equals the <span style="" class="text typewriter">thermal_bands_file</span> grid.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

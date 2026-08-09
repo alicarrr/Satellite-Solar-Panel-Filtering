@@ -1,0 +1,16 @@
+                         # Location of atmospheric profile file. 
+atmosphere_file ../examples/UVSPEC_MC_ATM.DAT
+                         # Location of the extraterrestrial spectrum
+source solar ../data/solar_flux/atlas_plus_modtran
+sza 30                   # Solar zenith angle
+phi0 0.0               # Sun in the South
+rte_solver montecarlo    # Radiative transfer equation solver MYSTIC
+mc_photons 200000       # MYSTIC number of photons
+wavelength 450.0          # Wavelengths considered
+mc_sample_grid 1 1 1 1
+mc_backward
+mc_backward_output eup
+albedo 0.5
+quiet
+
+# The result can usually be found in mc.flx, column 5

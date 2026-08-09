@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">If specified, the calculated spectrum is multiplied with a filter function
+defined in file.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">filter_function_file file [normalize]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The file must contain two columns.
+Column 1 is the wavelength, in nm. Column 2 is the corresponding filter
+function value. Comments start with #. Empty lines are ignored.
+In combination with <span style="" class="text typewriter">output sum</span> or <span style="" class="text typewriter">output integrate</span> this option
+is useful e.g. to calculate weighted irradiances or actinic fluxes or
+to simulate broadband or satellite observations.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">If the optional second argument <span style="" class="text typewriter">normalize</span> is specified,
+the integral of the filter function over wavelength is normalized such
+that <span style="" class="text typewriter">output_process integrate</span> gives radiative properties per wavelength, averaged over
+the filter function.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

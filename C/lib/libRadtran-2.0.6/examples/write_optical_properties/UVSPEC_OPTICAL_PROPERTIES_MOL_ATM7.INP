@@ -1,0 +1,12 @@
+atmosphere_file US-standard
+source thermal
+wavelength 3500
+albedo 0.2
+mol_abs_param lowtran
+mol_modify h2o 30 MM
+
+mol_file O3   ../examples/AFGLT_50KM_O3_MOD.DAT  
+mol_file CO2  ../examples/AFGLT_50KM_CO2_MOD.DAT
+mol_file H2O ../examples/AFGLT_50KM_RH_MOD.DAT RH
+
+write_optical_properties

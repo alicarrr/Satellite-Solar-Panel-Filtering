@@ -1,0 +1,22 @@
+source solar ../data/solar_flux/atlas_plus_modtran
+atmosphere_file ../data/atmmod/afglms.dat
+wc_file 1D ../examples/WC_CB.DAT
+wc_properties mie interpolate
+
+sza 30
+phi0 0.0
+umu 0.866025403    # = cos(30)
+phi 180.0          # has to be like this for backscattering direction
+mc_vroom off
+#mc_sample_grid 1 1 1 1
+
+wavelength 800 800
+mc_photons 1000
+mc_polarisation
+mc_coherent_backscatter
+
+rte_solver montecarlo
+
+quiet
+
+# The result is the second line in the file mc.mish.cb

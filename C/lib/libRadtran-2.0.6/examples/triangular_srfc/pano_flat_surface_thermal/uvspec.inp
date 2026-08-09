@@ -1,0 +1,24 @@
+data_files_path ../../../data/
+atmosphere_file ./atm.dat
+mc_backward
+mc_panorama_alignment mu
+mc_panorama distr_photons_over_pixel
+mc_minphotons 1
+no_absorption
+no_scattering
+rte_solver montecarlo
+rte_solver mystic
+source thermal
+mol_abs_param crs
+wavelength 8000
+sza 0
+phi0 0
+mc_photons 100000
+mc_triangular_surface_file triangle_input.nc
+mc_sensorposition 500 500 500
+mc_panorama_view -15 15 75.0 105.0
+mc_sample_grid 2 2 [] []
+albedo 0
+umu 0
+phi 0
+quiet

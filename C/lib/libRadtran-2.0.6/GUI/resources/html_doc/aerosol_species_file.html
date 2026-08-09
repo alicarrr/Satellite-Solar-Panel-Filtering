@@ -1,0 +1,90 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Specify mass density profiles of a mixture of aerosol types.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">aerosol_species_file profile [aero_1 aero_2 ... aero_n]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">aero_1</span> to <span style="" class="text typewriter">aero_n</span> are the aerosol species to be included.
+For each of these species, the optical properties are read from the
+<span style="" class="text typewriter">aerosol_species_library</span>, e.g. the OPAC data set provided with
+libRadtran. The profile file needs to include vertical profiles for each
+of these species. This file can be either in <em class="emph">netCDF</em>-format
+(automatically recognized filename extension <span style="" class="text typewriter">.nc</span> or <span style="" class="text typewriter">.cdf</span>)
+or in ASCII format. The format of the ASCII file is:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">z1    dens(aero_1, z1) dens(aero_2, z1)  ... dens(aero_n, z1)<br class="break">
+z2    dens(aero_1, z2) dens(aero_2, z2)  ...<br class="break">
+.        .           .<br class="break">
+.        .           .<br class="break">
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">z</span> is the height in km, and <span style="" class="text typewriter">dens</span> are the aerosol mass
+densities in g/m3. Please make sure to include one column for each of
+the species <span style="" class="text typewriter">aero_1</span> to <span style="" class="text typewriter">aero_n</span> listed after
+<span style="" class="text typewriter">aerosol_species_file</span>.
+For netCDF input it is also possible to specify the unit 'kg kg<img src="mi/mi11.png" width="25" height="24" alt="{}^{{-1}}" class="math">'; the data
+are then automatically converted to g/m<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math">.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Some default aerosol mixtures are provided, corresponding to the definitions in
+<span style="" class="text typewriter">hess98:_optic_proper_aeros_cloud</span>.
+They can simply be invoked by
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">aerosol_species_file mixture_name
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">mixture_name</span> can be one of the following:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block"><br class="break">
+    <p class="p"><span style="" class="text typewriter small">continental_clean<br class="break">
+continental_average<br class="break">
+continental_polluted<br class="break">
+urban<br class="break">
+maritime_clean<br class="break">
+maritime_polluted<br class="break">
+maritime_tropical<br class="break">
+desert<br class="break">
+antarctic
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">A variation of the desert mixture containing nonspherical particles is
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">desert_spheroids
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"></p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

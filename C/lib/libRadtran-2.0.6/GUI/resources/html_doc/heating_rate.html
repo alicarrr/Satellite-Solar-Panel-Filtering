@@ -1,0 +1,60 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Calculation of heating rates. Output is only provided at altitudes specified by <span style="" class="text typewriter">zout</span>.
+To get heating rate profiles a number of altitudes must thus be specified by <span style="" class="text typewriter">zout</span>.
+Heating rates is the change of temperature with time in units of K/day.
+For spectral calculations the default output is a matrix:
+
+0.0        zout1          zout2 …
+lambda1    heating_rates  …
+lambda2      .
+.         .
+.         .
+
+For integrated calculations (<span class="ERROR undefined">\Verbatim</span><span style="" class="text typewriter">output sum</span> or <span style="" class="text typewriter">output integrate</span>) the default output
+is in two columns with column 1 being the altitude and column 2 the heating rates.
+The output of <span style="" class="text typewriter">heating_rate</span> can also be specified with the <span style="" class="text typewriter">output_user</span> option.
+Note that heating rates are only well-behaved up to altitudes
+for which the respective correlated-k options are valid. E.g. about 60 km for
+<span style="" class="text typewriter">fu</span> and about 80 km for <span style="" class="text typewriter">kato</span>, <span style="" class="text typewriter">kato2</span>, <span style="" class="text typewriter">kato2.96</span>, and <span style="" class="text typewriter">lowtran</span>.
+Attention: For spectral calculations, the extraterrestrial spectrum is assumed to be in
+mW/(m2 nm).</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Three different methods are implemented to calculate the heating rate, which can be selected
+with an optional keyword:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">heating_rate [method]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">method</span> may be either <span style="" class="text typewriter">layer_cd</span> (heating rates are derived from centered
+differences of the flux (the default method), <span style="" class="text typewriter">local</span> (heating rates are derived
+from the actinic flux), or <span style="" class="text typewriter">layer_fd</span> (heating rates are derived from forward differences of the flux
+over one layer. Attention: <span style="" class="text typewriter">heating_rate local</span> introduces new levels into the profile which
+slightly affects the model output.
+With <span style="" class="text typewriter">layer_fd</span>, the output is
+not representative for a <em class="emph">level</em>, but for the <em class="emph">layer</em> from the z-level of the line in the output file,
+where it is written, up to next <em class="emph">output level</em> above!</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

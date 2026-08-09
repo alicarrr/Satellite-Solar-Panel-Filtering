@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Interpret profile properties as level properties (this was the default
+behaviour before version 1.4).
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">interpret_as_level profile
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">profile can be either <span style="" class="text typewriter">wc</span>, <span style="" class="text typewriter">ic</span> or any profile type specified in <span style="" class="text typewriter">profile_file</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">If <span style="" class="text typewriter">interpret_as_level wc</span> is defined, a <span style="" class="text typewriter">wc_file</span> would be interpreted as
+follows:</p>
+  <pre class="verbatim">
+	#      z     LWC    R\_eff
+	#     (km)  (g/m^3) (um)
+	       5.000    0      0
+	       4.000   0.2   12.0
+	       3.000   0.1   10.0
+	       2.000   0.1    8.0
+	
+</pre>
+    <p class="p">The value 0.2 g/m<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math"> refers to altitude 4.0km, as e.g. in a
+radiosonde profile. The properties of each layer are calculated as
+average over the adjacent levels. E.g. the single scattering
+properties for the model layer between 3 and 4km are obtained by
+averaging over the two levels 3km and 4km. To allow easy definition of
+sharp cloud boundaries, clouds are only formed if both liquid water
+contents above and below the respective layer are larger than
+0. Hence, in the above example, the layers between 2 and 3 as well as
+between 3 and 4km are cloudy while those between 1 and 2km and between
+4 and 5km are not.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Note that since version 1.4 the default is to interpret profile properties as
+layer properties. For example wc properties are assumed to be constant over the layer.
+The layer reaches from the level, where the properties are defined in the
+<span style="" class="text typewriter">wc_file</span> to the level above that one.  The following lines</p>
+  <pre class="verbatim">
+	#      z     LWC    R_eff
+	#     (km)  (g/m^3) (um)
+	       4.000   0.0   0.0
+	       3.000   1.0  10.0
+	
+</pre>
+    <p class="p">define a cloud in the layer between 3 and 4 km with sharp boundaries.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

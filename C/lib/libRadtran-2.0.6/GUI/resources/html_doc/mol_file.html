@@ -1,0 +1,96 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Specify density profiles (or matrix, see below) of various trace gases to be included in the radiative
+transfer calculation.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mol_file gas_species filename [unit]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">At the moment following <span style="" class="text typewriter">gas_species</span> are included: ozone (O3), nitrogen dioxide (NO2), water vapor (H2O),
+bromine oxide (BRO), chlorine dioxide (OCLO), formaldehyde (HCHO), carbon dioxide (CO2),
+sulphur dioxide (SO2), oxygen (O2), the oxygen dimer (O4), methane (CH4), nitrous oxide (N20),
+carbon monoxide (CO), and nitrogen (N2).
+The gas species is identified
+by their abbrevations given in the parenthesis above.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The model expects a density file with two columns:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">1</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Altitude above sea level in km.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">2</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">The density of trace gas [in the specified unit]</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">The altitude grid may be different from that in <span style="" class="text typewriter">atmosphere_file</span>. All densities inside the range
+of the <span style="" class="text typewriter">mol_file</span> are replaced. For all other altitudes the values from the
+<span style="" class="text typewriter">atmosphere_file</span> are used. If the density is specified as -1 at a level,
+the value from <span style="" class="text typewriter">atmosphere_file</span> is used.
+Altitude ranges not covered by the <span style="" class="text typewriter">atmosphere_file</span> are ignored.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p"><span style="" class="text typewriter">unit</span> is an optional argument to define the unit of the density. The profiles can
+be given in particles per cm<img src="mi/mi5.png" width="14" height="24" alt="{}^{{3}}" class="math"> (<span style="" class="text typewriter">cm_3</span>), in particles per m<img src="mi/mi5.png" width="14" height="24" alt="{}^{{3}}" class="math"> (<span style="" class="text typewriter">m_3</span>), as volume mixing ratio (<span style="" class="text typewriter">vmr</span>), as mass mixing
+ratio (<span style="" class="text typewriter">mmr</span>), or as relative humidity (<span style="" class="text typewriter">rh</span>) (only for water). The default for <span style="" class="text typewriter">unit</span> is cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math">.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">To scale the profile to a total column value use <span style="" class="text typewriter">mol_modify</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">For airmass factor calculations it is for some species necessary to account for the
+variation of the profile with sza. This may be accomplished by specifying a <span style="" class="text typewriter">mol_file</span>
+in the following format:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">0.0       SZA1      SZA2 ...<br class="break">
+z(1)    dens(1,1)    ...<br class="break">
+z(2)      .           .<br class="break">
+.        .           .
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where z(i) are the altitude levels above sea level in km, SZA is the solar zenith
+angle in degrees, and dens is the density [in the specified unit] of the trace gases as
+function of solar zenith angle and altitude.
+The matrix may only be specified for one species. It may however be combined with profiles
+of other species.
+A density matrix can only be used in connection with <span style="" class="text typewriter">rte_solver sdisort</span>!</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

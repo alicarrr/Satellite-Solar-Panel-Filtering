@@ -1,0 +1,66 @@
+###################################################################
+### LIDAR definition file
+###
+### version number
+###################################################################
+20120401
+###################################################################
+### first number defines type of multiple lidar def:
+###         0 is define each lidar
+###             then second number is number of lidars
+###         1 is define first lidar, then delta
+###             then second number is number of delta dimensions
+###             then second line is numbers of deltas for each dimension
+###################################################################
+0 1
+#4
+###################################################################
+### first lasers, then lidars
+### x y z [km] r [mm] theta phi [degr] opening angle [rad]
+###################################################################
+1 2.5 1 500 170. 90. 0.017
+1 2.5 1 500 170. 90. 0.017
+###################################################################
+### range bins definition: 0: no bins
+###                        1: define each bin
+###                             then second number is number of bins
+###                        2: define bins collectively
+###                             then second number is number of bin groups
+###################################################################
+2 1
+###################################################################
+### start of first bin of actual group, number of bins, width of bin
+###################################################################
+1 10 2
+###################################################################
+### taumax (max tau to calc to, 0=off)
+###################################################################
+0
+###################################################################
+### number of opening angles (0 means 1)
+### second number is type of change
+###      0: factor (less than one!)
+###      1: linear (negative and less than one!)
+###      2: box
+### third number is factor
+### fourth number is number of azimuthal segments
+###################################################################
+0 0 0.0 0
+###################################################################
+### polarisation of laser
+###   0: unpolarized
+###   +-1: Q=+-1, U=0,   V=0
+###   +-2: Q=0,   U=+-1, V=0
+###   +-3: Q=0,   U=0,   V=+-1
+### second number pulse length in meter
+### third number number of scattering outputs
+### fourth number: divergence (0: square, 1: gauss)
+###################################################################
+1 30. 0 0
+###################################################################
+### which channels to calculate
+### first number: 0: normal, 1: +raman 2: +hsrl
+### second number: 1: I, 2: I,Q, 3: I,Q,U, 4: I,Q,U,V
+### third number: 1: pol stuff also for rings
+###################################################################
+0 0 0

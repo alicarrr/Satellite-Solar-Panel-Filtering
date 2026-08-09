@@ -1,0 +1,10 @@
+atmosphere_file US-standard
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 350
+albedo 0.2
+
+mol_file oclo ../data/atmmod/oclo.dat
+mol_file bro ../data/atmmod/bro.dat
+mol_modify bro 0.00121078 du
+
+write_optical_properties

@@ -1,0 +1,10 @@
+atmosphere_file subarctic_winter
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 350           # Wavelength considered
+albedo 0.2
+
+mol_abs_param crs
+crs_model o3 bogumil
+crs_model rayleigh penndorf
+
+write_optical_properties

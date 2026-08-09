@@ -1,0 +1,11 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source thermal
+wavelength 3500           # Wavelength considered
+mol_abs_param reptran
+
+ic_file 1D ../examples/IC.DAT
+ic_properties yang
+
+ic_habit droxtal
+
+write_optical_properties

@@ -1,0 +1,118 @@
+allocnd.o: allocnd.c allocnd.h common_math.h errors.h
+ascii.o: ascii.c ascii.h errors.h
+bandec.o: bandec.c bandec.h
+bpdf.o: bpdf.c bpdf.h errors.h mystic.h phasetable.h cdisort.h \
+ common_math.h ocean.h ../libsrc_f/f77-uscore.h ambralsfor.h \
+ triangle_surface.h
+cdisort.o: cdisort.c cdisort.h common_math.h ocean.h \
+ ../libsrc_f/f77-uscore.h ambralsfor.h locate.h
+cnv.o: cnv.c numeric.h equation.h function.h spl.h locate.h linear.h \
+ cnv.h regress.h integrat.h table.h ascii.h
+common_math.o: common_math.c common_math.h errors.h
+triangle_surface.o: triangle_surface.c allocnd.h common_math.h \
+ triangle_surface.h errors.h tribox3.h
+c_tzs.o: c_tzs.c ascii.h cdisort.h common_math.h ocean.h \
+ ../libsrc_f/f77-uscore.h ambralsfor.h c_tzs.h errors.h locate.h
+equation.o: equation.c errors.h numeric.h equation.h function.h spl.h \
+ locate.h linear.h cnv.h regress.h integrat.h table.h ascii.h
+errors.o: errors.c errors.h
+fortran_and_c.o: fortran_and_c.c fortran_and_c.h ascii.h
+function.o: function.c numeric.h equation.h function.h spl.h locate.h \
+ linear.h cnv.h regress.h integrat.h table.h ascii.h
+integrat.o: integrat.c numeric.h equation.h function.h spl.h locate.h \
+ linear.h cnv.h regress.h integrat.h table.h ascii.h
+linear.o: linear.c numeric.h equation.h function.h spl.h locate.h \
+ linear.h cnv.h regress.h integrat.h table.h ascii.h
+locate.o: locate.c
+miecalc.o: miecalc.c common_math.h errors.h ../libsrc_f/f77-uscore.h \
+ fortran_and_c.h ascii.h miecalc.h numeric.h equation.h function.h spl.h \
+ locate.h linear.h cnv.h regress.h integrat.h table.h
+nca.o: nca.c ascii.h cdisort.h common_math.h ocean.h \
+ ../libsrc_f/f77-uscore.h ambralsfor.h errors.h mystic.h phasetable.h \
+ triangle_surface.h bpdf.h nca.h ../libsrc_c/mystic.h \
+ ../libsrc_f/solver.h ../libsrc_f/f77-uscore.h
+netCDF_surface.o: netCDF_surface.c ../libsrc_c/netCDF_surface.h \
+ ../libsrc_c/errors.h ../libsrc_c/mystic.h ../libsrc_c/phasetable.h \
+ ../libsrc_c/cdisort.h ../libsrc_c/common_math.h ../libsrc_c/ocean.h \
+ ../libsrc_f/f77-uscore.h ../libsrc_c/ambralsfor.h \
+ ../libsrc_c/triangle_surface.h ../libsrc_c/bpdf.h
+netCDF_functions.o: netCDF_functions.c allocnd.h common_math.h errors.h \
+ netCDF_functions.h
+phasetable.o: phasetable.c common_math.h phasetable.h numeric.h \
+ equation.h function.h spl.h locate.h linear.h cnv.h regress.h integrat.h \
+ table.h ascii.h miecalc.h mystic.h cdisort.h ocean.h \
+ ../libsrc_f/f77-uscore.h ambralsfor.h triangle_surface.h bpdf.h errors.h
+rayleigh.o: rayleigh.c
+raytracing.o: raytracing.c ascii.h common_math.h ../libsrc_f/f77-uscore.h \
+ fortran_and_c.h ascii.h miecalc.h mystic.h phasetable.h cdisort.h \
+ ocean.h ambralsfor.h triangle_surface.h bpdf.h uvspecrandom.h
+regress.o: regress.c numeric.h equation.h function.h spl.h locate.h \
+ linear.h cnv.h regress.h integrat.h table.h ascii.h
+rodents.o: rodents.c ../libsrc_f/solver.h ../libsrc_f/f77-uscore.h \
+ rodents.h ascii.h bandec.h
+schwarzschild.o: schwarzschild.c cdisort.h common_math.h ocean.h \
+ ../libsrc_f/f77-uscore.h ambralsfor.h schwarzschild.h
+snow.o: snow.c ascii.h numeric.h equation.h function.h spl.h locate.h \
+ linear.h cnv.h regress.h integrat.h table.h ../libsrc_f/f77-uscore.h \
+ ../libsrc_f/solver.h ../libsrc_f/f77-uscore.h
+sofi.o: sofi.c ascii.h common_math.h sofi.h mystic.h phasetable.h \
+ cdisort.h ocean.h ../libsrc_f/f77-uscore.h ambralsfor.h \
+ triangle_surface.h bpdf.h uvspecrandom.h
+specrend_uvspec.o: specrend_uvspec.c ascii.h linear.h numeric.h \
+ equation.h function.h spl.h locate.h cnv.h regress.h integrat.h table.h \
+ specrend_uvspec.h common_math.h errors.h
+spl.o: spl.c numeric.h equation.h function.h spl.h locate.h linear.h \
+ cnv.h regress.h integrat.h table.h ascii.h
+sslidar.o: sslidar.c sslidar.h locate.h
+sun.o: sun.c sun.h
+sunpos.o: sunpos.c sunpos.h
+table.o: table.c table.h numeric.h equation.h function.h spl.h locate.h \
+ linear.h cnv.h regress.h integrat.h ascii.h
+tribox3.o: tribox3.c common_math.h
+twomaxrnd.o: twomaxrnd.c allocnd.h bandec.h common_math.h equation.h \
+ numeric.h function.h spl.h locate.h linear.h cnv.h regress.h integrat.h \
+ table.h ascii.h errors.h ../libsrc_f/solver.h ../libsrc_f/f77-uscore.h \
+ twomaxrnd.h twostrebe.h
+twostrebe.o: twostrebe.c equation.h numeric.h function.h spl.h locate.h \
+ linear.h cnv.h regress.h integrat.h table.h ascii.h twostrebe.h \
+ cdisort.h common_math.h ocean.h ../libsrc_f/f77-uscore.h ambralsfor.h
+dynamic_twostream.o: dynamic_twostream.c common_math.h equation.h \
+ numeric.h function.h spl.h locate.h linear.h cnv.h regress.h integrat.h \
+ table.h ascii.h twostrebe.h dynamic_twostream.h ../libsrc_f/solver.h \
+ ../libsrc_f/f77-uscore.h
+dynamic_tenstream.o: dynamic_tenstream.c common_math.h netCDF_functions.h \
+ locate.h equation.h numeric.h function.h spl.h linear.h cnv.h regress.h \
+ integrat.h table.h ascii.h twostrebe.h dynamic_tenstream.h mystic.h \
+ phasetable.h cdisort.h ocean.h ../libsrc_f/f77-uscore.h ambralsfor.h \
+ triangle_surface.h bpdf.h ../libsrc_f/solver.h ../libsrc_f/f77-uscore.h \
+ errors.h allocnd.h
+uvspecrandom.o: uvspecrandom.c errors.h uvspecrandom.h
+wavelength.o: wavelength.c numeric.h equation.h function.h spl.h locate.h \
+ linear.h cnv.h regress.h integrat.h table.h ascii.h wavelength.h
+wcloud3d.o: wcloud3d.c ascii.h errors.h wcloud3d.h mystic.h phasetable.h \
+ cdisort.h common_math.h ocean.h ../libsrc_f/f77-uscore.h ambralsfor.h \
+ triangle_surface.h bpdf.h allocnd.h
+mystic.o: mystic.c uvspecrandom.h wcloud3d.h mystic.h phasetable.h \
+ cdisort.h common_math.h ocean.h ../libsrc_f/f77-uscore.h ambralsfor.h \
+ triangle_surface.h bpdf.h alis.h sofi.h errors.h ascii.h locate.h \
+ allocnd.h schwarzschild.h netCDF_surface.h vroom.h raytracing.h nca.h \
+ ../libsrc_c/mystic.h
+alis.o: alis.c alis.h mystic.h phasetable.h cdisort.h common_math.h \
+ ocean.h ../libsrc_f/f77-uscore.h ambralsfor.h triangle_surface.h bpdf.h \
+ ascii.h errors.h
+sos.o: sos.c ascii.h errors.h ../libsrc_f/f77-uscore.h fortran_and_c.h
+yang56.o: yang56.c yang56.h ascii.h
+vroom.o: vroom.c common_math.h errors.h mystic.h phasetable.h cdisort.h \
+ ocean.h ../libsrc_f/f77-uscore.h ambralsfor.h triangle_surface.h bpdf.h \
+ uvspecrandom.h vroom.h
+ambralsfor.o: ambralsfor.c ambralsfor.h ../libsrc_f/f77-uscore.h
+ocean.o: ocean.c ocean.h ../libsrc_f/f77-uscore.h uvspecrandom.h \
+ fortran_and_c.h ascii.h common_math.h mystic.h phasetable.h cdisort.h \
+ ambralsfor.h triangle_surface.h bpdf.h
+Corefinder.o: Corefinder.c Corefinder.h LinArray.h Stack.h
+Stack.o: Stack.c Stack.h
+LinArray.o: LinArray.c LinArray.h
+twomaxrnd3C.o: twomaxrnd3C.c allocnd.h bandec.h common_math.h equation.h \
+ numeric.h function.h spl.h locate.h linear.h cnv.h regress.h integrat.h \
+ table.h ascii.h errors.h ../libsrc_f/solver.h ../libsrc_f/f77-uscore.h \
+ twomaxrnd3C.h twomaxrnd.h twostrebe.h

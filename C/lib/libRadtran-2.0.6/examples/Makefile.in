@@ -1,0 +1,99 @@
+
+#
+# Makefile for libRadtran's example directory
+#
+# Arve Kylling
+# arve.kylling@gmail.com
+
+TOPDIR = ../
+
+srcdir = @srcdir@
+VPATH = @srcdir@
+
+include $(TOPDIR)/Makeconf
+
+SUBDIRS = \
+	GUI \
+	mc_solar_forward \
+	mc_thermal_backward \
+	mc_thermal_forward \
+	test_mie \
+	tests \
+	triangular_srfc \
+	write_optical_properties \
+
+EXAMPLEFILES = \
+	$(wildcard *.INP) \
+	$(wildcard *.OUT) \
+	$(wildcard *.DAT) \
+	$(wildcard *.dat) \
+	$(wildcard *.NC) \
+	$(wildcard *.nc) \
+	$(wildcard *.cdf) \
+	$(wildcard *.UVSPEC) \
+	$(wildcard *.ALB) \
+	$(wildcard *.RAYS) \
+	$(wildcard *.LAYER) \
+	$(wildcard *.xs) \
+	$(wildcard *.mie) \
+	$(wildcard MIE_ICE.*) \
+	$(wildcard AFGLUS*KM) \
+	AERO_FILES \
+	IC_IPA_FILES_R \
+	README \
+	UVSPEC_FLUORESCENCE.FLU UVSPEC_FLUORESCENCE.TOC \
+	UVSPEC_FLUORESCENCE_kurucz_640.0_810.0.dat_vac_0.01_0.01 \
+	UVSPEC_FLUORESCENCE_kurucz_677_810_trans_0.01 \
+	UVSPEC_LOWTRAN_THERMAL.TRANS \
+	UVSPEC_SO2_TRANS \
+	WC_IPA_FILES \
+	WC_IPA_FILES_R \
+
+
+DISTFILES = Makefile.in $(EXAMPLEFILES)
+
+MYSTICDISTFILES = $(DISTFILES)
+
+all:
+	for dir in $(SUBDIRS); do $(MAKE) -C $$dir $@ || exit $$?; done
+.PHONY: all
+
+check: all
+.PHONY: check
+
+install: all
+	$(MKPATH) $(examplesdir)
+	$(INSTALL_DATA) $(EXAMPLEFILES) $(examplesdir)
+	for dir in $(SUBDIRS); do $(MAKE) -C $$dir $@ || exit $$?; done
+.PHONY: install
+
+uninstall:
+	$(RM) -rf $(examplesdir)
+.PHONY: uninstall
+
+clean:
+.PHONY: clean
+
+mostlyclean:
+.PHONY: mostlyclean
+
+distclean: clean
+	rm -f Makefile
+.PHONY: distclean
+
+realclean: distclean
+	rm -f tags TAGS
+.PHONY: realclean
+
+dist:
+	for dir in $(SUBDIRS); do mkdir ../`cat ../.fname`/examples/$$dir; $(MAKE) -C $$dir $@ || exit $$?; done
+	ln $(DISTFILES) ../`cat ../.fname`/examples
+.PHONY: dist
+
+mystic-dist:
+	for dir in $(SUBDIRS); do mkdir ../`cat ../.fname`/examples/$$dir; $(MAKE) -C $$dir $@ || exit $$?; done
+	ln $(MYSTICDISTFILES) ../`cat ../.fname`/examples
+.PHONY: mystic-dist
+
+Makefile: Makefile.in ../config.status
+	cd ..; sh config.status

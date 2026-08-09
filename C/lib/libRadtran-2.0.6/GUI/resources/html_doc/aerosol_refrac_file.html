@@ -1,0 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">The command line
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">aerosol_refrac_file file_name
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">specifies the file containing the wavelength-dependent refractive index of the
+aerosol. Three columns are expected: wavelength [nm] and the
+real and imaginary parts of the refractive index.
+Together with <span style="" class="text typewriter">aerosol_sizedist_file</span> this forms the
+input to Mie calculations of the aerosol optical properties. Please note that
+only the single-scattering albedo, the scattering phase function, and the
+wavelength-dependence of the extinction coefficient are affected by the Mie calculation
+while the absolute value of the extinction coefficient is taken from other sources;
+generally, the extinction coefficient at the first <em class="emph">internal</em> wavelength is
+taken from whatever is available (either default <span style="" class="text typewriter">shettle89</span> or user-defined);
+the extinction at all other wavelengths is scaled according to the Mie calculation.
+For this reason, the absolute numbers are not relevant - only the shape of the
+size distribution matters. In detail:
+If the aerosol properties are defined using the refractive index and the
+size distribution, the wavelength dependence of the optical properties is
+determined by Mie theory. At present there are at least three ways to define the
+absolute value of the optical thickness: (1) <span style="" class="text typewriter">visibility</span> defines the
+profile at the first <em class="emph">internal</em> wavelength; for a monochromatic calculation
+and in correlated-k mode, the first <em class="emph">internal</em> wavelength equals the
+first wavelength output by <span style="" class="text typewriter">uvspec</span>; for spectral calculations, the
+first wavelength might be a little bit smaller than the first wavelength
+output by <span style="" class="text typewriter">uvspec</span>; (2) <span style="" class="text typewriter">aerosol_tau_file</span> defines the optical
+thickness profile at the first <em class="emph">internal</em> wavelength; or (3) absolute
+optical thickness and wavelength-dependence are defined by <span style="" class="text typewriter">aerosol_angstrom</span>.
+<em class="emph">It is recommended to avoid this option and rather to calculate the aerosol optical
+properties externally e.g. with mie and to pass them to <span style="" class="text typewriter">uvspec</span> with
+<span style="" class="text typewriter">aerosol_files</span></em>.
+</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

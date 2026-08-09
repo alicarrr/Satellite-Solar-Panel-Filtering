@@ -1,0 +1,21 @@
+# This example demonstrates the usage of the mc_panorama_ray_file option
+# Used to compute arbitrary rays with cartesian origin and direction defined in an ascii input file
+
+atmosphere_file ../data/atmmod/afglus.dat   # Atmospheric profiles
+source solar
+
+wavelength 500 500
+
+rte_solver montecarlo
+mc_backward
+mc_photons   20000
+mc_vroom off
+
+mc_sensorposition 0 0 -1 # needs to be set but is overwritten by ray origins from ray file
+
+mc_albedo_file UVSPEC_MC_BACKWARD_FILE.ALB
+wc_file 3D WC3D_2x2_EMPTY.DAT # to setup the domain size for 2D albedo
+
+mc_backward_file UVSPEC_MC_BACKWARD_FILE.RAYS
+
+quiet

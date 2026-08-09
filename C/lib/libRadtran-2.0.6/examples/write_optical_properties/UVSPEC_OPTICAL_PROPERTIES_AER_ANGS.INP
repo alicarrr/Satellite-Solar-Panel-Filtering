@@ -1,0 +1,7 @@
+include ../examples/UVSPEC_SIMPLE.INP
+aerosol_default          # switch on aerosol
+                         # specify aerosol mixture file
+aerosol_angstrom 1.1 0.2       # Scale aerosol optical depth 
+
+
+write_optical_properties

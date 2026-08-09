@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Modify water cloud optical properties.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">wc_modify variable scale/set value
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"><span style="" class="text typewriter">variable</span> can be one of the following parameter:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">gg</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Modify the water cloud asymmetry factor for all wavelengths and altitudes.</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">set</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p"><span style="" class="text typewriter">value</span> can be a float between -1.0 and 1.0.
+Please note that this option is only applied if a Henyey-Greenstein
+phase function is used but not if an explicit phase function is
+defined e.g. with <span style="" class="text typewriter">wc<br class="break">_file moments</span>. It doesn't make sense to modify only
+the first moment of an explicit phase function.
+This option is useful only for monochromatic
+calculations or in wavelength regions where the optical
+properties of water clouds can be considered constant,
+e.g. the ultraviolet range.
+</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">scale</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Scale the water cloud asymmetry factor for all wavelengths and altitudes
+with <span style="" class="text typewriter">value</span> between 0.0 and 1.0.</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+</dd>
+  
+    <dt class="item" id="">ssa</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Modify the water cloud single scattering albedo for all wavelengths
+and altitudes.</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">set</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p"><span style="" class="text typewriter">value</span> can be a float between 0.0 and 1.0.
+This option is useful only for monochromatic
+calculations or in wavelength regions where the optical properties of water clouds
+can be considered constant, e.g. the ultraviolet range.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">scale</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Scale the water cloud single scattering albedo for all wavelengths and altitudes
+with <span style="" class="text typewriter">value</span> between 0.0 and 1.0.</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+</dd>
+  
+    <dt class="item" id="">tau</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Modify the total water cloud optical thickness.</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">set</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Set optical thickness to a constant value for all wavelengths.
+The optical thickness defined here is the integral from the surface at the
+user-defined <span style="" class="text typewriter">altitude</span> to TOA (top of atmosphere). This option is useful only
+for monochromatic calculations or in wavelength regions where the optical properties
+of water clouds can be considered constant, e.g. the ultraviolet range.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">scale</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Scale the water cloud optical thickness for all wavelengths and altitudes
+with <span style="" class="text typewriter">value</span> between 0.0 and 1000000.0. Also works for 3d clouds.</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+</dd>
+  
+    <dt class="item" id="">tau550</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Set the water cloud optical thickness at 550nm.
+The optical thickness defined here
+is the integral from the surface at the user-defined <span style="" class="text typewriter">altitude</span>
+to TOA (top of atmosphere). Other wavelengths are scaled accordingly.
+Note that this option requires for technical reasons that the
+wavelength interval defined by <span style="" class="text typewriter">wavelength</span> does contain 550nm.</p>
+  </div>
+</dd>
+  
+    </dl>
+  <br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">wc_modify tau550 set value
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"></p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

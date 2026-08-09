@@ -1,0 +1,3 @@
+grass ../examples/UVSPEC_ALBEDO_GRASS.DAT
+snow  ../examples/UVSPEC_ALBEDO_SNOW.DAT
+

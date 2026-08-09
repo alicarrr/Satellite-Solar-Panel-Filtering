@@ -1,0 +1,64 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Define a MYSTIC 2D AMBRALS BRDF input file.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mc_ambrals_file file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">AMBRALS is the
+Algorithm for Modeling[MODIS] Bidirectional Reflectance Anisotropies
+of the Land Surface by <span style="" class="text typewriter">wanner97</span>. See also
+http://www-modis.bu.edu/brdf/models.html. The format of the albedo file is:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">Nx  Ny  dx  dy
+ix  iy  iso vol geo
+...
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where Nx and Ny are the number of grid boxes in x- and y-direction,
+dx and dy are the size of the pixels in km.
+In the second and the following lines the indices in x- and y-direction
+(ix=1…Nx; iy=1…Ny) and the three parameters iso, vol, and geo.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Optionally, it is now possibly to mix AMBRALS with Cox and Munk
+(CaM). To this end, the format of the albedo file is:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">Nx  Ny  dx  dy
+ix  iy  iso vol geo isCaM
+...
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where isCaM is 1 if CaM shall be used in the pixel, and 0 if AMBRALS
+shall be used. In case of CaM, the values of iso, vol, and geo are
+ignored. Note that this will only work if the CaM parameters are set
+(that is as minimal configuration u10).</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

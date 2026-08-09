@@ -1,0 +1,5 @@
+include ../examples/UVSPEC_SIMPLE.INP 
+aerosol_default 
+aerosol_file tau ../examples/AERO_TAU.DAT
+
+write_optical_properties

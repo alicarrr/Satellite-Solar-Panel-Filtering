@@ -1,0 +1,6 @@
+include ../examples/UVSPEC_SIMPLE.INP 
+aerosol_default 
+aerosol_modify tau scale .5
+aerosol_modify tau set 2
+
+write_optical_properties

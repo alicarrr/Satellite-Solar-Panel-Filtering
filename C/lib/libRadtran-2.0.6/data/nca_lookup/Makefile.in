@@ -1,0 +1,56 @@
+#
+# Makefile for libRadtran's data/nca_lookup directory
+#
+
+TOPDIR = ../..
+
+srcdir = @srcdir@
+VPATH = $(srcdir)
+
+THISDIR = nca_lookup
+
+DATAFILES = lookup_correct_cuboid_side_sort.dat\
+	lookup_correct_triangle_side_sort.dat\
+	lookup_side_triangle_sort.dat\
+	lookup_top_triangle_sort.dat\
+	lookup_correct_cuboid_top_sort.dat\
+	lookup_correct_triangle_top_sort.dat\
+	lookup_tau_cuboid_sort.dat
+
+DISTFILES = Makefile.in $(DATAFILES)
+
+MYSTICDISTFILES = $(DISTFILES)
+
+include $(TOPDIR)/Makeconf
+
+all: 
+
+dist: all
+	ln $(DISTFILES) ../../`cat ../../.fname`/data/$(THISDIR)
+.PHONY: dist
+
+mystic-dist: all
+	ln $(MYSTICDISTFILES) ../../`cat ../../.fname`/data/$(THISDIR)
+.PHONY: mystic-dist
+
+install: all
+	$(MKPATH) $(datafiledir)/nca_lookup
+	$(INSTALL_DATA) $(DATAFILES) $(datafiledir)/nca_lookup
+.PHONY: install
+
+clean:
+
+mostlyclean: clean
+
+distclean: clean
+	rm -f Makefile config.status
+
+realclean: distclean
+
+Makefile: Makefile.in ../../config.status
+	cd ../../; sh config.status
+
+# Prevent GNU make v3 from overflowing arg limit on SysV.
+.NOEXPORT:
+
+# eof

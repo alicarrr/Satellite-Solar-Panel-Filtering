@@ -1,0 +1,8 @@
+include ../examples/UVSPEC_SIMPLE.INP
+aerosol_default          # switch on aerosol
+                         # specify aerosol mixture file
+aerosol_species_file     continental_average
+rte_solver mystic
+
+write_optical_properties
+

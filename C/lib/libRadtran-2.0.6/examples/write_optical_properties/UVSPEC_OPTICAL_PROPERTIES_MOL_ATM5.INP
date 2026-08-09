@@ -1,0 +1,10 @@
+atmosphere_file subarctic_summer
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 320           # Wavelength considered
+albedo 0.2
+
+mol_file o3 ../data/atmmod/afglus_o3.dat
+crs_model rayleigh bodhaine29
+crs_model o3 daumont
+
+write_optical_properties

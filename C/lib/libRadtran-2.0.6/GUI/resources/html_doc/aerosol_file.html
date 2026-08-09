@@ -1,0 +1,181 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Location of file defining aerosol optical pproperties.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">aerosol_file type file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"><span style="" class="text typewriter">type</span> defines the file type, which can be one of the following:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">gg</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Location of aerosol asymmetry parameter file.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file must have two columns.
+Column 1 is the altitude in km.
+Column 2 is the asymmetry parameter of each layer.
+The asymmetry parameter defined with this option is constant with wavelength.
+If you require spectral dependence please use <span style="" class="text typewriter">aerosol_file explicit</span>.
+Comments start with #. Empty lines are ignored.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">ssa</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Location of aerosol single scattering albedo file.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file must have two columns.
+Column 1 is the altitude in km. The altitude grid must be exactly equal to
+the altitude grid specified in the file <span style="" class="text typewriter">atmosphere_file</span>.
+Column 2 is the single scattering albedo of each layer.
+The single scattering albedo defined with this option is constant with wavelength. If you require spectral dependence please use <span style="" class="text typewriter">aerosol_file explicit</span>.
+Comments start with #. Empty lines are ignored.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">tau</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Location of aerosol optical depth file.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file must have two columns.
+Column 1 is the altitude in km. The altitude grid must be exactly equal to
+the altitude grid specified in the file <span style="" class="text typewriter">atmosphere_file</span>.
+Column 2 is the aerosol optical depth of each layer.
+To allow wavelength-dependent aerosol optical thickness please
+use either <span style="" class="text typewriter">aerosol_angstrom</span> or <span style="" class="text typewriter">aerosol_file explicit</span>.
+Comments start with #. Empty lines are ignored.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">moments</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Set the aerosol phase function moments to the values specified in
+the aerosol moments file.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file contains one column with arbitrary number of
+Legendre terms of the phase function. The phase function
+<img src="mi/mi12.png" width="39" height="24" alt="p(\mu)" class="math"> is</p>
+  <table class="equation" id="">
+      
+      
+	<tr valign="baseline" class="equation" id="">
+	<td class="eqpad"></td>
+	<td nowrap align="center" colspan="1"><img src="mi/mi13.png" width="256" height="57" alt="p(\mu)=\sum _{{m=0}}^{{\infty}}(2m+1)\cdot k_{m}\cdot P_{m}(\mu)" class="math"></td>
+	<td class="eqpad"></td>
+<td rowspan="1" nowrap valign="middle" align="right">(<span class="refnum">1</span>)</td>
+	</tr>
+      
+      </table>
+    <p class="p">where <img src="mi/mi15.png" width="29" height="21" alt="k_{m}" class="math"> is the m'th moment and <img src="mi/mi14.png" width="55" height="24" alt="P_{m}(\mu)" class="math"> is the m'th Legendre
+polynomial.  If not specified, a Henyey-Greenstein phase function is
+assumed where the asymmetry parameter g is either a default value
+depending on the aerosol type or it may be specified using
+<span style="" class="text typewriter">aerosol_modify set gg</span>.  The phase function will be the same for all
+altitudes and wavelengths.  See <span style="" class="text typewriter">aerosol_file explicit</span> if more
+flexibility is wanted. May only be used together with the
+<span style="" class="text typewriter">cdisort</span> or <span style="" class="text typewriter">fdisort2</span> solver in combination with the option
+<span style="" class="text typewriter">disort_icm moments</span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">explicit</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">A way to specify aerosol optical depth, single scattering albedo,
+and phase function moments for each layer.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file must have two columns where column 1 is the altitude in km. The second
+column is a the name of a file which defines the optical properties of the layer
+starting at the given altitude. The files specified in the second column must have the
+following format:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">Column 1:</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">The wavelength in nm. These wavelengths may be different from those in <span style="" class="text typewriter">source solar file</span>.
+Optical properties are interpolated to the requested wavelengths.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">Column 2:</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">The extinction coefficient of the layer in units km-1.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">Column 3:</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">The aerosol single scattering albedo of the layer.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">Column 4-(nmom+4):</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">The moments of the aerosol phase function.</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">For some simple examples see the files <span style="" class="text typewriter">examples/AERO_*.LAYER</span>. Note that
+if using the <span style="" class="text typewriter">rte_solver cdisort</span> it makes good sense to make the
+number of moments larger than <span style="" class="text typewriter">number_of_streams</span>. For <span style="" class="text typewriter">rte_solver fdisort1</span> and
+<span style="" class="text typewriter">rte_solver polradtran</span> the number of moments included in the calculations
+will be <span style="" class="text typewriter">number_of_streams</span>+1. Higher order moments will be ignored for these solvers.
+Please note that the uppermost line of the <span style="" class="text typewriter">aerosol_file explicit</span>
+denotes simply the top altitude of the uppermost layer. The optical
+properties of this line are consequently ignored. There are two
+options for this line: either an optical property file with zero
+optical thickness is specified or ”NULL” us used.</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

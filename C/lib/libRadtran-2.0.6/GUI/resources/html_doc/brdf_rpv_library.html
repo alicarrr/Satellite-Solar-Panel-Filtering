@@ -1,0 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">The rpv libraries are collections of spectral BRDFs of different surface types,
+This option must be used either with <span style="" class="text typewriter">brdf_rpv_type</span>
+or <span style="" class="text typewriter">surface_type_map</span>, in order to select the specific surface type.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">For using a <span style="" class="text typewriter">brdf_rpv_library</span> write
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">brdf_rpv_library library_path
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">library_path</span> is the path of the directory, where the BRDF data is stored. The files are
+expected to have the names <span style="" class="text typewriter">IGBP.01.rpv, IGBP.02.rpv, ...</span> If <span style="" class="text typewriter">brdf_rpv_type 1</span> is specified
+the BRDF from <span style="" class="text typewriter">IGBP.01.rpv</span> will be used, and so on.
+Each file must have the structure like an <span style="" class="text typewriter">rpv_file</span>.
+(This option is quite the same as <span style="" class="text typewriter">rpv_file</span>, except that it offers you an
+easy way to use the option <span style="" class="text typewriter">surface_type_map</span> in combinition with your <span style="" class="text typewriter">rpv_files</span>.)</p>
+  </div>
+
+  <div class="para" id="">
+<br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">brdf_rpv_library IGBP
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The built-in library contains the first 17 surface types see
+<span style="" class="text typewriter">albedo_library</span>.  The data is given for the wavelengths 443nm,
+565nm, 670nm, and 865nm. Stay near this wavelength in order to get
+reasonable results. In future this the rpv-library will be NDVI
+dependent, but until now the most common NDVI class is selected
+automatically.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

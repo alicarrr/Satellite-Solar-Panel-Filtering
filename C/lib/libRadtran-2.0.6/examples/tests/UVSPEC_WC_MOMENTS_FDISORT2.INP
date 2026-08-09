@@ -1,0 +1,21 @@
+data_files_path ../../data/
+atmosphere_file ../../data/atmmod/afglus.dat
+source solar    ../../data/solar_flux/atlas_plus_modtran
+mol_modify O3 300. DU
+day_of_year 170          # Correct for Earth-Sun distance
+albedo 0.2               # Surface albedo
+sza 32.0                 # Solar zenith angle
+deltam  on               # delta-M scaling on
+number_of_streams  6                  # Number of streams
+
+rte_solver fdisort2      # This overrides what is specified in above file
+disort_intcor moments       # use Legendre coefficients for intensity corrections
+wavelength 544.7 544.7   # Wavelengths considered
+
+
+wc_file 1D ../WC.DAT  # Location of water cloud file
+wc_properties ../WC.
+
+mol_abs_param crs
+
+quiet

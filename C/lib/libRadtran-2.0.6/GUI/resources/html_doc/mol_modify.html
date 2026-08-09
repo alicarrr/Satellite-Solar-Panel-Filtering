@@ -1,0 +1,54 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Set the total column of a density profile. The column is integrated between the
+user-defined <span style="" class="text typewriter">altitude</span> and TOA (top of atmosphere). The syntax is
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mol_modify species column unit
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">species</span> is one of O3, O2, H2O, CO2, NO2, BRO, OCLO, HCHO, O4, SO2,
+CH4, N2O, CO, or N2, see also <span style="" class="text typewriter">mol_file</span>.
+The second argument is the total column value, and the third argument is the unit,
+in which the column is given. The unit can be DU (Dobson units), CM_2 (molecules/cm<img src="mi/mi7.png" width="14" height="24" alt="{}^{2}" class="math">) or MM.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Please note that the unit MM is only valid for species H2O and specifies the precipitable water
+in kg / m2 (which is approximately 1mm).The water vapor profile is scaled accordingly. The precipitable water
+is integrated from the user-defined <span style="" class="text typewriter">altitude</span> to TOA (top of atmosphere).</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The default units are DU for O3, and CM_2 for all other gases. It is possible to have
+several <span style="" class="text typewriter">mol_modify</span> commands in the input file (maximum one per species). The following sets
+the NO<img src="mi/mi6.png" width="14" height="14" alt="{}_{2}" class="math"> total column to 1.2 DU.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mol_modify NO2 1.2 DU
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"></p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

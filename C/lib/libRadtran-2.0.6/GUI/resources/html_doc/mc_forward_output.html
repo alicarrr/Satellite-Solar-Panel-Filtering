@@ -1,0 +1,91 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Specify quantity to be calculated using forward Monte Carlo.
+Forward output is calculated for each grid box; may need a considerable amount of memory,
+depending on the 3D cloud grid. Only meaningful with <span style="" class="text typewriter">rte_solver mystic</span>.
+This option is only available for forward calculations.
+For backward please use <span style="" class="text typewriter">mc_backward_output</span>.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mc_forward_output quantity [unit]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"><span style="" class="text typewriter">quantity</span> can be one of the following:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">absorption</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Calculate MYSTIC absorption and write it to file <span style="" class="text typewriter">mc_basename</span>.abs.spc
+in the following format:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">lambda ix iy iz absorption
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">For backward please use <span style="" class="text typewriter">mc_backward_output abs</span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">actinic</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Calculate MYSTIC actinic flux by dividing the absorbed energy by the
+absorption coeffcient; this method is much better than the traditional photon counting
+which usually comprises spikes (because in the latter method each photon is weighted with
+<img src="mi/mi50.png" width="72" height="24" alt="1/\cos(\theta)" class="math"> which may be a very large number);
+For backward please use <span style="" class="text typewriter">mc_backward_output f</span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">emission</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Calculate MYSTIC emission. Note that emission is calculated directly without tracing
+any photons which makes this option very fast. Changing <span style="" class="text typewriter">mc_photons</span> will therefore
+not affect the result. Only meaningful with <span style="" class="text typewriter">source thermal</span>.
+For backward please use <span style="" class="text typewriter">mc_backward_output emis</span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">heating</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Calculate MYSTIC heating rates. This is identical to <span style="" class="text typewriter">absorption</span> for <span style="" class="text typewriter">source solar</span>.
+For <span style="" class="text typewriter">source thermal</span>, however, the emission of a photon in a grid box is counted as cooling.
+For backward please use <span style="" class="text typewriter">mc_backward_output heat</span>.</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">The optional argument <span style="" class="text typewriter">unit</span> may be one of <span style="" class="text typewriter">W_per_m2_and_dz</span> (default), <span style="" class="text typewriter">W_per_m3</span>, or <span style="" class="text typewriter">K_per_day</span>.
+<span style="" class="text typewriter">unit</span> may be specified to convert the result e.g. to heating rates.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

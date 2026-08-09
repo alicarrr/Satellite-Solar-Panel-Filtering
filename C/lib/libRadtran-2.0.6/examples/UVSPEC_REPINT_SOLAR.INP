@@ -1,0 +1,15 @@
+data_files_path ../data/
+
+rte_solver disort          # Radiative transfer equation solver
+
+mol_abs_param reptran int
+repint_option meier50
+
+albedo 0                   # set albedo to 0, emissivity to 1
+source solar               # solar
+
+zout 0 1 2 3 4 5 6 7 8 9 10 toa
+
+output_user zout edir edn eup heat
+
+quiet

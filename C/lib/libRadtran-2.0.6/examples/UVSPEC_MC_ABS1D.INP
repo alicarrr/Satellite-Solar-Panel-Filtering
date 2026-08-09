@@ -1,0 +1,17 @@
+atmosphere_file ../examples/UVSPEC_MC_ABS3D_AFGLUS.INP   # Atmospheric profiles
+source solar
+
+# Rayleigh parameterization, choose one that requires only air density
+crs_model rayleigh Bodhaine29
+
+output_quantity reflectivity 
+
+# atmosphere_file_3D ./afglus3D.int
+
+rte_solver disort
+
+albedo 0.1
+
+wavelength_grid_file ../examples/UVSPEC_TRANSMITTANCE_WL_3DABS.DAT
+
+quiet

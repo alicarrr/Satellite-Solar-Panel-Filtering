@@ -1,0 +1,5 @@
+# minimal atmosphere for testing with unrealisitcally large temperature changes to debug thermal RT
+ 3   710     260 1.9779e+19    0    0    0    0     0
+ 2   802     270 2.1514e+19    0    0    0    0     0
+ 1   902     290 2.2528e+19    0    0    0    0     0
+ 0  1013     300 2.4457e+19    0    0    0    0     0

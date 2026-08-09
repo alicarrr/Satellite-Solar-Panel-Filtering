@@ -1,0 +1,8 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 350           # Wavelength considered
+
+ic_file 1D ../examples/UVSPEC_MC_IC_LIDAR.DAT
+ic_properties yang
+
+write_optical_properties

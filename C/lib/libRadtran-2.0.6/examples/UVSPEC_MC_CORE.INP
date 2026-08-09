@@ -1,0 +1,29 @@
+
+wavelength 500 # Wavelength range [nm]
+
+rte_solver montecarlo
+mc_vroom on
+mc_photons 10000
+
+sza 30
+albedo 0.0
+
+umu 1.0
+phi 0
+
+zout TOA
+
+output_quantity reflectivity
+
+no_absorption mol
+no_scattering mol
+
+wc_file 3D ../examples/WC_CORE.DAT
+wc_properties mie interpolate
+
+mc_core #Activate delta scaling in the core of the cloud
+mc_core_threshold 3.0 #This is set by default
+mc_core_scale -1.0 #scaling factor <0 is the signal to set f=g, with g the asymmetry parameter
+#mc_core_savefile Core.txt
+
+quiet

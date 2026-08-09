@@ -1,0 +1,30 @@
+atmosphere_file ../examples/AFGLMS50.DAT
+
+source solar               atlas_plus_modtran
+sza 30.0                 # Solar zenith angle
+phi0 180.0               # Sun in the North
+
+aerosol_default
+
+mol_abs_param kato2
+output_process sum
+
+zout sur
+
+output_user edn
+
+rte_solver mystic
+mc_vroom on
+mc_photons 1.e5
+mc_backward
+mc_backward_output edn
+
+# reference optical thickness
+aerosol_modify tau550 set 1
+# Aerosol optical thickness importance sampling
+mc_aerosol_is ../examples/AERIS_SCALE_TAU.DAT
+
+quiet
+
+# The results for all aerosol optical thicknesses in AERIS_SCALE_TAU.DAT
+# are found in the file mc.flx.is.spc in the 5th column

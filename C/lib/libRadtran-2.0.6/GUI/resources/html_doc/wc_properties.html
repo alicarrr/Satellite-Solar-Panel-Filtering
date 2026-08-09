@@ -1,0 +1,94 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Define how liquid water content and effective radius are translated to optical properties.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">wc_properties property [interpolate]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Possible choices for <span style="" class="text typewriter">property</span> are:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">hu</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Parameterization by <span style="" class="text typewriter">Hu1993</span>;
+this is the default setting. Note that
+the parameterization is somewhat different for <span style="" class="text typewriter">mol_abs_param FU</span> than for all other
+cases because in the latter case the parameterization from the newer (March 2000)
+Fu and Liou code is used while otherwise the data are taken from the original
+paper by <span style="" class="text typewriter">Hu1993</span>. Note that this parameterization has been
+developed to calculate irradiances, hence it is less suitable for radiances.
+This is due to the use of the Henyey-Greenstein phase function as an approximation
+of the real Mie phase function.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">echam4</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Use the very simple two-band parameterization of the ECHAM4 climate model, described
+in <cite class="cite">[]</cite>; this is probably only meaningful if you want to compare
+your results with ECHAM4, the two bands are 0.2 - 0.68 micrometer and 0.68 - 4.0 micrometer;
+within these bands, the optical properties are assumed constant.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">mie</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Use pre-calculated Mie tables; useful for <span style="" class="text typewriter">mol_abs_param</span>;
+the tables are expected in <span style="" class="text typewriter">data_files_path/correlated_k/.../</span>. <br class="break">For spectral or pseudo-spectral (<span style="" class="text typewriter">mol_abs_param sbdart</span>) calculations,
+a set of pre-calculated tables is also available.
+For spectral or pseudo-spectral
+calculations optional argument <span style="" class="text typewriter">interpolate</span> has to be defined explicitely to
+initiate the interpolation of the optical properties to the internal wavelength grid.
+The Mie tables are not part of the standard distribution
+(because of their large size) but they are freely available from http://www.libradtran.org.
+This is the correct option to calculate radiances, to be preferred over the
+Henyey-Greenstein approach of <span style="" class="text typewriter">Hu1993</span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">filename</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Read optical properties from specified filename; file format is as produced
+by the <span style="" class="text typewriter">mie</span>-tool of the <span style="" class="text slanted">libRadtran</span> package (see <span style="" class="text typewriter">output_user netcdf</span>).</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">With the optional argument <span style="" class="text typewriter">interpolate</span> the water cloud optical properties
+are interpolated over wavelength; useful for precalculated optical property files.
+Please note that this option may be extremely memory-consuming because for each internal wavelength
+a full set of Legendre moments of the phase function is stored (up to several thousands).</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Set <span style="" class="text typewriter">cox54a,cox54b</span> ocean BRDF properties.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">brdf_cam variable value
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"><span style="" class="text typewriter">variable</span> can be one of the following:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">pcl</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Pigment concentration for <span style="" class="text typewriter">cox54a,cox54b</span> ocean BRDF (in mg/m<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math">).
+The default value is 0.01 mg/m<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math">.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">sal</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Salinity for <span style="" class="text typewriter">cox54a,cox54b</span> ocean BRDF (in ”per mille”, 0.1%; this
+unit is equivalent to the other common units for salinity,
+ppt - parts per thousand, psu - practical salinity unit).
+The default value is 34.3.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">u10</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Wind speed for <span style="" class="text typewriter">cox54a,cox54b</span> ocean BRDF (in m/s).
+The wind speed is the most important parameter affecting ocean BRDF.  The
+minimum allowed wind speed is 1 m/s because otherwise the strong
+specular reflection causes numerical problems. If a lower value is
+specified, the wind speed is automatically set to 1m/s.
+</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">uphi</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Wind direction for <span style="" class="text typewriter">cox54a,cox54b</span> ocean BRDF.
+Default value is 0 degrees,
+which is wind from the South. 90 degrees corresponds to wind from the West, etc. (Honestly, this was
+never truly validated. It could possibly be that 0 is wind from the North, 90 is wind from the East, etc.)</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">At present only available with <span style="" class="text typewriter">rte_solver cdisort</span>,
+
+<span style="" class="text typewriter">rte_solver montecarlo</span>
+and <span style="" class="text typewriter">rte_solver fdisort2</span>.  The
+number of streams (<span style="" class="text typewriter">number_of_streams</span>) is automatically increased to 16 if
+<span style="" class="text typewriter">cox_and_munk</span> BRDF is switched on, to avoid numerical
+problems.
+To switch on Cox and Munk BRDF,
+specify any of the <span style="" class="text typewriter">brdf_cam</span> options and define at least
+<span style="" class="text typewriter">brdf_cam u10</span>.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

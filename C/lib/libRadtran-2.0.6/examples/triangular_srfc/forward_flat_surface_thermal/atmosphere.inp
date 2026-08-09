@@ -1,0 +1,12 @@
+data_files_path ../../../data/
+atmosphere_file ./atm.dat
+mc_basename mc.withatm
+rte_solver mystic
+source thermal
+wavelength 10000
+mc_photons 1.e5
+mc_triangular_surface_file triangle_input.nc
+mc_sample_grid 1 1 [] []
+albedo 0
+zout 0
+quiet

@@ -1,0 +1,11 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+
+number_of_streams  8     # Number of streams, default
+wavelength 350           # Wavelength considered
+                        
+aerosol_default          # switch on aerosol
+                         # specify aerosol mixture file
+aerosol_species_file     continental_average
+                     
+write_optical_properties

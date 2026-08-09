@@ -1,0 +1,4 @@
+include ../examples/UVSPEC_IC_WC.INP
+
+
+write_optical_properties

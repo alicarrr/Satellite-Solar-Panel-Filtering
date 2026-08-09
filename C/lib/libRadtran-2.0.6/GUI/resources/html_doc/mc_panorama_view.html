@@ -1,0 +1,83 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Simulate a panorama. Only works with <span style="" class="text typewriter">mc_sensorposition</span>,
+<span style="" class="text typewriter">mc_sample_grid</span> and <span style="" class="text typewriter">mc_backward</span>. Can best be explained by
+following example:</p>
+  </div>
+
+  <div class="para" id="">
+<br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block"><br class="break">
+    <p class="p"><span style="" class="text typewriter small">mc_panorama_view PHI_1 PHI_2 THETA_1 THETA_2<br class="break">
+mc_sensorposition X Y Z <br class="break">
+mc_sample_grid NPHI NTHETA [] []<br class="break">
+mc_backward NPHI1 NTHETA1 NPHI2 NTHETA2<br class="break">
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"></p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">or, with numbers:</p>
+  </div>
+
+  <div class="para" id="">
+<br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block"><br class="break">
+    <p class="p"><span style="" class="text typewriter small">mc_panorama_view 45 135 80 180<br class="break">
+mc_sensorposition 3000 3000 26 <br class="break">
+mc_sample_grid 90 100 [] []<br class="break">
+mc_backward 10 0 10 99<br class="break">
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"></p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">In this example, <span style="" class="text typewriter">mc_panorama_view</span> defines the camera to cover
+the area between 10 degrees below the horizon (80 degrees from nadir,
+looking into the ground) and the zenith (180 degrees from nadir), and
+looking into the directions between south-west (45) and
+north-west (135). The camera is positioned
+at x=3km, y=3km and z=26m, see <span style="" class="text typewriter">mc_sensorposition</span>. The number of
+pixels that the camera has is defined by <span style="" class="text typewriter">mc_sample_grid</span>, hence
+the camera horizontal resolution is 1 degree in the
+horizon: (135-45)/90. The camera vertical resolution is also 1
+degree: (180-80)/100. This run only calculates one vertical line at
+phi=55.5 (see <span style="" class="text typewriter">mc_backward</span>). The square brackets in the line
+<span style="" class="text typewriter">mc_sample_grid</span> are usually dx and dy, they are set
+automatically in the presence of 3d clouds. If no clouds are present,
+you need to set them, if you use <span style="" class="text typewriter">mc_elevation_file</span>, you need to
+set them consistent with the elevation file. NOTE: If you have
+formerly used <span style="" class="text typewriter">mc_panorama</span>, this is what has changed: The order
+of the numbers has changed: Formerly, we wrote <span style="" class="text typewriter">mc_panorama MU_1
+MU_2 PHI_1 PHI_2</span>, where MU_i=cos(THETA_i). In the options
+<span style="" class="text typewriter">mc_sample_grid</span> and <span style="" class="text typewriter">mc_backward</span>, X and Y have been
+swapped. Although these changes are far from being nice, they are
+necessary to introduce a conform nomenclatur throughout
+libRadtran. Sorry for that. (CAUTION! The definition of phi for
+panoramas was formerly different than that of <span style="" class="text typewriter">phi</span>!  This has
+been changed on 19.11.2010!)</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

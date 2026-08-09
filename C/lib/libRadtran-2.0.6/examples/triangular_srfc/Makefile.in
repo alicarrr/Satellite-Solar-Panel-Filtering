@@ -1,0 +1,61 @@
+#
+# Makefile for libRadtran's example/triangular_srfc directory
+#
+
+TOPDIR = ../..
+
+srcdir = @srcdir@
+VPATH = $(srcdir)
+
+THISDIR = $(notdir $(CURDIR))
+
+SUBDIRS = \
+	pano_flat_surface_solar \
+	pano_flat_surface_thermal \
+	pano_vertical_wall_solar \
+	pano_vertical_wall_thermal \
+	forward_flat_surface \
+	forward_flat_surface_thermal \
+
+EXAMPLEFILES = \
+   02_gen_flat_surface.py \
+   02_gen_shed.py \
+   02_gen_vertical_wall.py \
+   02_gen_zigzag_wall.py \
+
+DISTFILES = Makefile.in $(EXAMPLEFILES)
+
+include $(TOPDIR)/Makeconf
+
+all:
+	for dir in $(SUBDIRS); do $(MAKE) -C $$dir $@ || exit $$?; done
+.PHONY: all
+
+dist: all
+	for dir in $(SUBDIRS); do mkdir $(TOPDIR)/`cat $(TOPDIR)/.fname`/examples/$(THISDIR)/$$dir; $(MAKE) -C $$dir $@ || exit $$?; done; \
+	ln $(DISTFILES) $(TOPDIR)/`cat $(TOPDIR)/.fname`/examples/$(THISDIR)
+.PHONY: dist
+
+mystic-dist: dist
+.PHONY: mystic-dist
+
+install: all
+	$(MKPATH) $(examplesdir)/$(THISDIR)
+	$(INSTALL_DATA) $(EXAMPLEFILES) $(examplesdir)/$(THISDIR)
+.PHONY: install
+
+clean:
+.PHONY: clean
+
+mostlyclean: clean
+.PHONY: mostlyclean
+
+distclean: mostlyclean
+	rm -f Makefile
+.PHONY: distclean
+
+realclean: distclean
+.PHONY: realclean
+
+Makefile: Makefile.in $(TOPDIR)/config.status
+	cd $(TOPDIR); sh config.status

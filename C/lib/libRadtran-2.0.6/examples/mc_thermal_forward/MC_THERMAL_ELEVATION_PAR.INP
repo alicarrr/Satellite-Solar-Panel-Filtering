@@ -1,0 +1,18 @@
+# benchmark run to test forward thermal montecarlo computations with a hill from an elevation file
+data_files_path ../../data/
+atmosphere_file atm.dat
+source thermal
+rte_solver mystic
+mc_vroom off
+wavelength 8000.0
+zout -999
+albedo .5
+no_scattering
+no_absorption
+mc_surfaceparallel
+
+mc_elevation_file MC_THERMAL_ELEVATION_HILL.DAT
+mc_sample_grid 4 1 .1 .1
+mc_photons 1.e6
+
+quiet

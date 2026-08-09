@@ -1,0 +1,37 @@
+                         # Location of atmospheric profile file. 
+atmosphere_file ../data/atmmod/afglus.dat
+                         # Location of the extraterrestrial spectrum
+source solar ../data/solar_flux/atlas_plus_modtran
+
+wavelength 540           # Wavelengths considered
+
+sza 30.0                 # Solar zenith angle
+phi0 0                   # Sun in the South
+
+umu 0.8660               # Viewing direction
+phi 0
+
+zout 15
+
+rte_solver mystic        # Radiative transfer equation solver MYSTIC
+mc_photons 10000         # MYSTIC number of photons
+
+mc_escape on
+mc_vroom on
+
+mc_polarisation
+
+                         # specify ice cloud
+ic_file 1D ../examples/IC.DAT   
+ic_properties baum_v36 interpolate
+ic_modify tau set 3
+
+                         # specify cloudglint parameterization
+oriented_crystal_fraction ic 0.1   
+oriented_crystal_angdist_width ic 1.0
+
+quiet
+
+# The results given in UVSPEC_MC_CLOUDGLINT.OUT can be found in the file
+# mc.rad.spc, columns 2,3,5.
+

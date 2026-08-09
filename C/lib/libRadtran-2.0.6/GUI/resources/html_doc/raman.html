@@ -1,0 +1,54 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+<br class="break">
+    <p class="p"><span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">raman [original]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The <span style="" class="text typewriter">raman</span> option includes single order rotational Raman scattering in
+the calculation. The solution treats Raman as a perturbation similar to the
+approaches of <span style="" class="text typewriter">Vountas1998</span> and <span style="" class="text typewriter">Spurr2008</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The <span style="" class="text typewriter">raman</span> option may only be used for spectral calculation.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The disort radiative transfer solver with a general source is needed to solve the radiative transfer
+equation including Raman scattering. This solver is automagically invoked when specifying
+the <span style="" class="text typewriter">raman</span> option. It is thus not neccessary to set the <span style="" class="text typewriter">rte_solver</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The <span style="" class="text typewriter">raman</span> option is optimized with respect to speed. The optimized implementation
+should be just as accurate as the original version. To use the original version
+invode <span style="" class="text typewriter">raman original</span>. With the optional argument <span style="" class="text typewriter">original</span> each wavelength
+is treated individually and is thus accurate, but computationally very expensive.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Please note that while the <span style="" class="text typewriter">raman</span> option has been extensively tested and verified, it
+is nevertheless a new option, hence, use it with care.
+</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

@@ -1,0 +1,6 @@
+2 2 1 3
+1 1 1 2
+
+1 1 1 0.1 10   # ix iy iz LWC reff (wie 1D-Wolke)
+2 2 1 0.1 10
+

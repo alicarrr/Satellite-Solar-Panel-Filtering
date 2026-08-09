@@ -1,0 +1,56 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Switch on sampling of cloud properties (reff/tau/dlwc) by photons.
+This option needs <span style="" class="text typewriter">mc_backward</span>. The optical properties contributing to
+the result for each pixel are integrated using the photon weight
+<img src="mi/mi18.png" width="71" height="19" alt="p_{{weight,n}}" class="math"> in the following way:</p>
+  <table class="equation" id="">
+      
+      
+	<tr valign="baseline" class="equation" id="">
+	<td class="eqpad"></td>
+	<td nowrap align="center" colspan="1"><img src="mi/mi21.png" width="457" height="100" alt="{\langle r_{e}\rangle}_{\textrm{wc}}^{\textrm{tau}}\,=\,\frac{\sum\limits _{{n=0}}^{{photons}}\, p_{{weight,n}}\, r_{{\textrm{wc},n}}}{\sum\limits _{{n=0}}^{{photons}}\, p_{{weight,n}}}\qquad r_{{\textrm{wc}}}\,=\,\frac{\int _{0}^{\tau}\ \tau _{{\textrm{w}}}r_{{\textrm{ew}}}\,\mathrm{d}\tau}{\int _{0}^{\tau}\tau _{{\textrm{w}}}\,\mathrm{d}\tau}" class="math"></td>
+	<td class="eqpad"></td>
+	</tr>
+      
+      </table>
+    <p class="p">For each internal wavelength, one [basename]_[wvl].cldprp file with
+the following format is created where values marked with top are taken at
+first cloud contact:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">ix iy
+<img src="mi/mi20.png" width="61" height="35" alt="{\langle r_{e}\rangle}^{\textrm{tau}}_{\textrm{wc}}" class="math">
+<img src="mi/mi23.png" width="61" height="35" alt="{\langle r_{e}\rangle}^{\textrm{tau}}_{\textrm{ic}}" class="math">
+<img src="mi/mi16.png" width="57" height="38" alt="{\langle r_{e}\rangle}^{\textrm{hit}}_{\textrm{wc}}" class="math">
+<img src="mi/mi24.png" width="57" height="38" alt="{\langle r_{e}\rangle}^{\textrm{hit}}_{\textrm{ic}}" class="math">
+<img src="mi/mi22.png" width="50" height="25" alt="{\langle\tau\rangle}_{\textrm{wc}}" class="math">
+<img src="mi/mi15.png" width="53" height="25" alt="{\langle\tau\rangle}_{\textrm{mc}}" class="math">
+<img src="mi/mi17.png" width="65" height="20" alt="\nabla LWC" class="math"> <img src="mi/mi19.png" width="62" height="20" alt="\nabla IWC" class="math">
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Values denoted with <span style="" class="text italic">hit</span> are taken at the last cloud contact
+before hitting the sensor, while the the water content gradient is
+taken at the last cloud scattering before hitting the sensor (information
+about cloud surface orientation).</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

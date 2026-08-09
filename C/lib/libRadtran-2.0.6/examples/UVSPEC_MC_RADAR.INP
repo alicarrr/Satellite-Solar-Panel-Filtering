@@ -1,0 +1,15 @@
+atmosphere_file ../data/atmmod/afglms.dat
+wc_file 3D ../examples/UVSPEC_MC_RADAR_WC.DAT
+wc_properties ../examples/UVSPEC_MC_RADAR_MIE interpolate  # neccessary for this wavelength
+mol_tau_file abs ../examples/UVSPEC_MC_RADAR_MOLTAU.NC     # neccessary for this wavelength
+
+wavelength 8600000 8600000
+mc_photons 500000
+
+rte_solver montecarlo
+mc_radar
+mc_lidar_file ../examples/UVSPEC_MC_RADAR_FILE.DAT
+mc_ris optical_depth 1
+quiet
+
+# The result is the complete file mc.loc_t

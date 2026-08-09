@@ -1,0 +1,9 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 350           # Wavelength considered
+
+ic_file 1D ../examples/IC.DAT
+ic_properties fu
+ic_fu reff_def on
+
+write_optical_properties

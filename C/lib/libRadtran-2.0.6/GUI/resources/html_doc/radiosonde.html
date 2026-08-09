@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">This option allows to change the temperature and pressure profile, and optionally to
+specify one or more density profiles. The entry in the input file looks like this:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">radiosonde filename [gas_species] [unit] ...
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Currently the following gas_species are included: ozone (O3), nitrogen dioxide (NO2),
+water vapor (H2O), bromine oxide (BRO), chlorine dioxide (OCLO), formaldehyde (HCHO),
+carbon dioxide (CO2), sulphur dioxide (SO2), and the oxygen dimer (O4).
+Each gas species is identified by its abbrevations given in parentheses above.
+Unit is an optional argument to defines the unit of the density. The profiles can
+be given in particles per cm<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math"> (CM-3), in particles per m<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math"> (M-3), as volume
+mixing ratio (VMR), as mass mixing ratio in kg/kg (MMR), or as relative humidity
+(RH) (only for water). The default unit is RH for water vapour,
+MMR for ozone, and CM3 for all other gases.
+The radiosonde file must have (2 + number of gases) columns:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">1</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">pressure in hPa</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">2</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">temperature in Kelvin</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">3, 4, …</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">density of trace gas in the specified unit</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">A new z-grid will be calculated, starting at <span style="" class="text typewriter">altitude</span> and assuming a linear temperature variation
+between levels. The air density will be recalculated according to the ideal gas law, and the density of
+the well mixed gases O2 and CO2 will be scaled accordingly.
+The atmospheric data above the radiosonde data is taken from the <span style="" class="text typewriter">atmosphere_file</span> level by level, starting
+at the first pressure level above the radiosonde data. The z-grid of the <span style="" class="text typewriter">atmosphere_file</span> in
+this height region is shifted accordingly.
+Also if the density in the radiosonde file is specified as -1 at a level,
+the value from the <span style="" class="text typewriter">atmosphere_file</span> is used.
+Possible calls are
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">radiosonde ../examples/radiosonde.dat
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">just in order to change the temperature and pressure profile, or
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">radiosonde ../examples/radiosonde2.dat H2O RH O3 MMR NO2
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where water vapour density will be given as relative humidity, ozone as mass mixing ratio,
+and NO2 in cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math"> (default).</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

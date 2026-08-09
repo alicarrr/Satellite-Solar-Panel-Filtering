@@ -1,0 +1,4 @@
+include ../examples/UVSPEC_CLEAR.INP
+include ../examples/UVSPEC_AEROSOL.INP
+
+rte_solver sos

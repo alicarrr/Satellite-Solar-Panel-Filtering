@@ -1,0 +1,14 @@
+# benchmark run to create 1D thermal output which we compare monte carlo results against
+data_files_path ../../data/
+atmosphere_file ../../data/atmmod/afglus.dat
+source thermal
+rte_solver disort
+number_of_streams 16
+zout all_levels
+albedo .1
+
+output_process sum
+mol_abs_param fu
+
+wc_file 1D wc1D.dat
+quiet

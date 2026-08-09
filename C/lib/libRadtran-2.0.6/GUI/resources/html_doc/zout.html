@@ -1,0 +1,64 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">This option is used to specify the output altitudes in km <em class="emph">above surface altitude</em>.
+One or more altitudes may be specified in increasing magnitude.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">zout 0 1 2 3 4 5 ...
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">Output altitudes must be within the range defined in the
+<span style="" class="text typewriter">atmosphere_file</span>. Note that <span style="" class="text typewriter">zout</span> does not restructure the
+atmosphere model. Hence, if you specify <span style="" class="text typewriter">zout 0.730</span> and have your
+atmosphere model in <span style="" class="text typewriter">atmosphere_file</span> go all the way down to
+sea level, i.e. 0.0km., output is presented at 0.730km and calculations
+performed with an atmosphere between 0.0 and 0.730 km (and above of course).
+If you want calculations done for e.g. an elevated site you have to restructure
+the atmosphere model and make sure it stops at the appropriate altitude.
+This you may either due by editing the atmosphere file or by using
+<span style="" class="text typewriter">altitude</span>. Note that for <span style="" class="text typewriter">rte_solver polradtran</span> the atmosphere file must
+contain the altitudes specified by <span style="" class="text typewriter">zout</span>. You can also use <span style="" class="text typewriter">toa</span> for
+<span style="" class="text typewriter">top of atmosphere</span> and <span style="" class="text typewriter">sur</span> for <span style="" class="text typewriter">surface altitude</span> and <span style="" class="text typewriter">cpt</span>
+for <span style="" class="text typewriter">cold point tropopause</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Instead of specifying the altitudes in km, it is also possible to use keywords as
+argument for this option. Possible keywords are <span style="" class="text typewriter">atm_levels</span>,
+<span style="" class="text typewriter">all_levels</span>, <span style="" class="text typewriter">model_levels</span>, <span style="" class="text typewriter">model_layers</span>, and <span style="" class="text typewriter">model_levels_and_layers</span>.
+For <span style="" class="text typewriter">atm_levels</span>, all levels from the <span style="" class="text typewriter">atmosphere_file</span> are used as output levels.
+For <span style="" class="text typewriter">all_levels</span>, all levels (including levels from <span style="" class="text typewriter">atmosphere_file</span>,
+<span style="" class="text typewriter">mol_file</span>, cloud files, <span style="" class="text typewriter">altitude</span> options) are used as output levels.
+For <span style="" class="text typewriter">model_levels</span>, <span style="" class="text typewriter">model_layers</span>, <span style="" class="text typewriter">model_levels_and_layers</span>
+the levels, layers, or both from the <span style="" class="text typewriter">ECMWF_atmosphere_file</span> are used as output level.
+Usage e.g.:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">zout model_levels [nlev_max]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">With the optional argument <span style="" class="text typewriter">nlev_max</span> the user may specify the number of zout layers
+from the ground.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

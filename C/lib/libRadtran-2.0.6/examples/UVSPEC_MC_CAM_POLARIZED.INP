@@ -1,0 +1,31 @@
+                         # Location of atmospheric profile file. 
+atmosphere_file ../data/atmmod/afglus.dat
+                         # Location of the extraterrestrial spectrum
+source solar ../data/solar_flux/atlas_plus_modtran
+
+wavelength 550           # Wavelengths considered
+
+sza 40.0                 # Solar zenith angle
+phi0 0                   # Sun in the South
+
+umu 0.7660               # Viewing direction
+phi 0
+
+rte_solver mystic        # Radiative transfer equation solver MYSTIC
+mc_photons 1             # MYSTIC number of photons
+mc_minphotons 1
+
+mc_escape on
+
+mc_polarisation
+brdf_cam u10 7.0
+
+no_scattering mol        # Turn of molecular absorption and scattering
+no_absorption mol
+
+quiet
+
+# The results given in UVSPEC_MC_BPDF.OUT can be found in the file
+# mc.rad, columns 3,4,8.
+# Column 3 and 4 are the viewing zenith and azimuth and column 8 is the
+# Stokes vector (I,Q,U,V).

@@ -1,0 +1,294 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">User defined output.
+Here the user may specify the columns desired for output.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">output_user format
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">format</span> is one or more of the following.</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">lambda</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Wavelength in nm.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">wavenumber</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Wave number in cm<img src="mi/mi11.png" width="25" height="24" alt="{}^{{-1}}" class="math">.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">sza</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">solar zenith angle</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">zout</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Output altitude in km.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">edir, eglo, edn, eup, enet, esum</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">The direct, global, diffuse downward, and diffuse upward irradiance.
+Net is global - upward, sum is global + upward.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">uu</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Radiances:  uu(umu(0),phi(0)) … uu(umu(0),phi(m)) … uu(umu(n),phi(0)) … uu(umu(n),phi(m))</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">fdir, fglo, fdn, fup, f</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">The direct, global, diffuse downward, diffuse upward, and total actinic flux.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">uavgdir, uavgglo, uavgdn, uavgup, uavg</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">The Direct, global, diffuse downward, diffuse upward, and total diffuse
+mean intensity (= actinic flux / 4<img src="mi/mi44.png" width="17" height="14" alt="\pi" class="math">).</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">spher_alb</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Spherical albedo of the complete atmosphere.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">albedo</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Albedo.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">heat</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">Heating rate in K/day.</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">It is also possible to gain some information about the atmosphere and the clouds:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">p</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">pressure [hPa], ,</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">T, T_d</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">temperature [K], dewpoint temperature [K]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">T_sur</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">surface temperature [K]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">theta </dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">potential temperature [K]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">theta_e</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">equivalent potential temperature [K]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">n_xxx</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">number density of the gas xxx [cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math">]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">rho_xxx</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">mass density of the gas xxx [kg/m<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math">]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">mmr_xxx</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">mass mixing ratio of the gas xxx [kg/kg]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">vmr_xxx</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">volume mixing ratio of the gas xxx [m<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math">/m<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math">]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">rh</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">relative humidity over water [percent]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">rh_ice</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">relative humidity over ice   [percent]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">c_p</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">specific heat capacity of the air (humidity and temperature dependent)</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">CLWC</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">cloud liquid water content   [kg/kg]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">CLWD</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">cloud liquid water density   [g/m<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math">]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">CIWC</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">cloud ice water content      [kg/kg]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">CIWD</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">cloud ice water density      [g/m<img src="mi/mi1.png" width="14" height="24" alt="{}^{3}" class="math">]</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">TCC</dt>
+    <dd class="item">
+  <div class="para" id="">
+<br class="break">
+    <p class="p">total cloud cover            [0-1]
+</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">where <span style="" class="text typewriter">xxx</span> is one of
+AIR, O3, O2, H2O, CO2, NO2, BRO, OCLO, HCHO, or O4.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Default output is
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">output_user lambda lambda, edir, edn, eup, uavgdir, uavgdn, uavgup
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">for <span style="" class="text typewriter">fdisort1</span>, <span style="" class="text typewriter">sdisort</span>, and <span style="" class="text typewriter">spsdisort</span>, whereas the default for
+<span style="" class="text typewriter">twostr</span> is
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">output_user lambda, edir, edn, eup, uavg.
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The lines containing radiances and the output of <span style="" class="text typewriter">rte_solver polradtran</span> are not affected.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

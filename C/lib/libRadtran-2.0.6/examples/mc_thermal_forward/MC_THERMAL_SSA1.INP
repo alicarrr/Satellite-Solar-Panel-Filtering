@@ -1,0 +1,19 @@
+# thermal forward computation where the optical properties of the atmosphere are remove and instead we define a cloud with single scattering albedo being 1,
+# i.e. no absorption or emission in the atmosphere, just reflection of surface emission
+data_files_path ../../data/
+atmosphere_file atm.dat
+source thermal
+rte_solver montecarlo
+wavelength 8000.0
+zout all_levels
+albedo .5
+
+mc_photons 1.e6
+
+no_absorption mol
+no_scattering mol
+
+wc_file 1D wc1D.dat
+wc_modify ssa set 1
+wc_modify tau set 1
+quiet

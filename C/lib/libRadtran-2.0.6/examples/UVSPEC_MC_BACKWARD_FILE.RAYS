@@ -1,0 +1,6 @@
+# Compute radiances on each center tile of a 2x2 km domain
+# x[m]  y[m]  z[m]  direction[]
+   500   500   2e3   0   0   -1
+   500  1500   2e3   0   0   -1
+  1500   500   2e3   0   0   -1
+  1500  1500   2e3   0   0   -1

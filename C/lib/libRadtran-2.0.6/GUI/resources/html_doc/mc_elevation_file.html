@@ -1,0 +1,60 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Define a MYSTIC 2D elevation input file (default: elevation2D.dat).
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">mc_elevation_file file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The
+expected format of the elevation file is:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">Nx  Ny  dx  dy
+ix  iy  elevation
+...
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where Nx and Ny are the number of grid boxes in x- and y-direction,
+dx and dy are the size of the grid boxes in km.
+In the second and the following lines the indices in x- and y-direction
+(ix=1…Nx, iy=1…Ny) and the elevation in km of each point are specified.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Attention: While the other files refer to grid boxes,
+the elevation is defined at grid points. It has to be this
+way because each ”elevation pixel” contains a surface
+which is defined by the four cornes of the pixel. If the
+grid covers an area of 200x200 km<img src="mi/mi7.png" width="14" height="24" alt="{}^{2}" class="math"> and the pixel sizes
+are dx = 1km and dy = 1km, the elevation has to be defined
+at 201x201 points (ix = 1 .. Nx, iy = 1 .. Ny).</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Also, make sure that the elevation doesn't cross or
+even touch the 1D surface. Since the default altitude is 0
+that means that the minimum elevation must be larger than 0!</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

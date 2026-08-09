@@ -1,0 +1,17 @@
+# benchmark run to create 1D thermal output which we compare monte carlo results against
+data_files_path ../../data/
+atmosphere_file atm.dat
+source thermal
+rte_solver disort
+number_of_streams 256
+wavelength 8000.0
+zout all_levels
+albedo .5
+
+no_absorption mol
+no_scattering mol
+
+wc_file 1D wc1D.dat
+wc_modify ssa set 1
+wc_modify tau set 1
+quiet

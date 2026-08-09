@@ -1,0 +1,191 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Location of file defining water cloud properties.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">wc_file type file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break"><span style="" class="text typewriter">type</span> defines the file type, which can be one of the
+following:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">1D</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Location of file defining one-dimensional profile.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file must contain three columns: Column 1 is the altitude in km,
+column 2 the liquid water content (LWC) in grams per cubic meter, and
+column 3 the effective droplet radius in micrometer. Empty lines are
+ignored. Comments start with #.  Note that the definition of
+cloud altitudes in <span style="" class="text typewriter">wc_file 1D</span> refers to sea level, not to altitude
+above ground. E.g., when <span style="" class="text typewriter">altitude</span> is set to 1.63km, and the
+first cloud level is defined at 3km, the cloud would start at 1.37km
+above ground.  An example of a water cloud is given in
+<span style="" class="text typewriter">examples/WC.DAT</span>.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">Per default the cloud properties are interpreted as layer
+properties. Before version 1.4 the default was level properties: The
+optical depth of a layer was calculated using information from the
+upper and lower levels defining the layer.
+To switch to the old behaviour, use <span style="" class="text typewriter">interpret_as_level</span>.
+See section <span class="ref here"></span> about water clouds for a
+realistic example how the contents of the <span style="" class="text typewriter">wc_file 1D</span> are converted
+to optical properties.</p>
+  </div>
+<span class="ERROR undefined">\ifthreedmystic</span>
+</dd>
+  
+    <dt class="item" id="">3D</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Define a MYSTIC 3D water cloud input file.
+In case the <span style="" class="text typewriter">rte_solver</span> is not <span style="" class="text typewriter">mystic</span>,
+independent column calculations are performed for the 3D field.
+(See <span style="" class="text typewriter">examples/UVSPEC_WC_IPA.INP</span> for an example.)
+The expected format of the cloud file is:
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">Nx  Ny  Nz flag <br class="break">
+dx  dy  z(1) z(2) ... z(n) <br class="break">
+ix  iy  iz  ext  g     ssa  (if flag == 1)<br class="break">
+ix  iy  iz  ext  reff       (if flag == 2)<br class="break">
+ix  iy  iz  LWC  reff       (if flag == 3)<br class="break">
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where <span style="" class="text typewriter">Nx</span>, <span style="" class="text typewriter">Ny</span> and <span style="" class="text typewriter">Nz</span> are the number of grid boxes in
+<span style="" class="text typewriter">x</span>, <span style="" class="text typewriter">y</span>, and <span style="" class="text typewriter">z</span>-direction.
+The parameter <span style="" class="text typewriter">flag</span> determines the format of the 3rd and
+following lines. In the second line <span style="" class="text typewriter">dx</span> and <span style="" class="text typewriter">dy</span> are the sizes of the boxes in x-
+and y-direction in km.
+In the third and following lines the indices <span style="" class="text typewriter">ix</span>, <span style="" class="text typewriter">iy</span>, and <span style="" class="text typewriter">iz</span> specify cloudy pixels.
+The optical properties of the cloud, are given by the other parameters in the line,
+where <span style="" class="text typewriter">ext</span> is the extinction coefficient [1/km], <span style="" class="text typewriter">g</span> the asymmetry parameter,
+<span style="" class="text typewriter">reff</span> the effective radius [micrometer], and <span style="" class="text typewriter">ssa</span> the single scattering albedo.
+The conversion from microphysical to optical properties is defined by <span style="" class="text typewriter">wc_properties</span>
+(identical to the 1D case). Note that the first dimension (x)
+propagates east, and the second dimension (y) north. For more
+information see section <span class="ref here"></span>.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">ipa</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Define a 3D input file.
+Independent column calculations are performed for the 3D field.
+As argument a name of a 3D cloud file must be given. This file has to
+be in the format as needed by MYSTIC, see <span style="" class="text typewriter">wc_file 3D</span>.
+(See <span style="" class="text typewriter">examples/UVSPEC_WC_IPA.INP</span> for an example.)</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">ipa_files</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">A two-column file, defining water cloud property files (see <span style="" class="text typewriter">wc_file 1D</span>) in the first
+column and the correspoding weights in the second column.
+The radiative transfer calculation is performed independently for each
+cloud column and the result is the weighted average of all independent
+columns. If <span style="" class="text typewriter">ic_file ipa_files</span> and <span style="" class="text typewriter">wc_file ipa_files</span> are both
+defined, both must have the same columns in the same order, otherwise
+<span style="" class="text typewriter">uvspec</span> will complain. See
+<span style="" class="text typewriter">examples/UVSPEC_WC_IC_IPA_FILES.INP</span> for an example.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">moments</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">A way to specify water cloud extinction coefficient, single
+scattering albedo, and scattering phase function for each layer.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">The file specified by
+<span style="" class="text typewriter">wc_file moments</span> has two columns where column 1 is the altitude in km. The second
+column is the name of a file which defines the optical properties of the layer
+starting at the given altitude. The files specified in the second column must
+have the following format:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id=""></dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Column 1: 
+The wavelength in nm. These wavelengths may be different from those in <span style="" class="text typewriter">source solar filename</span>.
+Optical properties are interpolated to the requested wavelengths.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id=""></dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Column 2:
+The extinction coefficient of the layer in units km-1.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id=""></dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Column 3:
+The single scattering albedo of the layer.</p>
+  </div>
+</dd>
+  
+    <dt class="item" id=""></dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Column 4-(nmom+4):
+The moments of the scattering phase function.</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">Note that if using the <span style="" class="text typewriter">rte_solver cdisort</span> or <span style="" class="text typewriter">rte_solver
+fdisort2</span> it makes good sense to make the number of moments larger
+than <span style="" class="text typewriter">number_of_streams</span> because all moments are used in the calculation. For
+<span style="" class="text typewriter">rte_solver fdisort1</span> and <span style="" class="text typewriter">rte_solver polradtran</span> the number
+of moments included in the calculations will be <span style="" class="text typewriter">number_of_streams</span>+1. Higher
+order moments will be ignored for these solvers.  Please note that the
+uppermost line of the <span style="" class="text typewriter">wc_file moments</span> denotes simply the top altitude
+of the uppermost layer. The optical properties of this line are
+consequently ignored. There are two options for this line: either an
+optical property file with zero optical thickness is specified
+or ”NULL” instead.</p>
+  </div>
+</dd>
+  
+    </dl>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

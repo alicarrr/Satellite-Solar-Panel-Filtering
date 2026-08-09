@@ -1,0 +1,29 @@
+# background atmopshere
+atmosphere_file ../data/atmmod/afglus.dat
+data_files_path ../data
+source solar
+
+# position of the sun
+sza 50.0
+phi0 270.0
+
+# surface albedo
+albedo 0.125
+
+# wavelenghts and absorption parametrization
+wavelength_index 1 6
+mol_abs_param FU
+
+# radiative transfer solver settings: incomplete 3D solve, two iterations, no first guess
+rte_solver dynamic_tenstream
+dynamic_tenstream_iterations 2
+dynamic_tenstream_heat_unit K_per_day
+
+# cloud
+wc_file 3D ../examples/WCLOUD3D.IPA.DAT
+
+output_process sum
+zout all
+quiet
+
+# The numbers provided in the .OUT file of the test should be found in mc.abs.spc, column 5

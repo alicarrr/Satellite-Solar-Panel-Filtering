@@ -1,0 +1,10 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+wavelength 550           # Wavelength considered
+
+ic_file 1D ../examples/IC.DAT
+ic_properties hey interpolate
+
+ic_habit hollow-column
+
+write_optical_properties

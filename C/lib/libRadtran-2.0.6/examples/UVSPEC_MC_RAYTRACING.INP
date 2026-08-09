@@ -1,0 +1,31 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar    ../data/solar_flux/kurudz_1.0nm.dat
+
+wavelength 500 # Wavelength range [nm]
+
+albedo 0
+
+sza 60
+phi0 270
+
+rte_solver montecarlo
+mc_panorama_forward
+mc_photons 100000
+
+mc_sample_grid 360 180
+ic_properties raytracing
+ic_raytracing_file ../examples/RAY.DAT
+
+ic_file 1D ../examples/IC.DAT  # Location of the ice cloud file
+ic_modify tau set 1
+
+aerosol_default
+aerosol_species_library OPAC
+aerosol_species_file desert
+aerosol_modify tau set 0.4
+
+quiet
+
+
+# Test uses UVSPEC_MC_RAYTRACING.OUT
+# Results in mc.rad.spc, for good signal to noise ratio use 10e7 photons, for plotting use plot_raytracing_result.py

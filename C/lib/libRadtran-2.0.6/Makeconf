@@ -1,0 +1,300 @@
+#
+# Common configuration rules for all of Radtran's Makefiles.
+#
+# Arve Kylling
+# arve.kylling@itek.norut.no
+#
+
+SHELL = /bin/sh
+
+#### Start of system configuration section. ####
+
+# If started with 'make VERBOSE=1', the compiler commands
+# are printed to stderr in full detail; otherwise this is
+# suppressed and a "compiling ..." is shown instead. This 
+# should be less confusing for the average user.
+
+ifdef VERBOSE
+ccommand=
+gcommand=
+lcommand=
+verbose=
+else
+ccommand=@echo \ \ \ compiling $<
+gcommand=@echo \ \ \ creating  $@
+lcommand=@echo \ \ \ linking   $@
+verbose=@
+endif
+
+# The top of the directory tree where the sources live.
+#cakym root_srcdir = @root_srcdir@
+srcdir = .
+
+# The version number.  TOPDIR is something like `.' or `..' or `../..'
+# and gets us back up to the top level of the source tree.
+#version = `$(getversion) $(srcdir)/$(TOPDIR)/libsrc_c/version.h`
+#
+# the release version number
+version = 2.0.6
+# the mystic release version number
+mystic-version = 2.0.6-MYSTIC
+# the svn version number
+#svnversion = `cat $(srcdir)/$(TOPDIR)/.version`
+#
+# The version number for cdisort
+#
+cdisort-version = 2.1.4
+
+# The version number output by the command "uvspec -v"
+#VERSION = -DLRTVERSION="$(svnversion)"
+VERSION = -DLRTVERSION="$(mystic-version)"
+
+
+INSTALL = /usr/bin/install -c
+INSTALL_PROGRAM = ${INSTALL}
+INSTALL_DATA = ${INSTALL} -m 644
+
+MKPATH = mkdir -p
+
+AWK = gawk
+PERL = /usr/bin/perl
+PYTHON = /home/aliso/Satellite-Solar-Panel-Filtering/Python/.venv/bin/python3
+
+AR = $(verbose)ar
+RM = rm
+ARFLAGS = rc
+
+RANLIB = $(verbose)ranlib
+
+LEX  = flex
+LEXLIB = 
+
+# Fortran to C translator and associated flags.
+
+FC = $(verbose)gfortran
+F2C = 
+F2CFLAGS = 
+FLIBS =  -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. -lgfortran -lm -lquadmath
+LDF77 = 
+NANFLAG = 
+
+# cc and associated flags.
+
+INCFLAGS = -I$(TOPDIR)/libsrc_c -I$(TOPDIR)/libsrc_f
+
+LIBFLAGS = -L$(TOPDIR)
+
+DEFS = -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DHAVE_STDIO_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_STRINGS_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_UNISTD_H=1 -DSTDC_HEADERS=1 -DHAVE_ALLOCA_H=1 -DHAVE_ALLOCA=1 -DF77_FUNC\(name,NAME\)=name\ \#\#\ _ -DF77_FUNC_\(name,NAME\)=name\ \#\#\ _ -DHAVE_DIRENT_H=1 -DHAVE_FLOAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_GLOB_H=1 -DHAVE_CXX11=1 -DYYTEXT_POINTER=1 -DHAVE_NETCDF4=1 -DHAVE_PTHREAD=1 -DX_DISPLAY_MISSING=1
+
+CC = $(verbose)gcc
+CCC = $(verbose) gcc
+CFLAGS = -g -O2  -fPIC
+CXX = $(verbose)g++ -std=c++11
+CXXFLAGS = -g -O2 -fPIC
+CPP = gcc -E
+CPPFLAGS = 
+GCC_IEEE_FP_FLAG = 
+HAVE_MYSTIC=-DHAVE_MYSTIC=1
+HAVE_MYSTIC3D=-DHAVE_MYSTIC3D=0
+HAVE_TWOMAXRND3C=-DHAVE_TWOMAXRND3C=1
+HAVE_ALIS=-DHAVE_ALIS=1
+HAVE_VROOM=-DHAVE_VROOM=1
+HAVE_BRDF=-DHAVE_BRDF=1
+HAVE_LIDAR=-DHAVE_LIDAR=0
+HAVE_SOS=-DHAVE_SOS=1
+HAVE_TIPA=-DHAVE_TIPA=0
+COMPILING_CONDOR_AT_MIM=-DCOMPILING_CONDOR_AT_MIM=0
+CONDOR_SOURCES=
+MYSTIC_SOURCES=mystic.c alis.c
+MYSTIC3D_SOURCES=  
+TWOMAXRND3C_SOURCES=twomaxrnd3C.c
+TWOMAXRND3C_INCLUDES=twomaxrnd3C.h
+TIPA_SOURCES=
+LIDAR_SOURCES=
+ARLEM_SOURCES=
+VROOM_SOURCES=vroom.c 
+BRDF_SOURCES=ambralsfor.c ocean.c 
+WORLDLOOP_TARGETS=
+WORLDLOOP_C_FOR_SDOC=
+CDF2C_SOURCES=
+SOS_SOURCES=sos.c 
+AVHRR_SOURCES =avhrr11.f avhrr12.f avhrr13.f avhrr14.f avhrr15.f avhrr21.f  avhrr22.f avhrr23.f avhrr24.f avhrr31.f avhrr32.f avhrr33.f  avhrr34.f avhrr35.f avhrr41.f avhrr51.f
+AVHRR_INCLUDES =avhrr.inc avhrr_kratz.h
+HAVE_AVHRR=-DHAVE_AVHRR=1
+SSSI_SOURCES =sssi.f
+HAVE_SSSI=-DHAVE_SSSI=1
+LOWTRAN_FSOURCES =sbtaugas.f taugas.f taucor.f depthscl.f
+LOWTRAN_PARAM    =sbtaugas.fparam sbtaugas.param
+LOWTRAN_FINCLUDE =sbtaugas.inc
+LOWTRAN_CINCLUDE =sbtaugas.h
+HAVE_LOWTRAN =-DHAVE_LOWTRAN=1 
+HAVE_BAUM =-DHAVE_BAUM=0
+HAVE_BAUM_V36 =-DHAVE_BAUM_V36=0
+HAVE_HEY=-DHAVE_HEY=0
+LIBOPENGL = 
+HAVE_OPENGL =-DHAVE_OPENGL=0 
+HAVE_LIBGSL =-DHAVE_LIBGSL=1 
+LIBGSL=-lgsl -lgslcblas  -lm
+HAVE_CLDGEN     =-DHAVE_CLDGEN=0
+CLDGEN_CSOURCES =
+CLDGEN_TSOURCES =
+CLDGEN_LSOURCES =
+CLDGEN_TOOL =
+ARLEM_TOOL =
+HAVE_LIBGMP =-DHAVE_LIBGMP=0 
+LIBGMP =
+
+INCFLAGS := $(INCFLAGS) -I/usr/include -I/usr/include/hdf5/serial 
+
+ifeq (no,yes)
+INCFLAGS       := $(INCFLAGS) 
+HAVE_TENSTREAM := -DHAVE_TENSTREAM=0
+endif
+
+# If we want to use tenstream lib, we need some external libraries -- foremost petsc and mpi...
+ifeq (no,yes)
+INCFLAGS := $(INCFLAGS) 
+LIBFLAGS := $(LIBFLAGS)  
+# Add petsc libs to RPATH of binary
+LIBFLAGS := $(LIBFLAGS) -Wl,--disable-new-dtags \
+            -Wl,-rpath='$$ORIGIN'/../external/petsc//lib \
+            -Wl,-rpath=//lib
+endif
+
+
+# Add external Star-Engine includes and libs
+ifeq (no,yes)
+HAVE_STARENGINE=-DHAVE_STAR_ENGINE=0
+INCFLAGS := $(INCFLAGS) 
+LIBFLAGS := $(LIBFLAGS) 
+# Add star-engine libs to RPATH of binary
+LIBFLAGS := $(LIBFLAGS) -Wl,--disable-new-dtags \
+            -Wl,-rpath='$$ORIGIN'/../external/star-engine/lib \
+            -Wl,-rpath=/lib
+endif
+
+SANITIZE_OPTIONS = 
+SANITIZE_COMPILE_OPTIONS = 
+SANITIZE_CFLAGS = $(SANITIZE_OPTIONS) $(SANITIZE_COMPILE_OPTIONS)
+SANITIZE_LDFLAGS = $(SANITIZE_OPTIONS)
+
+COVERAGE_CFLAGS = 
+COVERAGE_LDFLAGS = 
+
+ALL_CFLAGS = $(INCFLAGS) $(DEFS) $(GCC_IEEE_FP_FLAG) $(CFLAGS)\
+  $(NANFLAG) \
+  $(SANITIZE_OPTIONS) $(SANITIZE_COMPILE_OPTIONS) \
+  $(COVERAGE_CFLAGS) \
+  $(COMPILING_CONDOR_AT_MIM) \
+  $(HAVE_ALIS) \
+  $(HAVE_AVHRR) \
+  $(HAVE_BAUM) \
+  $(HAVE_BAUM_V36) \
+  $(HAVE_BRDF) \
+  $(HAVE_HEY) \
+  $(HAVE_LIBGSL) \
+  $(HAVE_LIDAR)\
+  $(HAVE_LOWTRAN) \
+  $(HAVE_MYSTIC) \
+  $(HAVE_MYSTIC3D) \
+  $(HAVE_OPENGL) \
+  $(HAVE_QDISORT) \
+  $(HAVE_SOS)\
+  $(HAVE_SSSI) \
+  $(HAVE_STARENGINE) \
+  $(HAVE_TENSTREAM) \
+  $(HAVE_TIPA) \
+  $(HAVE_TWOMAXRND3C)\
+  $(HAVE_VROOM) \
+  $(VERSION)
+
+# Fortran compiler flags.
+FFLAGS = -g -O2 -fPIC
+FORTRAN_MAIN_FLAG = 
+
+ALL_FFLAGS = $(FFLAGS) \
+  $(COVERAGE_CFLAGS)
+
+LDFLAGS =  # User provided LDFLAGS
+LD_STATIC_FLAG = 
+
+ALL_LDFLAGS = $(LDFLAGS) \
+               \
+                \
+              $(LIBFLAGS) \
+              -L/usr/lib/x86_64-linux-gnu/hdf5/serial -L/usr/lib/x86_64-linux-gnu  \
+              $(FORTRAN_MAIN_FLAG) $(FLIBS) \
+              $(LD_STATIC_FLAG) \
+              $(SANITIZE_LDFLAGS) \
+              $(COVERAGE_LDFLAGS) \
+              $(LEXLIB) \
+              $(LIBGSL) \
+              $(LIBGMP) \
+              $(LIBOPENGL) \
+               -lnetcdf 
+
+# A shell command to extract the version number from version.h.
+getversion = sed -e '/version_string/!d' -e 's/[^0-9.]*\([0-9a-z.]*\).*/\1/' -e q 
+
+# Common prefix for installation directories.
+# NOTE: This directory must exist when you start installation.
+prefix = /usr/local
+
+# Directory in which to put host dependent programs and libraries
+exec_prefix = $(prefix)
+
+# Where to install the executables.
+bindir = $(exec_prefix)/bin
+
+# Where to put libraries
+libdir = $(exec_prefix)/lib
+
+# Where to put extra data files, system-wide startup files, etc.
+datadir = $(prefix)/share/libRadtran
+
+# Subdirs of datadir
+datasubdirs = atmmod solar
+
+# Where to put extra data files
+datafiledir = $(datadir)/data
+
+# Where to put installed include files.
+includedir = $(prefix)/include
+
+# Where to put example files
+examplesdir = $(datadir)/examples/
+
+# Where to put documentation
+docdir = $(datadir)/doc
+
+# Where to put 'info' files
+infodir = $(datadir)/info
+
+# The type of computer we are running on.
+target_host_type = x86_64-unknown-linux-gnu
+
+# The following pattern rules and the substitution functions require
+# GNU make.  If you don't have it, get it!
+
+# Rules for making C source from Fortran source (if necessary).
+#
+# If we are using f2c there will be a command for the `%.c : %.f'
+# pattern and no command for the `%.o : %.f' pattern, so that make
+# will not invoke the fortran compiler by mistake.
+#
+# If we are not using f2c, it should be ok to have an empty rule for
+# the pattern `%.c : %.f', but we don't want to replace make's default
+# rule for making object from Fortran source files, so there should be
+# no pattern or command for that.
+
+
+%.c : %.f
+
+%.o : %.f Makefile ../Makeconf
+	$(ccommand)
+	$(FC) -c $(ALL_FFLAGS) $<
+
+# How to make .o files from .c files:
+%.o: %.c %.h Makefile ../Makeconf
+	$(ccommand)
+	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) $<

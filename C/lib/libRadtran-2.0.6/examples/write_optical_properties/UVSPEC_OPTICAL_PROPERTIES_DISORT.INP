@@ -1,0 +1,6 @@
+include ../examples/UVSPEC_SIMPLE.INP
+rte_solver disort        # This overrides what is specified in above file
+
+aerosol_default
+
+write_optical_properties 

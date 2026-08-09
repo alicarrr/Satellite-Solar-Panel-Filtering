@@ -1,0 +1,51 @@
+# Example to simulate polarization spectra of Earthshine
+# The result is written into the file mc.rad.spc (wavelength 1st column, Stokes vecor 5th column)
+
+# Specify background atmosphere
+atmosphere_file midlatitude_summer
+# Extraterrestrial solar irradiance
+# (should be replaced by stellar irradiance for exoplanets)
+source solar kurudz_1.0nm.dat
+
+# Specify wavelength range
+wavelength 400 500
+# Absorption parameterization (REPTRAN for Earth)
+mol_abs_param reptran
+
+# Sensor position (longitute, latitude, altitude (measured from planetary surface)
+mc_satellite_position 0 0 3.e8
+# Sensor field of view (this example includes full Earth)
+mc_satellite_view -1.25 1.25 -1.25 1.25
+
+# Sun position (longitude, latitde)
+mc_sun_position 90 0
+
+# Radiative transfer solver settings
+rte_solver mystic
+mc_spherical 3D
+mc_backward
+mc_panorama distr_photons_over_pixel
+mc_sample_grid 1 1
+mc_polarisation
+mc_spectral_is 450 # ALIS 
+mc_vroom on
+
+mc_photons 100000 # Number of photons, increase for better accuracy
+
+# dummy cloud to specify grid
+ic_file 3D ../examples/SPHER3D_GRID.DAT
+ic_properties hey interpolate
+ic_modify tau set 0.0
+
+# switch on aerosol
+# aerosol_default
+# specify aerosol mixture file	
+# aerosol_species_file     continental_average	
+# specify aerosol optical thickness
+# aerosol_set_tau_at_wvl 700 0.05
+
+# surface albedo
+albedo 0.05
+mc_surface_reflectalways
+
+quiet

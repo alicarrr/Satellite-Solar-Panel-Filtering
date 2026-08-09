@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Location of file holding the extraterrestrial spectrum.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">solar_file filename [unit]
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The file must contain two columns. Column 1 is the wavelength in nm, and column 2
+the corresponding extraterrestrial flux. The user may freely use any units
+he/she wants for the extraterrestrial flux. The wavelength  specified grid
+defines the wavelength resolution at which results are returned. However,
+the wavelength range is determined by <span style="" class="text typewriter">wavelength</span>. <span style="" class="text typewriter">solar_file</span> may be
+omitted for thermal radiation calculations (<span style="" class="text typewriter">source thermal</span>) as well as
+<span style="" class="text typewriter">transmittance</span> and <span style="" class="text typewriter">reflectivity</span> calculations. If omitted, the
+output resolution equals the internal wavelength grid which the model chooses
+for the radiative transfer calculation.
+Comments start with #. Empty lines are ignored.</p>
+  </div>
+
+  <div class="para" id="">
+    <p class="p">For some purpuses it is useful to tell libRadtran the units of the spectrum.
+This can be done with the optional second argument. If <span style="" class="text typewriter">unit</span> is set to <span style="" class="text typewriter">per_nm</span>
+libRadtran assumes that the unit of the spectrum is W/(m2 nm), if set to <span style="" class="text typewriter">per_cm-1</span>
+it assumes W/(m2 cm-1).
+Note that <span style="" class="text typewriter">solar_file</span> is ignored if <span style="" class="text typewriter">correlated_k</span> is specified.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

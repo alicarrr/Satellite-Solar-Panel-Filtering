@@ -1,0 +1,53 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Set the aerosol phase function moments to the values specified in
+the aerosol moments file
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">aerosol_moments_file file_name
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">where the file contains one column with arbitrary number of
+Legendre terms of the phase function. The phase function
+<img src="mi/mi3.png" width="39" height="24" alt="p(\mu)" class="math"> is</p>
+  <table class="equation" id="">
+      
+      
+	<tr valign="baseline" class="equation" id="">
+	<td class="eqpad"></td>
+	<td nowrap align="center" colspan="1"><img src="mi/mi4.png" width="256" height="57" alt="p(\mu)=\sum _{{m=0}}^{{\infty}}(2m+1)\cdot k_{m}\cdot P_{m}(\mu)" class="math"></td>
+	<td class="eqpad"></td>
+<td rowspan="1" nowrap valign="middle" align="right">(<span class="refnum">1</span>)</td>
+	</tr>
+      
+      </table>
+    <p class="p">where <img src="mi/mi6.png" width="29" height="21" alt="k_{m}" class="math"> is the m'th moment and <img src="mi/mi5.png" width="55" height="24" alt="P_{m}(\mu)" class="math"> is the m'th Legendre
+polynomial.  If not specified, a Henyey-Greenstein phase function is
+assumed where the asymmetry parameter g is either a default value
+depending on the aerosol type or it may be specified using
+<span style="" class="text typewriter">aerosol_set_gg</span>.  The phase function will be the same for all
+altitudes and wavelengths.  See <span style="" class="text typewriter">aerosol_files</span> if more
+flexibility is wanted. May only be used together with the
+<span style="" class="text typewriter">cdisort</span> or <span style="" class="text typewriter">fdisort2</span> solver in combination with the option
+<span style="" class="text typewriter">disort_icm moments</span>.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

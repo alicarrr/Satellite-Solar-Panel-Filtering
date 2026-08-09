@@ -1,0 +1,5 @@
+include ../examples/UVSPEC_SIMPLE.INP 
+aerosol_default 
+aerosol_modify ssa set .5
+
+write_optical_properties

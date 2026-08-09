@@ -1,0 +1,173 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3c.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="core.css">
+  </head>
+  <body>
+    <div class="main">
+    <div class="content">
+    <div class="document" id="">
+    
+  <div class="para" id="">
+    <p class="p">Location of the atmospheric data file.
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">atmosphere_file file
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">The file must have at least three columns containing the altitude,
+pressure, and temperature. Missing profiles are filled with 0 (e.g., if you did not specify
+the ozone profile, there will be no ozone absorption!), with exception of the air density which
+is calculated from pressure and temperature. Other trace gases may be set by <span style="" class="text typewriter">mol_file</span>.
+The columns are interpreted as follows:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">1</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Altitude above sea level in km</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">2</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Pressure in hPa</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">3</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Temperature in K</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">4</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">air density in cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math"></p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">5</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Ozone density in cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math"></p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">6</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Oxygen density in cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math"></p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">7</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Water vapour density in cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math"></p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">8</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">CO2 density in cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math"></p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">9</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">NO2 density in cm<img src="mi/mi2.png" width="25" height="24" alt="{}^{{-3}}" class="math"></p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">The atmosphere is specified
+top-down, that is, the top level is the first line in the file, the bottom
+(surface) level the last line. All properties refer to model <em class="emph">level</em> z,
+not to model <em class="emph">layer</em>. It is important that the correct units are
+used, otherwise unpredictable results are guaranteed.
+Comments start with #. Empty lines are ignored. Please note that there
+is some redundancy: For air as an ideal gas the density <img src="mi/mi4.png" width="15" height="17" alt="\rho" class="math">, can be
+calulated from pressure and temperature, <img src="mi/mi3.png" width="78" height="24" alt="\rho=p/kT" class="math">. <span style="" class="text typewriter">uvspec</span> will check
+if this relation is fulfilled and will stop if it is not.
+<span style="" class="text slanted">libRadtran</span> provides the six standard atmospheres by <span style="" class="text typewriter">Anderson1986</span>:</p>
+  
+    <dl class="description" id="">
+    
+    <dt class="item" id="">afglt</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Tropical            (<span style="" class="text typewriter">tropics</span>)</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">afglms</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Midlatitude Summer  (<span style="" class="text typewriter">midlatitude_summer</span>)</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">afglmw</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Midlatitude Winter  (<span style="" class="text typewriter">midlatitude_winter</span>)</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">afglss</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Subarctic Summer    (<span style="" class="text typewriter">subarctic_summer</span>)</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">afglsw</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">Subarctic Winter    (<span style="" class="text typewriter">subarctic_winter</span>)</p>
+  </div>
+</dd>
+  
+    <dt class="item" id="">afglus</dt>
+    <dd class="item">
+  <div class="para" id="">
+    <p class="p">U.S. Standard       (<span style="" class="text typewriter">US-standard</span>)</p>
+  </div>
+</dd>
+  
+    </dl>
+  
+    <p class="p">which may be chosen by for example
+ <br class="break">
+<span style="width:369.885827pt; border:1px solid black; " class="text">
+    <span class="inline-block">
+    <p class="p"><span style="" class="text typewriter small">atmosphere_file tropics
+<span style="" class="text serif"></span></span></p>
+  </span>
+  </span>
+ <br class="break">or by specifying the full file name. These atmosphere files are found in
+<span style="" class="text typewriter">data/atmmod</span>.
+If no <span style="" class="text typewriter">atmosphere_file</span> is defined, <span style="" class="text typewriter">uvspec</span> will automatically select one.
+If the information  <span style="" class="text typewriter">time</span>, <span style="" class="text typewriter">latitude</span> and <span style="" class="text typewriter">longitude</span> are provided in
+the input file <span style="" class="text typewriter">uvspec</span> will choose from the first 5 files, otherwise it takes
+the U.S. Standard atmosphere.</p>
+  </div>
+
+    </div>
+  
+        </div>
+      </div>
+    </body>
+</html>

@@ -1,0 +1,10 @@
+atmosphere_file ../data/atmmod/afglus.dat
+source solar ../data/solar_flux/atlas_plus_modtran
+albedo 0.2                  # Surface albedo
+wavelength 544.7 544.7          # Wavelengths considered
+ic_file 1D ../examples/IC_REDISTRIBUTION.DAT  # Location of the ice cloud file
+disort_intcor moments
+
+ic_properties ../examples/IC.
+
+write_optical_properties

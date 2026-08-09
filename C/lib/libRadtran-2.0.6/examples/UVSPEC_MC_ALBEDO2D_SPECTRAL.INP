@@ -1,0 +1,24 @@
+# Example for 2D spectral albedo
+
+atmosphere_file ../examples/AFGLMS50.DAT
+source solar 
+
+mol_abs_param kato2
+output_process sum
+output_user zout edir eglo eup
+
+sza 30.0                 # Solar zenith angle
+phi 0.0
+
+zout 0
+
+rte_solver mystic        # Radiative transfer equation solver
+mc_sample_grid 2 3 1 1
+
+mc_photons 400000
+
+# spectral 2D albedo data
+mc_albedo_spectral_file ../examples/UVSPEC_MC_ALBEDO2D_SPECTRAL_FILE.DAT
+mc_albedo_type          ../examples/UVSPEC_MC_ALBEDO2D_TYPE.DAT
+
+quiet

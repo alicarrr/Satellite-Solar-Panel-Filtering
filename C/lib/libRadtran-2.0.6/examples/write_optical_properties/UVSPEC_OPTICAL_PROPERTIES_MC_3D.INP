@@ -1,0 +1,20 @@
+                         # Location of atmospheric profile file. 
+atmosphere_file ../data/atmmod/afglus.dat
+
+                         # Location of the extraterrestrial spectrum
+source solar #../data/solar_flux/atlas_plus_modtran
+#../examples/write_optical_properties/mysolar.dat
+
+#wavelength 450 600
+
+rte_solver mystic
+
+write_optical_properties
+
+wc_file 3D ../examples/tenstream_test/box70.wc.dat
+ic_file 3D ../examples/write_optical_properties/test_ic.dat
+
+wavelength_grid_file /project/meteo/work/Philipp.Gregor/cloud-renderer-gpu/maint/lascat_evaluation/RGB_WVL.dat
+
+make_all_layers_3d
+verbose
