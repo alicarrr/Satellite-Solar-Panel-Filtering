@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "satellite-solar-panel-filtering"
+version = "0.1.0"
+description = ""
+authors = ["Alison <alison.carr3@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^2.5.2"
+matplotlib = "^3.11.1"
+scipy = "^1.18.0"
+pandas = "^3.0.5"
+lcm = "^1.5.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
