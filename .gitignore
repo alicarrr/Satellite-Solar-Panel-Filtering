@@ -6,5 +6,6 @@ build.log
 **/__pycache__/**
 **/libRadtran-2.0.6/data/correlated_k/reptran/**
 C/lib/Hamster/**
+C/lib/HAMSTER/**
 *:Zone.Identifier
 **/poetry.lock
