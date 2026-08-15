@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     # Test location
     latitude_deg = 23
-    longitude_deg = 13
+    longitude_deg = 30
 
     day_of_year = 1
 

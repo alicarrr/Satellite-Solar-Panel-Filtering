@@ -18,6 +18,3 @@ VectorSpectrum_t getSunSpectrum(std::string csv_name,
                                  double max_wavelength = 2500.0,
                                  double min_wavelength = 300.0);
 
-/**
- * 
- */

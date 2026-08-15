@@ -9,11 +9,15 @@
 
 
 /**
- * @brief Check the return value from a NetCDF function.
+ * @brief Check the return status of a NetCDF function.
  *
- * @param status NetCDF status code.
+ * @param status NetCDF return code.
+ *
+ * @return Nothing.
+ *
+ * @throws std::runtime_error if the NetCDF call failed.
  */
-void check_nc(int status)
+static void check_nc(int status)
 {
     if (status != NC_NOERR)
     {
@@ -23,219 +27,366 @@ void check_nc(int status)
 
 
 /**
- * @brief Read a one-dimensional coordinate variable from the NetCDF file.
+ * @brief Find the closest value in a coordinate vector.
  *
- * The size of the coordinate axis is read directly from the file.
+ * @param values Coordinate values.
+ * @param requested_value Requested coordinate.
  *
- * @param file_id Open NetCDF file ID.
- * @param variable_name Name of the coordinate variable.
- * @param values Eigen vector that receives the coordinate values.
- *
- * @return Number of values read.
+ * @return Index of the closest coordinate value.
  */
-int read_axis(
-    int file_id,
-    const char* variable_name,
-    Eigen::VectorXf& values
+static unsigned int find_closest_index(
+    const Eigen::VectorXd& values,
+    double requested_value
 )
 {
-    int variable_id;
-    int dimension_id;
+    unsigned int closest_index = 0;
+    unsigned int n_values = (unsigned int)values.size();
 
-    // NetCDF uses size_t for dimension lengths.
-    size_t n_values;
+    double closest_error = std::fabs(values(0) - requested_value);
 
-    check_nc(nc_inq_varid(file_id, variable_name, &variable_id));
-    check_nc(nc_inq_vardimid(file_id, variable_id, &dimension_id));
-    check_nc(nc_inq_dimlen(file_id, dimension_id, &n_values));
-
-    values.resize((int)n_values);
-
-    check_nc(
-        nc_get_var_float(
-            file_id,
-            variable_id,
-            values.data()
-        )
-    );
-
-    return (int)n_values;
-}
-
-
-/**
- * @brief Find the first coordinate index surrounding a requested value.
- *
- * Works for both increasing and decreasing coordinate arrays.
- * The returned index i satisfies that the requested value lies between
- * values(i) and values(i + 1).
- *
- * @param values Coordinate array.
- * @param value Requested coordinate.
- *
- * @return Lower array index of the surrounding pair.
- */
-int find_interval(
-    const Eigen::VectorXf& values,
-    float value
-)
-{
-    int low = 0;
-    int high = values.size() - 1;
-    bool increasing = values(1) > values(0);
-
-    while (high - low > 1)
+    for (unsigned int i = 1; i < n_values; i++)
     {
-        int middle = (low + high) / 2;
+        double error = std::fabs(values(i) - requested_value);
 
-        if (
-            (increasing && values(middle) <= value) ||
-            (!increasing && values(middle) >= value)
-        )
+        if (error < closest_error)
         {
-            low = middle;
-        }
-        else
-        {
-            high = middle;
+            closest_error = error;
+            closest_index = i;
         }
     }
 
-    return low;
+    return closest_index;
 }
 
 
 /**
- * @brief Read one complete albedo spectrum from one HAMSTER pixel.
+ * @brief Find the closest longitude in a periodic longitude vector.
  *
- * Only one latitude/longitude pixel is read from disk. Invalid HAMSTER
- * values are replaced with NaN using valid_min and valid_max from the file.
+ * Longitude values separated by 360 degrees are treated as identical.
  *
- * @param albedo_data Loaded HAMSTER file information.
- * @param latitude_index Latitude pixel index.
- * @param longitude_index Longitude pixel index.
+ * @param longitude Stored longitude coordinates.
+ * @param requested_longitude Requested longitude in degrees.
  *
- * @return Albedo spectrum at the selected pixel.
+ * @return Index of the closest longitude value.
  */
-Eigen::VectorXf read_pixel_spectrum(
-    const AlbedoData& albedo_data,
-    int latitude_index,
-    int longitude_index
+static unsigned int find_closest_longitude_index(
+    const Eigen::VectorXd& longitude,
+    double requested_longitude
 )
 {
-    Eigen::VectorXf spectrum(albedo_data.n_wavelength);
+    unsigned int closest_index = 0;
+    unsigned int n_values = (unsigned int)longitude.size();
 
-    // nc_get_vara_float requires size_t arrays for the start and count.
-    size_t start[3] = {
-        (size_t)latitude_index,
-        (size_t)longitude_index,
-        0
-    };
+    double difference = std::fabs(longitude(0) - requested_longitude);
+    difference = std::fmod(difference, 360.0);
 
-    size_t count[3] = {
-        1,
-        1,
-        (size_t)albedo_data.n_wavelength
-    };
-
-    check_nc(
-        nc_get_vara_float(
-            albedo_data.file_id,
-            albedo_data.albedo_var_id,
-            start,
-            count,
-            spectrum.data()
-        )
-    );
-
-    for (int i = 0; i < albedo_data.n_wavelength; i++)
+    if (difference > 180.0)
     {
-        if (
-            spectrum(i) < albedo_data.valid_min ||
-            spectrum(i) > albedo_data.valid_max
-        )
+        difference = 360.0 - difference;
+    }
+
+    double closest_error = difference;
+
+    for (unsigned int i = 1; i < n_values; i++)
+    {
+        difference = std::fabs(longitude(i) - requested_longitude);
+        difference = std::fmod(difference, 360.0);
+
+        if (difference > 180.0)
         {
-            spectrum(i) = std::numeric_limits<float>::quiet_NaN();
+            difference = 360.0 - difference;
+        }
+
+        if (difference < closest_error)
+        {
+            closest_error = difference;
+            closest_index = i;
         }
     }
 
-    return spectrum;
+    return closest_index;
 }
 
 
 /**
- * @brief Open the selected HAMSTER file and read its metadata.
+ * @brief Load the configured HAMSTER file into a bounded in-memory structure.
  *
- * The latitude, longitude and wavelength axes are read directly from the
- * NetCDF file. The full albedo dataset remains on disk.
+ * All coordinate information is read from the NetCDF file. The complete
+ * wavelength axis is retained. Latitude and longitude are spatially sampled
+ * using one automatically selected stride so that the stored albedo matrix
+ * remains below hamster_max_albedo_memory_mb.
  *
- * @return AlbedoData containing the open NetCDF file and coordinate axes.
+ * @return Loaded HAMSTER albedo data.
+ *
+ * @throws std::invalid_argument if hamster_day_of_year is outside [1, 365].
+ * @throws std::runtime_error if the file cannot be read or has an unexpected
+ * structure.
  */
 AlbedoData read_albedo_data()
 {
-    AlbedoData albedo_data;
+    if (hamster_day_of_year < 1 || hamster_day_of_year > 365)
+    {
+        throw std::invalid_argument(
+            "HAMSTER day of year must be between 1 and 365."
+        );
+    }
 
+    // Construct the selected HAMSTER filename.
     char filename[256];
 
     std::snprintf(
         filename,
         sizeof(filename),
-        "%s/DOY%03d.nc",
+        "%s/DOY%03u.nc",
         hamster_dir,
         hamster_day_of_year
     );
 
+    int file_id;
+    check_nc(nc_open(filename, NC_NOWRITE, &file_id));
+
+    // Find the coordinate and albedo variables.
+    int latitude_var_id;
+    int longitude_var_id;
+    int wavelength_var_id;
+    int albedo_var_id;
+
+    check_nc(nc_inq_varid(file_id, "Latitude", &latitude_var_id));
+    check_nc(nc_inq_varid(file_id, "Longitude", &longitude_var_id));
+    check_nc(nc_inq_varid(file_id, "Wavelength", &wavelength_var_id));
+    check_nc(nc_inq_varid(file_id, "Black_Sky_Albedo", &albedo_var_id));
+
+    // Read the dimension IDs used by the coordinate variables.
+    int latitude_dim_id;
+    int longitude_dim_id;
+    int wavelength_dim_id;
+
+    check_nc(nc_inq_vardimid(file_id, latitude_var_id, &latitude_dim_id));
+    check_nc(nc_inq_vardimid(file_id, longitude_var_id, &longitude_dim_id));
+    check_nc(nc_inq_vardimid(file_id, wavelength_var_id, &wavelength_dim_id));
+
+    // NetCDF requires size_t for dimension lengths.
+    size_t file_n_lat_nc;
+    size_t file_n_lon_nc;
+    size_t file_n_wavelength_nc;
+
+    check_nc(nc_inq_dimlen(file_id, latitude_dim_id, &file_n_lat_nc));
+    check_nc(nc_inq_dimlen(file_id, longitude_dim_id, &file_n_lon_nc));
+    check_nc(nc_inq_dimlen(file_id, wavelength_dim_id, &file_n_wavelength_nc));
+
+    unsigned int file_n_lat = (unsigned int)file_n_lat_nc;
+    unsigned int file_n_lon = (unsigned int)file_n_lon_nc;
+    unsigned int file_n_wavelength = (unsigned int)file_n_wavelength_nc;
+
+    if (
+        file_n_lat < 1 ||
+        file_n_lon < 1 ||
+        file_n_wavelength < 1
+    )
+    {
+        nc_close(file_id);
+        throw std::runtime_error(
+            "HAMSTER file contains an empty coordinate dimension."
+        );
+    }
+
+    // Confirm that Black_Sky_Albedo is ordered as [lat, lon, wavelength].
+    int n_albedo_dimensions;
+    int albedo_dim_ids[3];
+
     check_nc(
-        nc_open(
-            filename,
-            NC_NOWRITE,
-            &albedo_data.file_id
+        nc_inq_varndims(
+            file_id,
+            albedo_var_id,
+            &n_albedo_dimensions
         )
     );
 
-    albedo_data.n_lat = read_axis(
-        albedo_data.file_id,
-        "Latitude",
-        albedo_data.latitude
-    );
-
-    albedo_data.n_lon = read_axis(
-        albedo_data.file_id,
-        "Longitude",
-        albedo_data.longitude
-    );
-
-    albedo_data.n_wavelength = read_axis(
-        albedo_data.file_id,
-        "Wavelength",
-        albedo_data.wavelength
-    );
+    if (n_albedo_dimensions != 3)
+    {
+        nc_close(file_id);
+        throw std::runtime_error(
+            "Black_Sky_Albedo must have three dimensions."
+        );
+    }
 
     check_nc(
-        nc_inq_varid(
-            albedo_data.file_id,
-            "Black_Sky_Albedo",
-            &albedo_data.albedo_var_id
+        nc_inq_vardimid(
+            file_id,
+            albedo_var_id,
+            albedo_dim_ids
         )
     );
 
+    if (
+        albedo_dim_ids[0] != latitude_dim_id ||
+        albedo_dim_ids[1] != longitude_dim_id ||
+        albedo_dim_ids[2] != wavelength_dim_id
+    )
+    {
+        nc_close(file_id);
+        throw std::runtime_error(
+            "Black_Sky_Albedo dimensions must be [lat, lon, wavelength]."
+        );
+    }
+
+    // Read the physical validity range directly from the file.
+    double valid_min;
+    double valid_max;
+
     check_nc(
-        nc_get_att_float(
-            albedo_data.file_id,
-            albedo_data.albedo_var_id,
+        nc_get_att_double(
+            file_id,
+            albedo_var_id,
             "valid_min",
-            &albedo_data.valid_min
+            &valid_min
         )
     );
 
     check_nc(
-        nc_get_att_float(
-            albedo_data.file_id,
-            albedo_data.albedo_var_id,
+        nc_get_att_double(
+            file_id,
+            albedo_var_id,
             "valid_max",
-            &albedo_data.valid_max
+            &valid_max
         )
     );
+
+    // Determine the spatial stride required to keep the stored data bounded.
+    // Wavelength is never subsampled.
+    double full_data_bytes =
+        (double)file_n_lat *
+        (double)file_n_lon *
+        (double)file_n_wavelength *
+        (double)sizeof(double);
+
+    double maximum_data_bytes =
+        (double)hamster_max_albedo_memory_mb *
+        1024.0 *
+        1024.0;
+
+    unsigned int spatial_stride = 1;
+
+    if (full_data_bytes > maximum_data_bytes)
+    {
+        spatial_stride = (unsigned int)std::ceil(
+            std::sqrt(full_data_bytes / maximum_data_bytes)
+        );
+    }
+
+    // Number of latitude and longitude samples retained after subsampling.
+    unsigned int n_lat =
+        (file_n_lat - 1) / spatial_stride + 1;
+
+    unsigned int n_lon =
+        (file_n_lon - 1) / spatial_stride + 1;
+
+    AlbedoData albedo_data;
+
+    albedo_data.n_lat = n_lat;
+    albedo_data.n_lon = n_lon;
+    albedo_data.n_wavelength = file_n_wavelength;
+
+    albedo_data.latitude.resize(n_lat);
+    albedo_data.longitude.resize(n_lon);
+    albedo_data.wavelength.resize(file_n_wavelength);
+
+    albedo_data.albedo.resize(
+        n_lat * n_lon,
+        file_n_wavelength
+    );
+
+    // NetCDF requires size_t and ptrdiff_t for strided reads.
+    // These types are confined to the NetCDF API boundary.
+    size_t axis_start[1] = {0};
+
+    size_t latitude_count[1] = {(size_t)n_lat};
+    size_t longitude_count[1] = {(size_t)n_lon};
+
+    ptrdiff_t spatial_axis_stride[1] = {
+        (ptrdiff_t)spatial_stride
+    };
+
+    // Read the stored latitude and longitude coordinates using the same stride
+    // that will be used for the albedo data.
+    check_nc(
+        nc_get_vars_double(
+            file_id,
+            latitude_var_id,
+            axis_start,
+            latitude_count,
+            spatial_axis_stride,
+            albedo_data.latitude.data()
+        )
+    );
+
+    check_nc(
+        nc_get_vars_double(
+            file_id,
+            longitude_var_id,
+            axis_start,
+            longitude_count,
+            spatial_axis_stride,
+            albedo_data.longitude.data()
+        )
+    );
+
+    // Keep the complete wavelength axis.
+    check_nc(
+        nc_get_var_double(
+            file_id,
+            wavelength_var_id,
+            albedo_data.wavelength.data()
+        )
+    );
+
+    // Read the spatially subsampled albedo cube in one operation.
+    // NetCDF stores [lat][lon][wavelength] with wavelength varying fastest.
+    // The row-major Eigen matrix therefore receives the data directly as:
+    //
+    //     row = lat_index * n_lon + lon_index
+    //     column = wavelength_index
+    size_t albedo_start[3] = {0, 0, 0};
+
+    size_t albedo_count[3] = {
+        (size_t)n_lat,
+        (size_t)n_lon,
+        (size_t)file_n_wavelength
+    };
+
+    ptrdiff_t albedo_stride[3] = {
+        (ptrdiff_t)spatial_stride,
+        (ptrdiff_t)spatial_stride,
+        1
+    };
+
+    check_nc(
+        nc_get_vars_double(
+            file_id,
+            albedo_var_id,
+            albedo_start,
+            albedo_count,
+            albedo_stride,
+            albedo_data.albedo.data()
+        )
+    );
+
+    check_nc(nc_close(file_id));
+
+    // Replace invalid HAMSTER values with NaN once during loading.
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    unsigned int n_values = (unsigned int)albedo_data.albedo.size();
+
+    for (unsigned int i = 0; i < n_values; i++)
+    {
+        if (
+            albedo_data.albedo.data()[i] < valid_min ||
+            albedo_data.albedo.data()[i] > valid_max
+        )
+        {
+            albedo_data.albedo.data()[i] = nan;
+        }
+    }
 
     std::cout
         << "Loaded HAMSTER DOY "
@@ -244,7 +395,9 @@ AlbedoData read_albedo_data()
         << albedo_data.n_lat
         << " latitude pixels x "
         << albedo_data.n_lon
-        << " longitude pixels."
+        << " longitude pixels x "
+        << albedo_data.n_wavelength
+        << " wavelengths."
         << std::endl;
 
     return albedo_data;
@@ -252,144 +405,44 @@ AlbedoData read_albedo_data()
 
 
 /**
- * @brief Get the spectral albedo at a requested latitude and longitude.
+ * @brief Get the spectral albedo at the nearest stored latitude/longitude.
  *
- * The four surrounding HAMSTER pixels are read from disk and bilinearly
- * interpolated. Longitude wraps across the -180/180 degree boundary.
- * Latitude is clamped to the first or last HAMSTER pixel at the poles.
+ * This function performs no interpolation and no NetCDF file access.
  *
- * @param albedo_data Loaded HAMSTER data returned by read_albedo_data().
+ * @param albedo_data Loaded HAMSTER data.
  * @param latitude_deg Latitude in degrees, in the range [-90, 90].
- * @param longitude_deg Longitude in degrees. Values outside [-180, 180]
- * are wrapped automatically.
+ * @param longitude_deg Longitude in degrees.
  *
- * @return Interpolated albedo spectrum.
+ * @return Spectral albedo at the nearest stored geographic pixel.
+ *
+ * @throws std::invalid_argument if latitude_deg is outside [-90, 90].
  */
-Eigen::VectorXf get_albedo_spectrum(
+Eigen::VectorXd get_albedo_spectrum(
     const AlbedoData& albedo_data,
-    float latitude_deg,
-    float longitude_deg
+    double latitude_deg,
+    double longitude_deg
 )
 {
-    if (latitude_deg < -90.0f || latitude_deg > 90.0f)
+    if (latitude_deg < -90.0 || latitude_deg > 90.0)
     {
         throw std::invalid_argument(
             "Latitude must be between -90 and 90 degrees."
         );
     }
 
-    // Wrap longitude to [-180, 180).
-    longitude_deg = std::fmod(longitude_deg + 180.0f, 360.0f);
+    unsigned int latitude_index = find_closest_index(
+        albedo_data.latitude,
+        latitude_deg
+    );
 
-    if (longitude_deg < 0.0f)
-    {
-        longitude_deg += 360.0f;
-    }
+    unsigned int longitude_index = find_closest_longitude_index(
+        albedo_data.longitude,
+        longitude_deg
+    );
 
-    longitude_deg -= 180.0f;
+    unsigned int row =
+        latitude_index * albedo_data.n_lon +
+        longitude_index;
 
-
-    // Find the two latitude pixels surrounding the requested latitude.
-    int lat_0;
-    int lat_1;
-    float lat_fraction;
-
-    if (latitude_deg >= albedo_data.latitude(0))
-    {
-        lat_0 = 0;
-        lat_1 = 0;
-        lat_fraction = 0.0f;
-    }
-    else if (latitude_deg <= albedo_data.latitude(albedo_data.n_lat - 1))
-    {
-        lat_0 = albedo_data.n_lat - 1;
-        lat_1 = lat_0;
-        lat_fraction = 0.0f;
-    }
-    else
-    {
-        lat_0 = find_interval(albedo_data.latitude, latitude_deg);
-        lat_1 = lat_0 + 1;
-
-        lat_fraction =
-            (latitude_deg - albedo_data.latitude(lat_0)) /
-            (albedo_data.latitude(lat_1) - albedo_data.latitude(lat_0));
-    }
-
-
-    // Find the two longitude pixels surrounding the requested longitude.
-    int lon_0;
-    int lon_1;
-    float lon_fraction;
-
-    if (
-        longitude_deg < albedo_data.longitude(0) ||
-        longitude_deg > albedo_data.longitude(albedo_data.n_lon - 1)
-    )
-    {
-        // The requested position lies between the last and first longitude
-        // pixels across the -180/180 degree boundary.
-        lon_0 = albedo_data.n_lon - 1;
-        lon_1 = 0;
-
-        float lon = longitude_deg;
-
-        if (lon < albedo_data.longitude(0))
-        {
-            lon += 360.0f;
-        }
-
-        lon_fraction =
-            (lon - albedo_data.longitude(lon_0)) /
-            (albedo_data.longitude(lon_1) + 360.0f -
-             albedo_data.longitude(lon_0));
-    }
-    else
-    {
-        lon_0 = find_interval(albedo_data.longitude, longitude_deg);
-        lon_1 = lon_0 + 1;
-
-        lon_fraction =
-            (longitude_deg - albedo_data.longitude(lon_0)) /
-            (albedo_data.longitude(lon_1) - albedo_data.longitude(lon_0));
-    }
-
-
-    // Read only the four surrounding spectra.
-    Eigen::VectorXf albedo_00 =
-        read_pixel_spectrum(albedo_data, lat_0, lon_0);
-
-    Eigen::VectorXf albedo_01 =
-        read_pixel_spectrum(albedo_data, lat_0, lon_1);
-
-    Eigen::VectorXf albedo_10 =
-        read_pixel_spectrum(albedo_data, lat_1, lon_0);
-
-    Eigen::VectorXf albedo_11 =
-        read_pixel_spectrum(albedo_data, lat_1, lon_1);
-
-
-    // Bilinear interpolation. NaN values naturally propagate through
-    // the Eigen arithmetic if any required HAMSTER pixel is invalid.
-    Eigen::VectorXf albedo_lat_0 =
-        albedo_00 + lon_fraction * (albedo_01 - albedo_00);
-
-    Eigen::VectorXf albedo_lat_1 =
-        albedo_10 + lon_fraction * (albedo_11 - albedo_10);
-
-    return
-        albedo_lat_0 +
-        lat_fraction * (albedo_lat_1 - albedo_lat_0);
-}
-
-
-/**
- * @brief Close the HAMSTER NetCDF file.
- *
- * @param albedo_data HAMSTER data structure containing the open file ID.
- */
-void close_albedo_data(AlbedoData& albedo_data)
-{
-    check_nc(nc_close(albedo_data.file_id));
-    albedo_data.file_id = -1;
+    return albedo_data.albedo.row(row).transpose();
 }

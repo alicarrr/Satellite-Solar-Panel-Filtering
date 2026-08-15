@@ -42,10 +42,10 @@ int main()
     // Call albedo data reading function to test it
     AlbedoData albedo_data = read_albedo_data();
 
-    float latitude_deg = 23.0f; // Example latitude
-    float longitude_deg = 30.0f; // Example longitude
+    double latitude_deg = 23.0f; // Example latitude
+    double longitude_deg = 30.0f; // Example longitude
 
-    Eigen::VectorXf albedo_spectrum = get_albedo_spectrum(albedo_data, latitude_deg, longitude_deg);
+    Eigen::VectorXd albedo_spectrum = get_albedo_spectrum(albedo_data, latitude_deg, longitude_deg);
 
     // std::cout << "Albedo Spectrum:" << std::endl;
     // for (int i = 0; i < albedo_spectrum.size(); ++i) {
@@ -74,7 +74,7 @@ int main()
         longitude_deg
     );
 
-    for (int i = 0; i < albedo_data.n_wavelength; i++)
+    for (unsigned int i = 0; i < albedo_data.n_wavelength; i++)
     {
         fprintf(
             gnuplot,
@@ -88,7 +88,7 @@ int main()
 
     pclose(gnuplot);
 
-    close_albedo_data(albedo_data);
+    // close_albedo_data(albedo_data);
 
     // leave at bottom of main - shows no errors
     return 0;
