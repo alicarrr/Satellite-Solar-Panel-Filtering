@@ -7,7 +7,7 @@ cmake -S . -B build \
   -Wno-deprecated \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.12
 
-cmake --build build 2>&1 | tee build.log
+cmake --build build -j1 2>&1 | tee build.log
 
 # Run our C executable
 
