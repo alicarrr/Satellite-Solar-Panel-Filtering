@@ -1,6 +1,6 @@
 #!/bin/bash
 
-doy=1
+doy=265
 hamster_dir="./C/lib/HAMSTER"
 
 mkdir -p "$hamster_dir"

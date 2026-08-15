@@ -7,6 +7,8 @@
 #include <chrono>
 #include <thread>
 #include "spectra.hpp"
+#include "albedo.hpp"
+#include <iostream>
 
 
 /*
@@ -36,10 +38,57 @@ int main()
         lcm.publish("TEST", &test);
         std::cout<<"Published"<<std::endl;
     }
-    
+
+    // Call albedo data reading function to test it
+    AlbedoData albedo_data = read_albedo_data();
+
+    float latitude_deg = 23.0f; // Example latitude
+    float longitude_deg = 30.0f; // Example longitude
+
+    Eigen::VectorXf albedo_spectrum = get_albedo_spectrum(albedo_data, latitude_deg, longitude_deg);
+
+    // std::cout << "Albedo Spectrum:" << std::endl;
+    // for (int i = 0; i < albedo_spectrum.size(); ++i) {
+    //     std::cout << albedo_spectrum(i) << " ";
+    // }
+    // std::cout << std::endl;
 
 
-    
+    FILE* gnuplot = popen("gnuplot -persistent", "w");
+
+    if (gnuplot == nullptr)
+    {
+        std::cerr << "Could not open gnuplot." << std::endl;
+        return 1;
+    }
+
+    fprintf(gnuplot, "set title 'HAMSTER spectral albedo'\n");
+    fprintf(gnuplot, "set xlabel 'Wavelength [nm]'\n");
+    fprintf(gnuplot, "set ylabel 'Black-sky albedo'\n");
+    fprintf(gnuplot, "set grid\n");
+
+    fprintf(
+        gnuplot,
+        "plot '-' with lines title 'Lat %.2f, Lon %.2f'\n",
+        latitude_deg,
+        longitude_deg
+    );
+
+    for (int i = 0; i < albedo_data.n_wavelength; i++)
+    {
+        fprintf(
+            gnuplot,
+            "%f %f\n",
+            albedo_data.wavelength(i),
+            albedo_spectrum(i)
+        );
+    }
+
+    fprintf(gnuplot, "e\n");
+
+    pclose(gnuplot);
+
+    close_albedo_data(albedo_data);
 
     // leave at bottom of main - shows no errors
     return 0;
