@@ -19,9 +19,7 @@ const unsigned int hamster_max_albedo_memory_mb = 512;
  * @brief In-memory HAMSTER spectral albedo data.
  *
  * The source NetCDF file is read once by read_albedo_data() and then closed.
- * The complete wavelength axis is retained, while latitude and longitude are
- * spatially subsampled as required to keep the albedo matrix within the
- * configured memory limit.
+ * The complete wavelength axis is retained, while latitude and longitude are spatially subsampled as required to keep the albedo matrix within the configured memory limit.
  *
  * The albedo matrix is arranged as:
  *
@@ -51,18 +49,14 @@ typedef struct
 /**
  * @brief Load the selected HAMSTER file into memory.
  *
- * The latitude, longitude, wavelength, validity limits, and albedo data are
- * read directly from the NetCDF file. Spatial data are automatically
- * subsampled if required to keep memory use below
- * hamster_max_albedo_memory_mb.
+ * The latitude, longitude, wavelength, validity limits, and albedo data are read directly from the NetCDF file. Spatial data are automatically subsampled if required to keep memory use below hamster_max_albedo_memory_mb.
  *
  * The NetCDF file is closed before this function returns.
  *
  * @return Loaded HAMSTER albedo data.
  *
  * @throws std::invalid_argument if hamster_day_of_year is outside [1, 365].
- * @throws std::runtime_error if the NetCDF file cannot be read or does not
- * contain the expected HAMSTER variables.
+ * @throws std::runtime_error if the NetCDF file cannot be read or does not contain the expected HAMSTER variables.
  */
 AlbedoData read_albedo_data();
 
@@ -70,12 +64,9 @@ AlbedoData read_albedo_data();
 /**
  * @brief Get the HAMSTER albedo spectrum at the nearest stored pixel.
  *
- * No interpolation and no file access are performed. The closest stored
- * latitude and longitude values are found independently and the corresponding
- * spectral albedo vector is returned.
+ * No interpolation and no file access are performed. The closest stored latitude and longitude values are found independently and the corresponding spectral albedo vector is returned.
  *
- * Longitude is treated as periodic, so values around -180 and +180 degrees
- * are handled correctly.
+ * Longitude is treated as periodic, so values around -180 and +180 degrees are handled correctly.
  *
  * @param albedo_data Loaded HAMSTER data returned by read_albedo_data().
  * @param latitude_deg Latitude in degrees, in the range [-90, 90].
