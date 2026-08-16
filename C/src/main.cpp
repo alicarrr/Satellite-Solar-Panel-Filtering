@@ -2,6 +2,7 @@
 #include "stuff.hpp"
 #include "spectra.hpp"
 #include "albedo.hpp"
+#include "satParams.hpp"
 
 #include <lcm/lcm-cpp.hpp>
 #include <vector>
@@ -98,67 +99,6 @@ int main()
     double wavelength_step_size = 10.0;
 
     Spectrum_t binned_spectrum = binSpectrum(spectrum, min_wavelength, max_wavelength, wavelength_step_size);
-
-    
-    
-    // check that the binned spectrum has the same integrated value as the original spectrum
-    double unbinned_power = 0.0;
-
-    for (Eigen::Index i = 1; i < spectrum.values.size() - 1; ++i)
-    {
-        if (spectrum.wavelengths(i) < min_wavelength ||
-            spectrum.wavelengths(i) > max_wavelength)
-        {
-            continue;
-        }
-
-        const double wavelength_width =
-            0.5 * (spectrum.wavelengths(i + 1) - spectrum.wavelengths(i - 1));
-
-        unbinned_power += spectrum.values(i) * wavelength_width;
-    }
-
-    const double binned_power =
-        binned_spectrum.values.sum() * wavelength_step_size;
-
-    std::cout << "Unbinned power: " << unbinned_power << std::endl;
-    std::cout << "Binned power:   " << binned_power << std::endl;
-
-    // Make a plot of the unbinned spectrum, and the binned spectrum overlaid to compare
-    FILE* gnuplot = popen("gnuplot -persistent", "w");
-
-    if (gnuplot == nullptr)
-    {
-        std::cerr << "Could not open gnuplot." << std::endl;
-        return 1;
-    }
-    // Set x axis to be from min_wavelength to max_wavelength
-    fprintf(gnuplot, "set xrange [%f:%f]\n", min_wavelength, max_wavelength);
-
-    fprintf(gnuplot, "set title 'Spectrum Binning Comparison'\n");
-    fprintf(gnuplot, "set xlabel 'Wavelength [nm]'\n");
-    fprintf(gnuplot, "set ylabel 'Value'\n");
-    fprintf(gnuplot, "set grid\n");
-
-    fprintf(gnuplot, "plot '-' with dots title 'Unbinned', '-' with lines title 'Binned'\n");
-
-    // Plot the unbinned spectrum
-    for (unsigned int i = 0; i < spectrum.wavelengths.size(); i++)
-    {
-        fprintf(gnuplot, "%f %f\n", spectrum.wavelengths(i), spectrum.values(i));
-    }
-    fprintf(gnuplot, "e\n");
-
-    // Plot the binned spectrum
-    for (unsigned int i = 0; i < binned_spectrum.wavelengths.size(); i++)
-    {
-        fprintf(gnuplot, "%f %f\n", binned_spectrum.wavelengths(i), binned_spectrum.values(i));
-    }
-    fprintf(gnuplot, "e\n");
-
-    pclose(gnuplot);
-
-    // close_albedo_data(albedo_data);
 
     // leave at bottom of main - shows no errors
     return 0;
