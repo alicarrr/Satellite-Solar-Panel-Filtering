@@ -1,6 +1,7 @@
 #pragma once
 
 #include "constants.hpp"
+#include "satParams.hpp"
 #include <eigen3/Eigen/Dense>
 #include <string>
 
@@ -14,6 +15,27 @@ typedef struct {
     Eigen::VectorXd wavelengths;
     Eigen::VectorXd values;
 } Spectrum_t;
+
+/**
+ * @brief Struct to hold the final results of the simulation for each panel at each time step.
+ */
+typedef struct {
+    // store time step and which panel this is for
+    double time; // Time step in seconds
+    int panel_index; // Index of the panel in the cubesat panels array
+    Spectrum_t incident_sun_spectrum; // Incident sun spectrum on the panel at each time step
+    Spectrum_t Earth_IR_spectrum; // Earth IR spectrum on the panel at each time step
+    Spectrum_t Earth_Albedo_spectrum; // Earth Albedo spectrum on the panel at each time step
+} PanelResults_t;
+
+/**
+ * @brief Struct to hold the final results at each time step for the entire satellite.
+ */
+typedef struct {
+    double time; // Time step in seconds
+    CubesatState_t cubesat_state; // Cubesat state at each time step
+    std::vector<PanelResults_t> panel_results; // Vector of incident fluxes on each panel for each time step
+} SatelliteResults_t;
 
 
 /**
@@ -39,3 +61,50 @@ Spectrum_t readSpectrumDat(const std::string& file_name);
  * @return Binned spectrum values and wavelength array
  */
 Spectrum_t binSpectrum(const Spectrum_t& input, double min_wavelength, double max_wavelength, double wavelength_step_size);
+
+/**
+ * @brief rotate a vector from the body frame to the global frame using the rotation matrix.
+ * 
+ * @param vector_B Vector in body frame.
+ * @param R_G_from_B Rotation matrix from body frame to global frame.
+ * 
+ * @return Vector in global frame.
+ */
+Eigen::Vector3d rotateVectorFromBToG(Eigen::Vector3d vector_B, Eigen::Matrix3d R_G_from_B);
+
+
+/**
+ * @brief Convert panel position (in body frame relative to GC) to global frame using the rotation matrix.
+ * 
+ * @param r_panel_B             Panel position in body frame relative to the satellite center of mass.
+ * @param R_G_from_B            Rotation matrix from body frame to global frame.
+ * @param S_sat_pos_GC_G        Satellite geometric center absolute position in global frame.
+ * 
+ * @return Panel position in global frame.
+ */
+Eigen::Vector3d panelPosInG(Eigen::Vector3d r_panel_B, Eigen::Matrix3d R_G_from_B, Eigen::Vector3d S_sat_pos_GC_G);
+
+
+/**
+ * @brief Calculate incident sun spectrum at a surface (in space) given the sun spectrum, and the relative Sun and satellite positions in the global frame. The panel normal vector in the global frame is used.
+ * 
+ * @param input Input sun spectrum and corresponding wavelengths.
+ * @param sun_pos_G Distance from the sun in AU.
+ * @param panel_pos_G Panel position in global frame.
+ * @param panel_normal_vect_B Satellite panel normal vector in body frame.
+ * 
+ * @return Scaled spectrum values and wavelength array as well as angle between the sun ray and the satellite panel normal vector.
+ */
+Spectrum_t calculateIncidentSunSpectrumOnPanel(const Spectrum_t& input, Eigen::Vector3d sun_pos_G, Eigen::Vector3d panel_pos_G, Eigen::Vector3d panel_normal_vect_B);
+
+
+/**
+ * @brief Calculate panel normal vector direction in the global frame given the satellite position and rotation matrix.
+ * 
+ * @param S_sat_pos_GC_G Satellite position in global frame.
+ * @param R_G_from_B Rotation matrix from body frame to global frame.
+ * @param panel_normal_vect_B Satellite panel normal vector in body frame.
+ * 
+ * @return Panel normal vector in global frame.
+ */
+Eigen::Vector3d PanelNormVectInG(Eigen::Vector3d S_sat_pos_GC_G, Eigen::Matrix3d R_G_from_B, Eigen::Vector3d panel_normal_vect_B);
