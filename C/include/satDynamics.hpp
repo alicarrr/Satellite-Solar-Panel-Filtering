@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eigen3/Eigen/Dense>
+#include "lib/spice/cspice/include/SpiceUsr.h"
 
 // Will use rotation matrices for cubesat movement at an orbital position
 
@@ -12,3 +13,5 @@ typedef struct {
     Eigen::Vector3d s_GC_G; // GC position in global frame
     Eigen::Matrix3d R_G_from_B; // Rotation matrix from body frame to global frame
 } satPosState_t;
+
+
