@@ -100,10 +100,13 @@ inline const Panel_t panel_nz = {
 };
 
 
+static const Eigen::Matrix3d J_sat_in_B = Eigen::Matrix3d({{1.058e7, -44930.65, 1.471e5}, {-44930.65, 1.035e7, -2.626e5}, {1.471e5, -2.626e5, 4.722e6}}) * 1e-9; // g mm^2 -> kg m^2
+
+
 inline const Cubesat_t cubesat = {
     .position_COM_rel_GC = Eigen::Vector3d(0.0, 0.0, 0.0),
-    .inertia_tensor = Eigen::Matrix3d::Identity(),
-    .mass = 1.0, // in kg
+    .inertia_tensor = J_sat_in_B,
+    .mass = 2.0, // in kg
     .panels = {
         solar_panel_px,
         solar_panel_nx,
