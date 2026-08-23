@@ -54,7 +54,9 @@ typedef struct {
 
 // Cubesat state struct
 typedef struct {
+    double time; // Time step in seconds
     Eigen::Vector3d position_COM_ECI; // Position of the center of mass in ECI frame
+    Eigen::Vector3d position_GC_ECI; // Position of the center of mass in global frame
     Eigen::Matrix3d rotation_matrix_ECI_from_B; // Rotation matrix from body frame to ECI frame
     Eigen::Vector3d velocity_COM_ECI; // Velocity of the center of mass in ECI frame
     Eigen::Vector3d angular_velocity_ECI; // Angular velocity in ECI frame
