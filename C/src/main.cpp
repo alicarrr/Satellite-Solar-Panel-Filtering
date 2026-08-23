@@ -11,6 +11,57 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include <string>
+
+
+#include "simParams.hpp"
+
+
+
+SimParams_t simParams;
+
+const double dt = 1.0; // Sim Time Step
+const std::string date_0 = "2025-01-09T01:01:10.050000";
+
+
+
+
+void setSimParams()
+{
+    try {
+        std::string lskPath = "lib/spice/kernels/naif0012.tls";
+        std::string spkPath = "lib/spice/kernels/de442s.bsp";
+        std::string earthHighPrecPath = "lib/spice/kernels/earth_000101_260601_260305.bpc";
+
+        std::string earthGravPath = "lib/geographiclib/share/GeographicLib/gravity";
+        std::string earthMagPath = "lib/geographiclib/share/GeographicLib/magnetic";
+
+        simParams.ephemeris = new SolarSystemEphemeris(lskPath,
+                                                       spkPath,
+                                                       date_0);
+
+        simParams.ephemeris->loadEarthFieldModels(earthHighPrecPath,
+                                                  "egm2008", earthGravPath, 10, 10,//2106 max
+                                                  "wmm2025", earthMagPath, 11, 11 // 11 max
+                                                ); 
+    }
+    catch (const std::exception& e) {
+        std::cerr << e.what() << "\n";
+    }
+
+    simParams.time_step = dt;
+    simParams.initialUtc = date_0;
+    simParams.et_0 = simParams.ephemeris->etAtSeconds(0);
+    simParams.tYear_0 = decimalYearFromEtUtc(date_0, 0.0);
+}
+
+
+void clearMem()
+{
+    delete simParams.ephemeris;
+}
+
+
 
 
 /*
