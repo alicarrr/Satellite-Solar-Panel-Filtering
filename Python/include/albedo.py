@@ -106,5 +106,5 @@ if __name__ == "__main__":
 
     plt.grid()
     plt.tight_layout()
-    plt.show()
     plt.savefig("albedo_spectrum.png", dpi=300)
+    plt.show()
