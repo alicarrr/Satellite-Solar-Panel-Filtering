@@ -23,8 +23,6 @@ Eigen::Vector3d llh_to_ecef(const Eigen::Vector3d& llh);
 
 Eigen::Vector3d eci_to_ecef(const Eigen::Vector3d& r_eci, std::string date_utc);
 
-Eigen::Vector3d eci_to_ecef(const Eigen::Vector3d& r_eci, std::string date_utc);
-
 std::tuple<Eigen::Vector3d, Eigen::Vector3d> eci_to_ecef(const Eigen::Vector3d& r_eci, const Eigen::Vector3d& v_eci, std::string date_utc);
 
 Eigen::Vector3d ecef_to_eci(const Eigen::Vector3d& r_ecef, std::string date_utc);

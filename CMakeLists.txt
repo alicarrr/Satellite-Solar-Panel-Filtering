@@ -20,6 +20,7 @@ include_directories(
     ${EIGEN3_INCLUDE_DIR}
     ${CODE_DIR}
     ${CODE_DIR}/include
+    ${CODE_DIR}/include/transforms
     ${CODE_DIR}/lib
     ${CMAKE_SOURCE_DIR}/LCM
 )
@@ -82,25 +83,25 @@ FetchContent_MakeAvailable(geographiclib)
 
 
 # Now we can define our own Libraries by telling the compiler about all the C/C++ files that contain functions that we would like to use.
-add_library(stuff ${CODE_DIR}/src/stuff.cpp)
-add_library(coordTransforms ${CODE_DIR}/src/transforms/coordTransforms.cpp)
 add_library(spectra ${CODE_DIR}/src/spectra.cpp)
 add_library(albedo ${CODE_DIR}/src/albedo.cpp)
+
+add_library(vectorMaths ${CODE_DIR}/src/vectorMaths.cpp)
+add_library(ephem ${CODE_DIR}/src/ephem.cpp)
+add_library(transforms ${CODE_DIR}/src/transforms/coordTransforms.cpp ${CODE_DIR}/src/transforms/transforms.cpp ${CODE_DIR}/src/transforms/time_conv.cpp)
+add_library(integrators ${CODE_DIR}/src/integrators/LSODA.cpp ${CODE_DIR}/src/integrators/RK78.cpp)
+add_library(satDynamics ${CODE_DIR}/src/satDynamics.cpp)
 
 # We can also add more include directories to each library specifically rather than globally, for instance
 # target_include_directories(stuff
 #     ${CODE_DIR}/lib
 # )
-
-# Now we link the libraries to the executables, we tell the compiler which libraries depend on other libraries. For instance if our stuff library uses our coordTransforms library then we need to add the dependency so that the compiler always make sure that coordTransforms have been compiled first.
-target_link_libraries(coordTransforms PUBLIC
-    m # The cmath library shortcut name
+target_include_directories(integrators PUBLIC
+    ${CODE_DIR}/include/integrators
+    ${CODE_DIR}/include
+    ${CODE_DIR}/lib
 )
-# We should define links between libraries as public so that the executable also knows about the dependency
-target_link_libraries(stuff PUBLIC 
-    coordTransforms
-    GeographicLib::GeographicLib
-) # We have now defined that stuff needs to be linked to coordTransforms and GeographicLib::GeographicLib (needs their code to work)
+
 
 target_link_libraries(spectra PUBLIC 
     m
@@ -111,17 +112,46 @@ target_link_libraries(albedo PUBLIC
     netCDF::netcdf
 )
 
+target_link_libraries(vectorMaths PUBLIC
+    m
+)
+
 # If instead we want to add a dependency to an external library that is pre-compiled we add a dependency
-add_dependencies(stuff cspice_build) # This add dependency guarantees that cspice is built fully before it attempts to build stuff
+# This add dependency guarantees that cspice is built fully before it attempts to build transforms
+add_dependencies(transforms cspice_build) 
+target_link_libraries(transforms PUBLIC
+    m
+    vectorMaths
+)
+
+add_dependencies(ephem cspice_build)
+target_link_libraries(ephem PUBLIC
+    m
+    GeographicLib::GeographicLib
+    ${CSPICE_LIB}
+    vectorMaths
+    transforms
+)
+
+target_link_libraries(satDynamics PUBLIC
+    ephem
+    vectorMaths
+    integrators
+    transforms
+)
+
+
+
 
 # We can now define the executables that we need to compile, an executable can contain multiple C/C++ files separated by a space.
 add_executable(simulation ${CODE_DIR}/src/main.cpp)
 
 # Now we link the executable to all our libraries, it can be private since the executable doesn't need to tell other files about the packages it depends on
 target_link_libraries(simulation PRIVATE
-    stuff
-    coordTransforms
     lcm
     spectra
     albedo
+    satDynamics
+    ephem
+    transforms
 )

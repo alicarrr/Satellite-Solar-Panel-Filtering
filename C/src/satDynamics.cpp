@@ -12,8 +12,8 @@ StateVector SimState_to_StateVector(SimState_t simState)
     StateVector state;
 
     state.segment(0, 3) = simState.s_COM_in_G;
-    state.segment(3, 3) = simState.x_hat_B_in_G;
-    state.segment(6, 3) = simState.y_hat_B_in_G;
+    state.segment(3, 3) = simState.R_G_from_B.col(0);
+    state.segment(6, 3) = simState.R_G_from_B.col(1);
     state.segment(9, 3) = simState.v_COM_in_G;
     state.segment(12, 3) = simState.omega_B_in_G;
 
@@ -47,8 +47,8 @@ RigidBodyStateVector SimState_to_RigidBodyStateVector(SimState_t simState)
 {
     RigidBodyStateVector state;
 
-    state.segment(0, 3) = simState.x_hat_B_in_G;
-    state.segment(3, 3) = simState.y_hat_B_in_G;
+    state.segment(0, 3) = simState.R_G_from_B.col(0);
+    state.segment(3, 3) = simState.R_G_from_B.col(1);
     state.segment(6, 3) = simState.omega_B_in_G;
 
     return state;
@@ -71,9 +71,13 @@ SimState_t StateVector_to_SimState(StateVector simState)
 {
     SimState_t state;
 
+    Eigen::Vector3d x_hat_B_in_G = simState.segment(3, 3);
+    Eigen::Vector3d y_hat_B_in_G = simState.segment(6, 3);
+
     state.s_COM_in_G = simState.segment(0, 3);
-    state.x_hat_B_in_G = simState.segment(3, 3);
-    state.y_hat_B_in_G = simState.segment(6, 3);
+    state.R_G_from_B.col(0) = x_hat_B_in_G;
+    state.R_G_from_B.col(1) = y_hat_B_in_G;
+    state.R_G_from_B.col(0) = x_hat_B_in_G.cross(y_hat_B_in_G);
     state.v_COM_in_G = simState.segment(9, 3);
     state.omega_B_in_G = simState.segment(12, 3);
 
@@ -109,8 +113,9 @@ SimState_t combineSimulationStates(OrbitSimState_t orbitState, RigidBodySimState
     SimState_t state;
 
     state.s_COM_in_G = orbitState.s_COM_in_G;
-    state.x_hat_B_in_G = rigidBodyState.x_hat_B_in_G;
-    state.y_hat_B_in_G = rigidBodyState.y_hat_B_in_G;
+    state.R_G_from_B.col(0) = rigidBodyState.x_hat_B_in_G;
+    state.R_G_from_B.col(1) = rigidBodyState.y_hat_B_in_G;
+    state.R_G_from_B.col(2) = rigidBodyState.x_hat_B_in_G.cross(rigidBodyState.y_hat_B_in_G);
     state.v_COM_in_G = orbitState.v_COM_in_G;
     state.omega_B_in_G = rigidBodyState.omega_B_in_G;
 
@@ -167,16 +172,18 @@ RigidBodyStateVector rotationDynamics(RigidBodyStateVector state, Eigen::Vector3
     R_G_from_B.col(1) = simState.y_hat_B_in_G;
     R_G_from_B.col(2) = simState.x_hat_B_in_G.cross(simState.y_hat_B_in_G);
 
-    Eigen::Matrix3d J_B_in_G = R_G_from_B * cubesat.inertia_tensor * R_G_from_B.transpose();
+    Eigen::Matrix3d J_B_in_B = cubesat.inertia_tensor;
 
-    Eigen::Vector3d H_B_in_G = J_B_in_G * simState.omega_B_in_G;
+    Eigen::Vector3d omega_B_in_B = R_G_from_B.transpose() * simState.omega_B_in_G;
+
+    Eigen::Vector3d H_B_in_B = J_B_in_B * omega_B_in_B;
 
     double k_p = 1e-6; // Constant to pull the Rotation matrix back to a proper rotation matrix from numerical error build up
 
     simStateDerivative.x_hat_B_in_G = simState.omega_B_in_G.cross(simState.x_hat_B_in_G) + k_p * (1 - simState.x_hat_B_in_G.norm()) * simState.x_hat_B_in_G;
     simStateDerivative.y_hat_B_in_G = simState.omega_B_in_G.cross(simState.y_hat_B_in_G) + k_p * (1 - simState.y_hat_B_in_G.norm()) * simState.y_hat_B_in_G;
 
-    simStateDerivative.omega_B_in_G = J_B_in_G.inverse() * (inputTorque_in_G - simState.omega_B_in_G.cross(H_B_in_G));
+    simStateDerivative.omega_B_in_G = R_G_from_B * J_B_in_B.inverse() * ((R_G_from_B.transpose() * inputTorque_in_G) - omega_B_in_B.cross(H_B_in_B));
 
     RigidBodyStateVector stateDerivative = SimState_to_RigidBodyStateVector(simStateDerivative);
 
@@ -213,15 +220,15 @@ void getRotationSimDerivatives(double t, double* x, double* x_dot, void* params)
     Eigen::Vector3d inputTorque_in_G = rotationSimParams->inputTorque_in_G;
     SimParams_t simParams = rotationSimParams->simParams;
 
-    OrbitStateVector state;
-    for (int i = 0; i < n_orbit_state; i++)
+    RigidBodyStateVector state;
+    for (int i = 0; i < n_rotate_state; i++)
     {
         state(i) = x[i];
     }
 
-    OrbitStateVector stateDerivative = rotationDynamics(state, inputTorque_in_G, t, simParams);
+    RigidBodyStateVector stateDerivative = rotationDynamics(state, inputTorque_in_G, t, simParams);
 
-    for (int i = 0; i < n_orbit_state; i++)
+    for (int i = 0; i < n_rotate_state; i++)
     {
         x_dot[i] = stateDerivative(i);
     }
@@ -273,11 +280,7 @@ SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, Contr
     // Do Rotation Step with LSODA stiff integrator
     int is_valid = 1;
 
-    inline constexpr double rtol_lsoda = 1e-5;
-    inline constexpr double atol_lsoda = 1e-6;
-
-    inline const OrbitStateVector atol_rk_vec = OrbitStateVector::Constant(1e0);
-    inline constexpr double rtol_rk = 1e-1;
+    
 
     solver->lsoda_update(getRotationSimDerivatives, n_rotate_state, x_rotation, x_rotation_next, &t0, tf, &is_valid, &rotationSimParams, rtol_lsoda, atol_lsoda);
 
@@ -289,7 +292,7 @@ SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, Contr
         throw std::runtime_error("LSODA failed");
     }
 
-    RigidBodyStateVector rotationStateVectorNext = RigidBodyStateVector(x_rotation_next);
+    RigidBodyStateVector rotationStateVectorNext = RigidBodyStateVector(x_rotation_next.data());
 
 
 
@@ -336,4 +339,18 @@ SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, Contr
     SimState_t stateNext = combineSimulationStates(orbitStateNext, rotationStateNext);
 
     return stateNext;
+}
+
+
+CubesatState_t getSatState(SimState_t simState)
+{
+    CubesatState_t cubesatState;
+
+    cubesatState.position_COM_ECI = simState.s_COM_in_G;
+    cubesatState.position_GC_ECI = simState.s_COM_in_G - simState.R_G_from_B * cubesat.position_COM_rel_GC;
+    cubesatState.rotation_matrix_ECI_from_B = simState.R_G_from_B;
+    cubesatState.velocity_COM_ECI = simState.v_COM_in_G;
+    cubesatState.angular_velocity_ECI = simState.omega_B_in_G;
+
+    return cubesatState;
 }

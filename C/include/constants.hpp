@@ -8,10 +8,10 @@
 
 
 // Multiply degrees by this to convert to radians
-inline const double DEG2RAD = M_PI / 180.0f; 
+inline constexpr double DEG2RAD = M_PI / 180.0f; 
 
 // Multiply radians by this to convert to degrees
-inline const double RAD2DEG = 180.0f / M_PI;
+inline constexpr double RAD2DEG = 180.0f / M_PI;
 
 // If there is no comment after a variable then the comments above it will appear when you hover it.
 
@@ -25,7 +25,7 @@ inline constexpr double HOUR2MINUTE = 60;
 inline const Eigen::Vector3d x_hat = Eigen::Vector3d(1, 0, 0);
 
 // Number of frequencies with data for input and output spectra
-inline const int N_samples_spectra = 100;
+inline constexpr int N_samples_spectra = 100;
 
 
 

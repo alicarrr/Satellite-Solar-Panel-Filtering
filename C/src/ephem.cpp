@@ -16,6 +16,7 @@
 
 #include "time_conv.hpp"
 #include "transforms.hpp"
+#include "constants.hpp"
 #include <string>
 
 
@@ -345,4 +346,12 @@ EarthFrameCache makeEarthFrameCache(SolarSystemEphemeris& eph,
     c.simSeconds = simTimeSeconds;
 
     return c;
+}
+
+
+Eigen::Vector3d get_sun_location_eci(double t, SolarSystemEphemeris* ephem)
+{
+    Eigen::Vector3d s_sol = ephem->sunRelativeToEarthM(t);
+
+    return s_sol;
 }

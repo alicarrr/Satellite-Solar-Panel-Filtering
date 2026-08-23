@@ -5,6 +5,7 @@
 #include "ephem.hpp"
 #include "transforms.hpp"
 #include "simParams.hpp"
+#include "satParams.hpp"
 #include "LSODA.hpp"
 
 #include <tuple>
@@ -22,6 +23,13 @@ typedef Eigen::Vector<double, n_rotate_state> RigidBodyStateVector;
 typedef Eigen::Vector<double, n_input> InputVector;
 
 
+inline constexpr double rtol_lsoda = 1e-5;
+inline constexpr double atol_lsoda = 1e-6;
+
+inline const OrbitStateVector atol_rk_vec = OrbitStateVector::Constant(1e0);
+inline constexpr double rtol_rk = 1e-1;
+
+
 // Will use rotation matrices for cubesat movement at an orbital position
 
 // Can take a TLE or orbital elements and convert that to an initial position and velocity (Space 1/2 Code)
@@ -36,8 +44,7 @@ typedef struct {
 
 typedef struct {
     Eigen::Vector3d s_COM_in_G;
-    Eigen::Vector3d x_hat_B_in_G;
-    Eigen::Vector3d y_hat_B_in_G;
+    Eigen::Matrix3d R_G_from_B;
     Eigen::Vector3d v_COM_in_G;
     Eigen::Vector3d omega_B_in_G;
 
@@ -216,3 +223,13 @@ RigidBodyStateVector rotationDynamics(RigidBodyStateVector state, Eigen::Vector3
  * @throws RuntimeError if LSODA step fails
  */
 SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, ControlInput_t u, const SimParams_t& simParams);
+
+
+/**
+ * @brief Convert the simulation state to the CubesatState_t struct for use in the calculations at the next time step
+ * 
+ * @param simState The SimState_t struct containing position and velocity information
+ * 
+ * @return The corresponding CubesatState_t struct
+ */
+CubesatState_t getSatState(SimState_t simState);

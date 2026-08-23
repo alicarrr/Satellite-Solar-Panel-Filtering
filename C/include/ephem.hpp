@@ -100,3 +100,7 @@ private:
 EarthFrameCache makeEarthFrameCache(SolarSystemEphemeris& eph,
                                     double simTimeSeconds,
                                     double tYear_0);
+
+
+
+Eigen::Vector3d get_sun_location_eci(double t, SolarSystemEphemeris* ephem);

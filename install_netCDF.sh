@@ -1,0 +1,1 @@
+sudo apt install libnetcdf-dev
