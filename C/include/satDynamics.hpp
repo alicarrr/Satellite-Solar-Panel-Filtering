@@ -5,17 +5,21 @@
 #include "ephem.hpp"
 #include "transforms.hpp"
 #include "simParams.hpp"
+#include "LSODA.hpp"
 
 #include <tuple>
 
 inline constexpr int n_state = 15;
 inline constexpr int n_orbit_state = 6;
 inline constexpr int n_rotate_state = 9;
+inline constexpr int n_input = 6;
 
 typedef Eigen::Vector<double, n_state> StateVector;
 
 typedef Eigen::Vector<double, n_orbit_state> OrbitStateVector;
 typedef Eigen::Vector<double, n_rotate_state> RigidBodyStateVector;
+
+typedef Eigen::Vector<double, n_input> InputVector;
 
 
 // Will use rotation matrices for cubesat movement at an orbital position
@@ -51,6 +55,24 @@ typedef struct {
     Eigen::Vector3d omega_B_in_G;
 
 } RigidBodySimState_t;
+
+
+typedef struct {
+    Eigen::Vector3d inputForce_in_G;
+    Eigen::Vector3d inputTorque_in_G;
+} ControlInput_t;
+
+
+typedef struct {
+    Eigen::Vector3d inputForce_in_G;
+    SimParams_t simParams;
+} OrbitSimParams_t;
+
+
+typedef struct {
+    Eigen::Vector3d inputTorque_in_G;
+    SimParams_t simParams;
+} RotationSimParams_t;
 
 /**
  * @brief Convert SimState_t struct to a state vector for the simulation
@@ -138,6 +160,27 @@ SimState_t combineSimulationStates(OrbitSimState_t orbitState, RigidBodySimState
 
 
 /**
+ * @brief Convert an input vector to a ControlInput_t struct
+ * 
+ * @param u The control input vector
+ * 
+ * @return The control as a ControlInput_t struct
+ */
+ControlInput_t inputVector_to_ControlInput(InputVector u);
+
+
+/**
+ * @brief Convert a ControlInput_t struct to an InputVector
+ * 
+ * @param u The control unput as a ControlInput_t struct
+ * 
+ * @return The control input as a InputVector
+ */
+InputVector ControlInput_to_InputVector(ControlInput_t u);
+
+
+
+/**
  * @brief Calculate the derivative of the orbit simulation state
  * 
  * @param state The current simulation state to evaluate the derivative at
@@ -145,7 +188,7 @@ SimState_t combineSimulationStates(OrbitSimState_t orbitState, RigidBodySimState
  * 
  * @return The state derivative as a vector
  */
-OrbitStateVector orbitDynamics(OrbitStateVector state, const SimParams_t& simParams);
+OrbitStateVector orbitDynamics(OrbitStateVector state, Eigen::Vector3d inputForce_in_G, double t, const SimParams_t& simParams);
 
 /**
  * @brief Calculate the derivative of the rigid body simulation state
@@ -155,5 +198,21 @@ OrbitStateVector orbitDynamics(OrbitStateVector state, const SimParams_t& simPar
  * 
  * @return The state derivative as a vector
  */
-RigidBodyStateVector rotationDynamics(RigidBodyStateVector state, const SimParams_t& simParams);
+RigidBodyStateVector rotationDynamics(RigidBodyStateVector state, Eigen::Vector3d inputTorque_in_G, double t, const SimParams_t& simParams);
 
+
+/**
+ * @brief Complete one simulation step of both the rotation and orbital dynamics. The orbital dynamics are done with a variable time step RK78 integrator while the rotation dynamics are done with an LSODA integrator.
+ * 
+ * @param solver Pointer to the LSODA solver object.
+ * @param t The current time of the simulation
+ * @param dt The time step of the output state, the integrator may perform multiple intermediary steps but will return at t + dt
+ * @param state The state at the start of the step (i.e. at time t)
+ * @param u The control unput as a ControlInput_t struct
+ * @param simParams The simulation parameters containing information about the simulation date and ephemerides.
+ * 
+ * @return The simulation state struct at the next time step (t + dt)
+ * 
+ * @throws RuntimeError if LSODA step fails
+ */
+SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, ControlInput_t u, const SimParams_t& simParams);
