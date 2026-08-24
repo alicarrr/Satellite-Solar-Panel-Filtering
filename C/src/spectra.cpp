@@ -1,10 +1,16 @@
 #include "spectra.hpp"
+#include "constants.hpp"
 
 #include <algorithm>
 #include <fstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <cstdio>
+
+#include <sstream>
+
 
 
 Spectrum_t readSpectrumDat(const std::string& file_name)
@@ -62,6 +68,124 @@ Spectrum_t readSpectrumDat(const std::string& file_name)
 
     return spectrum;
 }
+
+
+
+Spectrum_t readASTMGColumn(
+    const std::string& file_name,
+    const int spectrum_column)
+{
+    if (spectrum_column < 1 || spectrum_column > 3)
+    {
+        throw std::invalid_argument(
+            "ASTM G173 spectrum column must be between 1 and 3.");
+    }
+
+    std::ifstream file(file_name);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Could not open file: " + file_name);
+    }
+
+    std::string line;
+
+    // Skip the ASTM G173 description and column-heading lines.
+    if (!std::getline(file, line) || !std::getline(file, line))
+    {
+        throw std::runtime_error(
+            "ASTM G173 file does not contain the expected header.");
+    }
+
+    std::vector<double> wavelengths;
+    std::vector<double> values;
+
+    int line_number = 2;
+
+    while (std::getline(file, line))
+    {
+        ++line_number;
+
+        // Ignore completely empty or whitespace-only lines.
+        if (line.find_first_not_of(" \t\r\n") == std::string::npos)
+        {
+            continue;
+        }
+
+        std::stringstream row(line);
+        std::string cell;
+        std::string wavelength_cell;
+        std::string spectrum_cell;
+
+        // Column 0 is wavelength. Columns 1, 2 and 3 contain
+        // AM0, AM1.5 global and AM1.5 direct respectively.
+        for (int column = 0; column <= spectrum_column; ++column)
+        {
+            if (!std::getline(row, cell, ','))
+            {
+                throw std::runtime_error(
+                    "Malformed ASTM G173 data at line " +
+                    std::to_string(line_number) + ".");
+            }
+
+            if (column == 0)
+            {
+                wavelength_cell = cell;
+            }
+
+            if (column == spectrum_column)
+            {
+                spectrum_cell = cell;
+            }
+        }
+
+        try
+        {
+            wavelengths.push_back(std::stod(wavelength_cell));
+            values.push_back(std::stod(spectrum_cell));
+        }
+        catch (const std::exception&)
+        {
+            throw std::runtime_error(
+                "Could not parse numerical data at line " +
+                std::to_string(line_number) + ".");
+        }
+    }
+
+    if (wavelengths.empty())
+    {
+        throw std::runtime_error(
+            "No spectral data were found in file: " + file_name);
+    }
+
+    Spectrum_t spectrum;
+
+    const int number_of_samples =
+        static_cast<int>(wavelengths.size());
+
+    spectrum.wavelengths.resize(number_of_samples);
+    spectrum.values.resize(number_of_samples);
+
+    for (int i = 0; i < number_of_samples; ++i)
+    {
+        spectrum.wavelengths(i) = wavelengths[i];
+        spectrum.values(i) = values[i];
+    }
+
+    return spectrum;
+}
+
+Spectrum_t readASTMGFileForAM0(const std::string& file_name)
+{
+    // Column 1: Extraterrestrial spectrum, conventionally called AM0.
+    return readASTMGColumn(file_name, 1);
+}
+
+Spectrum_t readASTMGFileForAM1_5(const std::string& file_name)
+{
+    // Column 3: AM1.5 direct plus circumsolar spectrum.
+    return readASTMGColumn(file_name, 3);
+}
+
 
 
 Spectrum_t binSpectrum(const Spectrum_t& input, double min_wavelength, double max_wavelength, double wavelength_step_size)
@@ -166,6 +290,129 @@ Eigen::Vector3d PanelNormVectInG(Eigen::Vector3d S_sat_pos_GC_G, Eigen::Matrix3d
 }
 
 
+Spectrum_t opticalTransmittanceAtmosphereFromData(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned)
+{
+    Spectrum_t opticalThickness;
+    opticalThickness.wavelengths = AM0_spectrum_binned.wavelengths;
+
+    // Calculate fraction
+    opticalThickness.values = AM1_5_spectrum_binned.values.cwiseProduct(AM0_spectrum_binned.values.cwiseInverse());
+
+    // Raise fraction to 2/3
+    for (int i = 0; i < opticalThickness.values.size(); i++)
+    {
+        opticalThickness.values(i) = pow(opticalThickness.values(i), 2.0/3.0);
+    }
+
+    return opticalThickness;
+
+}
+
+Spectrum_t albedoRadianceTOA(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned, Spectrum_t albedo_spectrum_at_loc, Eigen::Vector3d albedo_patch_pos_G, Eigen::Vector3d albedo_patch_norm_vector, Eigen::Vector3d panel_pos_G, Eigen::Vector3d sun_pos_G)
+{   
+    std::cout << "Hi" << std::endl;
+    // AM1.5/AM0 is the transmission through 1.5 air masses. Keeps the ratio between 0 and 1, and avoids divide-by-zero errors.
+    Eigen::ArrayXd transmission_ratio_AM1_5 = (AM1_5_spectrum_binned.values.array() / AM0_spectrum_binned.values.array().max(1.0e-12)).max(0.0).min(1.0);
+
+    // Initialise the output spectrum with zeros and the same wavelengths as the albedo spectrum at the location.
+    Spectrum_t albedo_toa_spectrum;
+    albedo_toa_spectrum.values = Eigen::VectorXd::Zero(albedo_spectrum_at_loc.values.size());
+    albedo_toa_spectrum.wavelengths = albedo_spectrum_at_loc.wavelengths;
+
+    Eigen::Vector3d patch_to_sun_G = sun_pos_G - albedo_patch_pos_G;
+    Eigen::Vector3d patch_to_panel_G = panel_pos_G - albedo_patch_pos_G;
+
+    double patch_normal_magnitude = albedo_patch_norm_vector.norm();
+    double sun_distance = patch_to_sun_G.norm(); // m
+    double patch_to_panel_distance = patch_to_panel_G.norm(); // m
+
+    if (patch_normal_magnitude <= 0.0 || sun_distance <= 0.0 || patch_to_panel_distance <= 0.0)
+    {
+        return albedo_toa_spectrum;
+    }
+
+    Eigen::Vector3d patch_norm_dir_vector_G = albedo_patch_norm_vector.normalized();
+    Eigen::Vector3d sun_dir_G = patch_to_sun_G.normalized();
+    Eigen::Vector3d patch_to_panel_dir_G = patch_to_panel_G.normalized();
+
+    double cos_zenith = patch_norm_dir_vector_G.dot(sun_dir_G);
+    double cos_exit = patch_norm_dir_vector_G.dot(patch_to_panel_dir_G);
+
+    // Return zero if the patch is unilluminated or not visible from the satellite.
+    if (cos_zenith <= 0.0 || cos_exit <= 0.0)
+    {
+        // std::cout << "Patch not visible" << std::endl;
+        return albedo_toa_spectrum;
+    }
+
+    // Prevent acos() producing NaN from numerical round-off.
+    cos_zenith = std::min(1.0, cos_zenith);
+    cos_exit = std::min(1.0, cos_exit);
+
+    double zenith_angle_rad = std::acos(cos_zenith);
+    double zenith_angle_deg = zenith_angle_rad * RAD2DEG;
+
+    double exit_angle_rad = std::acos(cos_exit);
+    double exit_angle_deg = exit_angle_rad * RAD2DEG;
+
+    // Kasten-Young air mass, including the near-horizon curvature correction.
+    // Simple calc would be m=1/cos(zenith_angle_rad), but this is inaccurate for large zenith angles.
+    double m_z = 1.0 /(cos_zenith + 0.50572 * std::pow(96.07995 - zenith_angle_deg, -1.6364));
+    double m_z_exit = 1.0 /(cos_exit + 0.50572 * std::pow(96.07995 - exit_angle_deg, -1.6364));
+
+    // Total air mass scale is the sum of the air mass for the incoming solar radiation and the outgoing reflected radiation.
+    double total_AM = m_z + m_z_exit;
+
+    Spectrum_t atmosphereTransmittance = opticalTransmittanceAtmosphereFromData(AM0_spectrum_binned, AM1_5_spectrum_binned);
+
+    std::cout << "Total AM: " << total_AM << std::endl;
+
+    Eigen::VectorXd test_t_coefficient = pow(atmosphereTransmittance.values.array(), total_AM) * AM0_spectrum_binned.values.array();
+
+    // print T coefficient
+    // std::cout << "Transmission coefficient:" << std::endl << transmission_ratio_AM1_5.pow(total_AM_scale) << std::endl;
+
+
+    // plot original spectrum and attenuated spectrum using gnuplot
+    FILE* gnuplot = popen("gnuplot -persistent", "w");
+
+    std::fprintf(gnuplot,
+                 "set title 'Albedo TOA spectrum'\n"
+                 "set xlabel \"Wavelength\"\n"
+                 "set ylabel \"Spectral value\"\n"
+                 "set grid\n"
+                 "plot '-' using 1:2 with lines title 'AM0', "
+                 "'-' using 1:2 with lines title 'AM1.5', "
+                 "'-' using 1:2 with lines title 'Attenuated AM0'\n");
+    for (Eigen::Index i = 0; i < AM0_spectrum_binned.wavelengths.size(); ++i)
+        std::fprintf(gnuplot, "%.17g %.17g\n", AM0_spectrum_binned.wavelengths(i), AM0_spectrum_binned.values(i));
+    std::fprintf(gnuplot, "e\n");
+
+    for (Eigen::Index i = 0; i < AM1_5_spectrum_binned.wavelengths.size(); ++i)
+        std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5_spectrum_binned.wavelengths(i), AM1_5_spectrum_binned.values(i));
+    std::fprintf(gnuplot, "e\n");
+
+    // now plot test_t_coefficient NOT albedo spectrum
+    for (Eigen::Index i = 0; i < AM1_5_spectrum_binned.wavelengths.size(); ++i)
+    {
+        std::fprintf(gnuplot, "%.17g %.17g\n",
+                     AM1_5_spectrum_binned.wavelengths(i),
+                     test_t_coefficient(i));
+    }
+    std::fprintf(gnuplot, "e\n");
+    std::fflush(gnuplot);
+    pclose(gnuplot);
+
+    // very big bug - fix binning
+
+    // albedo_toa_spectrum.values = (AM0_spectrum_binned.values.array() * transmission_ratio_AM1_5.pow(total_AM_scale) * albedo_spectrum_at_loc.values.array() * cos_zenith * (AU * AU / patch_to_sun_G.squaredNorm())/M_PI).matrix();
+
+    return albedo_toa_spectrum;
+}
+
+/** TODO: make function for Earth IR that has a similar attenuation but upward, and with the original spectrum as a blackbody */
+
+
 
 SatelliteResults_t computeOrbitalSpectralLoads(CubesatState_t cubesat_state, const Spectrum_t& binned_solar_spectrum)
 {
@@ -202,6 +449,7 @@ SatelliteResults_t computeOrbitalSpectralLoads(CubesatState_t cubesat_state, con
 
         // Incident spectrum from Earth Albedo on the panel
         /** TODO: */
+        
 
 
     }

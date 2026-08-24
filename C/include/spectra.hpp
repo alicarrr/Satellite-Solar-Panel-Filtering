@@ -108,3 +108,35 @@ Spectrum_t calculateIncidentSunSpectrumOnPanel(const Spectrum_t& input, Eigen::V
  * @return Panel normal vector in global frame.
  */
 Eigen::Vector3d PanelNormVectInG(Eigen::Vector3d S_sat_pos_GC_G, Eigen::Matrix3d R_G_from_B, Eigen::Vector3d panel_normal_vect_B);
+
+/**
+ * @brief Calculate the optical thickness which scales to the power of m where m is the air-mass fraction that the light passes through.
+ * @param AM0_spectrum_binned Binned solar spectrum at the top of the atmosphere (AM0).
+ * @param AM1_5_spectrum_binned Binned solar spectrum at the Earth's surface (AM1.5).
+ * @return Optical thickness spectrum.
+ */
+Spectrum_t opticalTransmittanceAtmosphereFromData(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned);
+
+/**
+ * @brief An approximate surface-reflected direct-beam contribution to directional TOA spectral radiance, using Beer–Lambert air-mass scaling and Lambertian reflection.
+ * 
+ * Calculate the top of atmosphere (TOA) spectrum of incident light from an albedo patch on Earth. This accounts for an approximate atmospheric attenuation based on decay of the solar spectrum from AM0 to AM1.5. The albedo spectrum is then scaled by the cosine of the angle between the sun and the panel normal vector.
+ * 
+ * @param AM0_spectrum_binned Binned solar spectrum at the top of the atmosphere (AM0).
+ * @param AM1_5_spectrum_binned Binned solar spectrum at the Earth's surface (AM1.5).
+ * @param albedo_spectrum_at_loc Albedo spectrum at the location of the albedo patch on Earth.
+ * @param albedo_patch_pos_G Position of the albedo patch in global frame.
+ * @param albedo_patch_norm_vector Normal vector of the albedo patch in global frame.
+ * @param panel_pos_G Position of the satellite panel in global frame.
+ * @param sun_pos_G Position of the sun in global frame.
+ */
+Spectrum_t albedoRadianceTOA(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned, Spectrum_t albedo_spectrum_at_loc, Eigen::Vector3d albedo_patch_pos_G, Eigen::Vector3d albedo_patch_norm_vector, Eigen::Vector3d panel_pos_G, Eigen::Vector3d sun_pos_G);
+
+
+Spectrum_t readASTMGColumn(
+    const std::string& file_name,
+    const int spectrum_column);
+
+Spectrum_t readASTMGFileForAM0(const std::string& file_name);
+
+Spectrum_t readASTMGFileForAM1_5(const std::string& file_name);

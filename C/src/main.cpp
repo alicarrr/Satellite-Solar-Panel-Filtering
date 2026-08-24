@@ -33,7 +33,7 @@ const double dt_data = 1.0;
 const double dt = 1e-1; // Sim Time Step
 const std::string date_0 = "2025-01-09T01:01:10.050000";
 
-const double t_final_sim = 1 * minute;
+const double t_final_sim = 0.5 * second;
 
 double t_last_data = -2 * dt_data;
 
@@ -86,7 +86,7 @@ void setInitialOrbitState()
 
     double argp = 30 * DEG2RAD;
     double raan = -90 * DEG2RAD;
-    double inc = 97.5 * DEG2RAD;
+    double inc = 60 * DEG2RAD;
 
 
     tuple<Eigen::Vector3d, Eigen::Vector3d> r_v_eci = angular_parameters_to_eci(M, e, mean_motion, inc, raan, argp, mu_earth);
@@ -132,6 +132,8 @@ void doSimLoop()
     std::cout << "Starting simulation loop..." << std::endl;
 
     Eigen::Vector3d s_sol_ECI;
+    // Get initial sun position in ECI frame at t=0
+    s_sol_ECI = get_sun_location_eci(0, simParams.ephemeris);
 
     double t = 0;
     while (t < t_final_sim)
@@ -143,6 +145,92 @@ void doSimLoop()
             t_last_data = t;
 
             /** TODO: Calculate incident flux stuff here. */
+
+            // test albedo toa calculation with one position in orbit and one visible albedo patch. This is a test to see if the function works and returns a reasonable spectrum.
+            const std::string& file_name = "dat files/astmg173/ASTMG173.csv";
+
+            std::cout << "Reading AM0 and AM1.5 spectra from file: " << file_name << std::endl;
+            Spectrum_t AM0 = readASTMGFileForAM0(file_name);
+            Spectrum_t AM1_5 = readASTMGFileForAM1_5(file_name);
+
+            Spectrum_t atmosphereTransmittance = opticalTransmittanceAtmosphereFromData(AM0, AM1_5);
+
+            // get hamster albedo spectrum at a given location on Earth
+            std::cout << "Reading albedo data from file: " << std::endl;
+            AlbedoData albedo_data = read_albedo_data();
+            // take current llh of satellite and get albedo spectrum at that location
+            Eigen::Vector3d sat_pos_ECEF = simParams.ephemeris->eciToEcef(cubesatState.position_GC_ECI, t);
+            Eigen::Vector3d sat_llh = ecef_to_llh(sat_pos_ECEF);
+            Eigen::VectorXd albedo_values = get_albedo_spectrum(albedo_data, sat_llh(0), sat_llh(1));
+            
+            Spectrum_t albedo_spectrum_at_loc = 
+            {
+                .wavelengths = albedo_data.wavelength,
+                .values = albedo_values
+            };
+
+
+            Eigen::Vector3d albedo_patch_pos_llh = Eigen::Vector3d(sat_llh(0), sat_llh(1), 0); // lat, lon, alt= 6371000 m (Earth radius)
+
+            Eigen::Vector3d albedo_patch_pos_ecef = llh_to_ecef(albedo_patch_pos_llh); 
+            Eigen::Vector3d albedo_patch_pos_eci = simParams.ephemeris->ecefToEci(albedo_patch_pos_ecef, t);
+            // convert to ECI at t=0
+            Eigen::Vector3d albedo_patch_norm_vector = albedo_patch_pos_eci.cwiseProduct(1.0/albedo_patch_pos_eci.norm() * Eigen::Vector3d::Ones()); // normal vector pointing up from the surface of the Earth
+
+            Eigen::Vector3d panel_pos_G = panelPosInG(cubesat.panels[0].position_rel_GC_in_B, cubesatState.rotation_matrix_ECI_from_B, cubesatState.position_GC_ECI);
+            Eigen::Vector3d sun_pos_G = s_sol_ECI;
+            
+            std::cout << "Entering function" << std::endl;
+            Spectrum_t test_spectra = albedoRadianceTOA(AM0, AM1_5, albedo_spectrum_at_loc, albedo_patch_pos_eci, albedo_patch_norm_vector, panel_pos_G, sun_pos_G);
+
+            // Plot the albedo and reflected spectra using inline gnuplot data.
+            FILE* gnuplot = popen("gnuplot -persistent", "w");
+            if (gnuplot == nullptr)
+            {
+                std::cerr << "Could not open gnuplot." << std::endl;
+                return;
+            }
+
+            std::fprintf(gnuplot,
+                         "set title 'Albedo and reflected radiance spectra'\n"
+                         "set xlabel 'Wavelength'\n"
+                         "set ylabel 'Spectral value'\n"
+                         "set grid\n"
+                         "plot '-' using 1:2 with lines title 'AM0', "
+                         "'-' using 1:2 with lines title 'AM1.5', "
+                         "'-' using 1:2 with lines title 'Atmosphere Transmittance', "
+                         "'-' using 1:2 with lines title 'Reflected radiance'\n");
+
+            for (Eigen::Index i = 0; i < AM0.wavelengths.size(); ++i)
+                std::fprintf(gnuplot, "%.17g %.17g\n", AM0.wavelengths(i), AM0.values(i));
+            std::fprintf(gnuplot, "e\n");
+
+            for (Eigen::Index i = 0; i < AM1_5.wavelengths.size(); ++i)
+                std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
+            std::fprintf(gnuplot, "e\n");
+
+            for (Eigen::Index i = 0; i < atmosphereTransmittance.wavelengths.size(); ++i)
+                std::fprintf(gnuplot, "%.17g %.17g\n", atmosphereTransmittance.wavelengths(i), atmosphereTransmittance.values(i));
+            std::fprintf(gnuplot, "e\n");
+
+            // for (Eigen::Index i = 0; i < albedo_spectrum_at_loc.wavelengths.size(); ++i)
+            // {
+            //     std::fprintf(gnuplot, "%.17g %.17g\n",
+            //                  albedo_spectrum_at_loc.wavelengths(i),
+            //                  albedo_spectrum_at_loc.values(i));
+            // }
+            // std::fprintf(gnuplot, "e\n");
+
+            // for (Eigen::Index i = 0; i < test_spectra.wavelengths.size(); ++i)
+            // {
+            //     std::fprintf(gnuplot, "%.17g %.17g\n",
+            //                  test_spectra.wavelengths(i),
+            //                  test_spectra.values(i));
+            // }
+            std::fprintf(gnuplot, "e\n");
+            std::fflush(gnuplot);
+            pclose(gnuplot);
+            
 
             /** TODO: Send flux data to Python Here */
         }
