@@ -169,6 +169,8 @@ void doSimLoop()
                 .values = albedo_values
             };
 
+            // test the interpolation function by interpolating the albedo spectrum to the wavelengths of the AM1.5 spectrum
+            Spectrum_t albedo_spectrum_at_loc_interp = interpolateSpectrum(albedo_spectrum_at_loc, AM1_5.wavelengths);
 
             Eigen::Vector3d albedo_patch_pos_llh = Eigen::Vector3d(sat_llh(0), sat_llh(1), 0); // lat, lon, alt= 6371000 m (Earth radius)
 
@@ -180,8 +182,11 @@ void doSimLoop()
             Eigen::Vector3d panel_pos_G = panelPosInG(cubesat.panels[0].position_rel_GC_in_B, cubesatState.rotation_matrix_ECI_from_B, cubesatState.position_GC_ECI);
             Eigen::Vector3d sun_pos_G = s_sol_ECI;
             
+            // Calculate transmission ratio from AM0 and AM1.5 spectra
+            Spectrum_t transmission_ratio_AM1_5 = atmosphereTransissionRatio(AM0, AM1_5);
+
             std::cout << "Entering function" << std::endl;
-            Spectrum_t test_spectra = albedoRadianceTOA(AM0, AM1_5, albedo_spectrum_at_loc, albedo_patch_pos_eci, albedo_patch_norm_vector, panel_pos_G, sun_pos_G);
+            Spectrum_t test_spectra = albedoRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_spectrum_at_loc, albedo_patch_pos_eci, albedo_patch_norm_vector, panel_pos_G, sun_pos_G);
 
             // Plot the albedo and reflected spectra using inline gnuplot data.
             FILE* gnuplot = popen("gnuplot -persistent", "w");
@@ -209,8 +214,8 @@ void doSimLoop()
                 std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
             std::fprintf(gnuplot, "e\n");
 
-            for (Eigen::Index i = 0; i < atmosphereTransmittance.wavelengths.size(); ++i)
-                std::fprintf(gnuplot, "%.17g %.17g\n", atmosphereTransmittance.wavelengths(i), atmosphereTransmittance.values(i));
+            for (Eigen::Index i = 0; i < test_spectra.wavelengths.size(); ++i)
+                std::fprintf(gnuplot, "%.17g %.17g\n", test_spectra.wavelengths(i), test_spectra.values(i));
             std::fprintf(gnuplot, "e\n");
 
             // for (Eigen::Index i = 0; i < albedo_spectrum_at_loc.wavelengths.size(); ++i)

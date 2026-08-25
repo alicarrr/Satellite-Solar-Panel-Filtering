@@ -130,7 +130,7 @@ Spectrum_t opticalTransmittanceAtmosphereFromData(const Spectrum_t& AM0_spectrum
  * @param panel_pos_G Position of the satellite panel in global frame.
  * @param sun_pos_G Position of the sun in global frame.
  */
-Spectrum_t albedoRadianceTOA(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned, Spectrum_t albedo_spectrum_at_loc, Eigen::Vector3d albedo_patch_pos_G, Eigen::Vector3d albedo_patch_norm_vector, Eigen::Vector3d panel_pos_G, Eigen::Vector3d sun_pos_G);
+Spectrum_t albedoRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const Spectrum_t& AM0, Spectrum_t albedo_spectrum_at_loc, Eigen::Vector3d albedo_patch_pos_G, Eigen::Vector3d albedo_patch_norm_vector, Eigen::Vector3d panel_pos_G, Eigen::Vector3d sun_pos_G);
 
 
 Spectrum_t readASTMGColumn(
@@ -140,3 +140,13 @@ Spectrum_t readASTMGColumn(
 Spectrum_t readASTMGFileForAM0(const std::string& file_name);
 
 Spectrum_t readASTMGFileForAM1_5(const std::string& file_name);
+
+Spectrum_t atmosphereTransissionRatio(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned);
+
+Spectrum_t interpolateSpectrum(Spectrum_t input, Eigen::VectorXd new_wavelengths);
+
+double cosineOfAngleBetweenVectors(Eigen::Vector3d vector1, Eigen::Vector3d vector2);
+
+double AMKastenYoung(double zenith_angle_rad);
+
+Spectrum_t scaledTransmissivityForAM(double air_mass, const Spectrum_t& atmosphereTransmittance);

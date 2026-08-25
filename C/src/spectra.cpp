@@ -292,27 +292,116 @@ Eigen::Vector3d PanelNormVectInG(Eigen::Vector3d S_sat_pos_GC_G, Eigen::Matrix3d
 
 Spectrum_t opticalTransmittanceAtmosphereFromData(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned)
 {
-    Spectrum_t opticalThickness;
-    opticalThickness.wavelengths = AM0_spectrum_binned.wavelengths;
+    Spectrum_t opticalTransmittance;
+    opticalTransmittance.wavelengths = AM0_spectrum_binned.wavelengths;
 
     // Calculate fraction
-    opticalThickness.values = AM1_5_spectrum_binned.values.cwiseProduct(AM0_spectrum_binned.values.cwiseInverse());
+    opticalTransmittance.values = AM1_5_spectrum_binned.values.cwiseProduct(AM0_spectrum_binned.values.cwiseInverse());
 
-    // Raise fraction to 2/3
-    for (int i = 0; i < opticalThickness.values.size(); i++)
+    // Raise fraction to 2/3 (i.e. 1/1.5)
+    for (int i = 0; i < opticalTransmittance.values.size(); i++)
     {
-        opticalThickness.values(i) = pow(opticalThickness.values(i), 2.0/3.0);
+        opticalTransmittance.values(i) = pow(opticalTransmittance.values(i), 2.0/3.0);
     }
 
-    return opticalThickness;
-
+    return opticalTransmittance;
 }
 
-Spectrum_t albedoRadianceTOA(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned, Spectrum_t albedo_spectrum_at_loc, Eigen::Vector3d albedo_patch_pos_G, Eigen::Vector3d albedo_patch_norm_vector, Eigen::Vector3d panel_pos_G, Eigen::Vector3d sun_pos_G)
+
+Spectrum_t atmosphereTransissionRatio(const Spectrum_t& AM0_spectrum_binned, const Spectrum_t& AM1_5_spectrum_binned)
 {   
-    std::cout << "Hi" << std::endl;
-    // AM1.5/AM0 is the transmission through 1.5 air masses. Keeps the ratio between 0 and 1, and avoids divide-by-zero errors.
-    Eigen::ArrayXd transmission_ratio_AM1_5 = (AM1_5_spectrum_binned.values.array() / AM0_spectrum_binned.values.array().max(1.0e-12)).max(0.0).min(1.0);
+    // Transmission ratio is the ratio of the AM1.5 spectrum to the AM0 spectrum, which gives the fraction of light that is transmitted through the atmosphere at each wavelength.
+    Spectrum_t transmission_ratio_AM1_5;
+    transmission_ratio_AM1_5.values = (AM1_5_spectrum_binned.values.array() / AM0_spectrum_binned.values.array());
+    transmission_ratio_AM1_5.wavelengths = AM0_spectrum_binned.wavelengths;
+
+    return transmission_ratio_AM1_5;
+}
+
+
+Spectrum_t interpolateSpectrum(Spectrum_t input, Eigen::VectorXd new_wavelengths)
+{
+    Spectrum_t interpolated_spectrum;
+    interpolated_spectrum.wavelengths = new_wavelengths;
+    interpolated_spectrum.values.resize(new_wavelengths.size());
+
+    for (int i = 0; i < new_wavelengths.size(); i++)
+    {
+        double wavelength = new_wavelengths(i);
+
+        // Find the two nearest wavelengths in the input spectrum
+        auto it = std::lower_bound(input.wavelengths.data(), input.wavelengths.data() + input.wavelengths.size(), wavelength);
+        if (it == input.wavelengths.data())
+        {
+            // Wavelength is below the range of the input spectrum
+            interpolated_spectrum.values(i) = input.values(0);
+        }
+        else if (it == input.wavelengths.data() + input.wavelengths.size())
+        {
+            // Wavelength is above the range of the input spectrum
+            interpolated_spectrum.values(i) = input.values(input.values.size() - 1);
+        }
+        else
+        {
+            // Perform linear interpolation
+            int idx_upper = it - input.wavelengths.data();
+            int idx_lower = idx_upper - 1;
+
+            double x0 = input.wavelengths(idx_lower);
+            double x1 = input.wavelengths(idx_upper);
+            double y0 = input.values(idx_lower);
+            double y1 = input.values(idx_upper);
+
+            double slope = (y1 - y0) / (x1 - x0);
+            interpolated_spectrum.values(i) = y0 + slope * (wavelength - x0);
+        }
+    }
+
+    return interpolated_spectrum;
+}
+
+
+double cosineOfAngleBetweenVectors(Eigen::Vector3d vector1, Eigen::Vector3d vector2)
+{
+    double dot_product = vector1.dot(vector2);
+    double magnitude_product = vector1.norm() * vector2.norm();
+
+    if (magnitude_product == 0.0)
+    {
+        throw std::runtime_error("One or both vectors have zero magnitude.");
+    }
+
+    double cos_angle = dot_product / magnitude_product;
+    return cos_angle;
+}
+
+
+double AMKastenYoung(double zenith_angle_rad)
+{
+    double zenith_angle_deg = zenith_angle_rad * RAD2DEG;
+
+    // Kasten-Young air mass, including the near-horizon curvature correction.
+    double m_z = 1.0 /(std::cos(zenith_angle_rad) + 0.50572 * std::pow(96.07995 - zenith_angle_deg, -1.6364));
+
+    return m_z;
+}
+
+Spectrum_t scaledTransmissivityForAM(double air_mass, const Spectrum_t& atmosphereTransmittance)
+{
+    Spectrum_t transmissivity_spectrum =
+    {   
+        .wavelengths = atmosphereTransmittance.wavelengths,
+        .values = pow(atmosphereTransmittance.values.array(), air_mass)        
+    };
+    
+    return transmissivity_spectrum;
+}
+
+
+Spectrum_t albedoRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const Spectrum_t& AM0, Spectrum_t albedo_spectrum_at_loc, Eigen::Vector3d albedo_patch_pos_G, Eigen::Vector3d albedo_patch_norm_vector, Eigen::Vector3d panel_pos_G, Eigen::Vector3d sun_pos_G)
+{   
+    // Interpolate albedo spectrum to match the wavelengths of the transmission ratio spectrum. 
+    albedo_spectrum_at_loc = interpolateSpectrum(albedo_spectrum_at_loc, transmission_ratio_AM1_5.wavelengths);
 
     // Initialise the output spectrum with zeros and the same wavelengths as the albedo spectrum at the location.
     Spectrum_t albedo_toa_spectrum;
@@ -330,13 +419,20 @@ Spectrum_t albedoRadianceTOA(const Spectrum_t& AM0_spectrum_binned, const Spectr
     {
         return albedo_toa_spectrum;
     }
+    // Use cosineOfAngleBetweenVectors to calculate the needed zenith and exit angles
+    double cos_zenith = cosineOfAngleBetweenVectors(albedo_patch_norm_vector, patch_to_sun_G);
+    double cos_exit = cosineOfAngleBetweenVectors(albedo_patch_norm_vector, patch_to_panel_G);
 
-    Eigen::Vector3d patch_norm_dir_vector_G = albedo_patch_norm_vector.normalized();
-    Eigen::Vector3d sun_dir_G = patch_to_sun_G.normalized();
-    Eigen::Vector3d patch_to_panel_dir_G = patch_to_panel_G.normalized();
+    // print cos_zenith and cos_exit for debugging
+    std::cout << "Cosine of Zenith Angle: " << cos_zenith << std::endl;
+    std::cout << "Cosine of Exit Angle: " << cos_exit << std::endl;
 
-    double cos_zenith = patch_norm_dir_vector_G.dot(sun_dir_G);
-    double cos_exit = patch_norm_dir_vector_G.dot(patch_to_panel_dir_G);
+    // Eigen::Vector3d patch_norm_dir_vector_G = albedo_patch_norm_vector.normalized();
+    // Eigen::Vector3d sun_dir_G = patch_to_sun_G.normalized();
+    // Eigen::Vector3d patch_to_panel_dir_G = patch_to_panel_G.normalized();
+
+    // double cos_zenith = patch_norm_dir_vector_G.dot(sun_dir_G);
+    // double cos_exit = patch_norm_dir_vector_G.dot(patch_to_panel_dir_G);
 
     // Return zero if the patch is unilluminated or not visible from the satellite.
     if (cos_zenith <= 0.0 || cos_exit <= 0.0)
@@ -357,51 +453,24 @@ Spectrum_t albedoRadianceTOA(const Spectrum_t& AM0_spectrum_binned, const Spectr
 
     // Kasten-Young air mass, including the near-horizon curvature correction.
     // Simple calc would be m=1/cos(zenith_angle_rad), but this is inaccurate for large zenith angles.
-    double m_z = 1.0 /(cos_zenith + 0.50572 * std::pow(96.07995 - zenith_angle_deg, -1.6364));
-    double m_z_exit = 1.0 /(cos_exit + 0.50572 * std::pow(96.07995 - exit_angle_deg, -1.6364));
+    double m_z = AMKastenYoung(zenith_angle_rad);
+    double m_z_exit = AMKastenYoung(exit_angle_rad);
 
     // Total air mass scale is the sum of the air mass for the incoming solar radiation and the outgoing reflected radiation.
     double total_AM = m_z + m_z_exit;
 
-    Spectrum_t atmosphereTransmittance = opticalTransmittanceAtmosphereFromData(AM0_spectrum_binned, AM1_5_spectrum_binned);
-
     std::cout << "Total AM: " << total_AM << std::endl;
 
-    Eigen::VectorXd test_t_coefficient = pow(atmosphereTransmittance.values.array(), total_AM) * AM0_spectrum_binned.values.array();
-
-    // print T coefficient
-    // std::cout << "Transmission coefficient:" << std::endl << transmission_ratio_AM1_5.pow(total_AM_scale) << std::endl;
-
-
-    // plot original spectrum and attenuated spectrum using gnuplot
-    FILE* gnuplot = popen("gnuplot -persistent", "w");
-
-    std::fprintf(gnuplot,
-                 "set title 'Albedo TOA spectrum'\n"
-                 "set xlabel \"Wavelength\"\n"
-                 "set ylabel \"Spectral value\"\n"
-                 "set grid\n"
-                 "plot '-' using 1:2 with lines title 'AM0', "
-                 "'-' using 1:2 with lines title 'AM1.5', "
-                 "'-' using 1:2 with lines title 'Attenuated AM0'\n");
-    for (Eigen::Index i = 0; i < AM0_spectrum_binned.wavelengths.size(); ++i)
-        std::fprintf(gnuplot, "%.17g %.17g\n", AM0_spectrum_binned.wavelengths(i), AM0_spectrum_binned.values(i));
-    std::fprintf(gnuplot, "e\n");
-
-    for (Eigen::Index i = 0; i < AM1_5_spectrum_binned.wavelengths.size(); ++i)
-        std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5_spectrum_binned.wavelengths(i), AM1_5_spectrum_binned.values(i));
-    std::fprintf(gnuplot, "e\n");
-
-    // now plot test_t_coefficient NOT albedo spectrum
-    for (Eigen::Index i = 0; i < AM1_5_spectrum_binned.wavelengths.size(); ++i)
+    // Scaled AM transmittance
+    Spectrum_t scaled_transmittance = scaledTransmissivityForAM(total_AM, transmission_ratio_AM1_5);
+    
+    Spectrum_t transmissionSpectrumAMTotal =
     {
-        std::fprintf(gnuplot, "%.17g %.17g\n",
-                     AM1_5_spectrum_binned.wavelengths(i),
-                     test_t_coefficient(i));
-    }
-    std::fprintf(gnuplot, "e\n");
-    std::fflush(gnuplot);
-    pclose(gnuplot);
+        .wavelengths = scaled_transmittance.wavelengths,
+        .values = scaled_transmittance.values.array() * AM0.values.array()
+    };
+
+    albedo_toa_spectrum.values = (transmissionSpectrumAMTotal.values.array() * albedo_spectrum_at_loc.values.array() * cos_zenith * (AU * AU / patch_to_sun_G.squaredNorm())/M_PI).matrix();
 
     // very big bug - fix binning
 
