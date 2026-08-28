@@ -1,5 +1,4 @@
 // Your main file doesn't have to be called main, but it must contain the main function.
-#include "stuff.hpp"
 #include "spectra.hpp"
 #include "albedo.hpp"
 #include "satParams.hpp"
@@ -262,6 +261,10 @@ void doSimLoop()
             // calculate earth ir spectrum at the patch and plot it
             Spectrum_t earth_ir_spectrum = EarthIRRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_patch_pos_eci, panel_pos_G);
 
+            // get black body spectrum at earth temp
+            double earth_temp_K = 288.0; // K
+            Spectrum_t earth_blackbody_spectrum = blackBodySpectrum(earth_temp_K, AM0);
+
             gnuplot = popen("gnuplot -persistent", "w");
             if (gnuplot == nullptr)
             {
@@ -273,12 +276,20 @@ void doSimLoop()
                          "set xlabel 'Wavelength'\n"
                          "set ylabel 'Spectral value'\n"
                          "set grid\n"
-                         "plot '-' using 1:2 with lines title 'Earth IR radiance'\n");
-            for (Eigen::Index i = 0; i < earth_ir_spectrum.wavelengths.size(); ++i)
+                         "plot '-' using 1:2 with lines title 'Earth IR radiance'\n"
+                         "'-' using 1:2 with lines title 'Earth black body'\n");
+            for (Eigen::Index i = 0; i < earth_ir_spectrum.wavelengths.size(); i++)
             {
                 std::fprintf(gnuplot, "%.17g %.17g\n",
                              earth_ir_spectrum.wavelengths(i),
                              earth_ir_spectrum.values(i));
+            }
+            // plot black body spectrum for comparison
+            for (Eigen::Index i = 0; i < earth_blackbody_spectrum.wavelengths.size(); i++)
+            {
+                std::fprintf(gnuplot, "%.17g %.17g\n",
+                             earth_blackbody_spectrum.wavelengths(i),
+                             earth_blackbody_spectrum.values(i));
             }
             std::fprintf(gnuplot, "e\n");
             std::fflush(gnuplot);

@@ -486,7 +486,9 @@ Spectrum_t blackBodySpectrum(double temperature_K, const Spectrum_t& wavelength_
     {
         double wavelength_m = wavelength_spectrum.wavelengths(i) * nm; // Convert nm to m
         double exponent = (h * c) / (wavelength_m * k * temperature_K);
-        blackbody_spectrum.values(i) = (2.0 * h * c * c) / (std::pow(wavelength_m, 5) * (std::exp(exponent) - 1.0));
+        blackbody_spectrum.values(i) = (2.0 * h * c * c) / (std::pow(wavelength_m, 5) * (std::exp(exponent) - 1.0)); 
+        // convert to W/m^2/nm 
+        blackbody_spectrum.values(i) *= 1e-9; // Convert from W/m^2/m to W/m^2/nm
     }
 
     return blackbody_spectrum;
