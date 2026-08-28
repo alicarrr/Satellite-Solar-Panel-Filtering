@@ -82,7 +82,7 @@ void setInitialOrbitState()
     double mean_motion = (2.0 * M_PI) / period;
 
     double e = 0.002; // Eccentricity
-    double M = 0.0 * M_PI; // Mean anomaly at epoch
+    double M = 0.15 * M_PI; // Mean anomaly at epoch
 
     double argp = 30 * DEG2RAD;
     double raan = -90 * DEG2RAD;
@@ -232,6 +232,54 @@ void doSimLoop()
             //                  test_spectra.wavelengths(i),
             //                  test_spectra.values(i));
             // }
+            std::fprintf(gnuplot, "e\n");
+            std::fflush(gnuplot);
+            pclose(gnuplot);
+
+            // make plot of just the reflected radiance spectrum
+            gnuplot = popen("gnuplot -persistent", "w");
+            if (gnuplot == nullptr)
+            {
+                std::cerr << "Could not open gnuplot." << std::endl;
+                return;
+            }
+            std::fprintf(gnuplot,
+                         "set title 'Reflected radiance spectrum'\n"
+                         "set xlabel 'Wavelength'\n"
+                         "set ylabel 'Spectral value'\n"
+                         "set grid\n"
+                         "plot '-' using 1:2 with lines title 'Reflected radiance'\n");
+            for (Eigen::Index i = 0; i < test_spectra.wavelengths.size(); ++i)
+            {
+                std::fprintf(gnuplot, "%.17g %.17g\n",
+                             test_spectra.wavelengths(i),
+                             test_spectra.values(i));
+            }
+            std::fprintf(gnuplot, "e\n");
+            std::fflush(gnuplot);
+            pclose(gnuplot);
+
+            // calculate earth ir spectrum at the patch and plot it
+            Spectrum_t earth_ir_spectrum = EarthIRRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_patch_pos_eci, panel_pos_G);
+
+            gnuplot = popen("gnuplot -persistent", "w");
+            if (gnuplot == nullptr)
+            {
+                std::cerr << "Could not open gnuplot." << std::endl;
+                return;
+            }
+            std::fprintf(gnuplot,
+                         "set title 'Earth IR radiance spectrum'\n"
+                         "set xlabel 'Wavelength'\n"
+                         "set ylabel 'Spectral value'\n"
+                         "set grid\n"
+                         "plot '-' using 1:2 with lines title 'Earth IR radiance'\n");
+            for (Eigen::Index i = 0; i < earth_ir_spectrum.wavelengths.size(); ++i)
+            {
+                std::fprintf(gnuplot, "%.17g %.17g\n",
+                             earth_ir_spectrum.wavelengths(i),
+                             earth_ir_spectrum.values(i));
+            }
             std::fprintf(gnuplot, "e\n");
             std::fflush(gnuplot);
             pclose(gnuplot);

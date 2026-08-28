@@ -32,6 +32,7 @@ inline constexpr int N_samples_spectra = 100;
 
 
 inline constexpr double m = 1.0; // m
+inline constexpr double nm = 1e-9; // m
 inline constexpr double km = 1000.0; // m
 inline constexpr double AU = 149597870700.0; // m
 
@@ -100,3 +101,6 @@ inline constexpr double lux_to_footcandela = 1.0/10.7639; // Conversion factor f
 inline constexpr double TT_delta = 69.184 * second; // Difference between Terrestrial Time and Universal Time (seconds)
 
 inline constexpr double J2000_JD = 2451545;
+
+inline constexpr double h = 6.62607015e-34 * J * second; // Planck's constant (J s)
+inline constexpr double k = 1.380649e-23 * J / K; // Boltzmann's constant (J/K)

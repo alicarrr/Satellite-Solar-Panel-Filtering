@@ -150,3 +150,7 @@ double cosineOfAngleBetweenVectors(Eigen::Vector3d vector1, Eigen::Vector3d vect
 double AMKastenYoung(double zenith_angle_rad);
 
 Spectrum_t scaledTransmissivityForAM(double air_mass, const Spectrum_t& atmosphereTransmittance);
+
+Spectrum_t blackBodySpectrum(double temperature_K, const Spectrum_t& wavelength_spectrum);
+
+Spectrum_t EarthIRRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const Spectrum_t& AM0, Eigen::Vector3d patch_pos_G, Eigen::Vector3d panel_pos_G);
