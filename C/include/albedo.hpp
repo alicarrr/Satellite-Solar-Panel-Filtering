@@ -101,4 +101,14 @@ Eigen::VectorXd get_albedo_spectrum(
 );
 
 
+/**
+ * @brief The angle either side of the lat/lon that is directly below the object that is visible.
+ * 
+ * @param distance The distance from the centre of the object
+ * @param r The radius of the object (assuming a uniform sphere)
+ * 
+ * @returns The angle
+ */
+double getVisibilityConeAngle(double distance, double r);
+
 SpectraVector_t reBinAlbedoSpectra(unsigned int lat_i, unsigned int lon_i);

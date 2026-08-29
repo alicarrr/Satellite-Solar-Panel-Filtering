@@ -496,3 +496,11 @@ void printVariableInformation(const std::string& variable_name, const netCDF::Nc
             << '\n';
     }
 }
+
+
+double getVisibilityConeAngle(double distance, double r)
+{
+    double theta = acos(r/distance);
+
+    return theta;
+}

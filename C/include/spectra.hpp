@@ -30,6 +30,7 @@ extern SpectraVector_t earth_ir_spectra; // In watts, binned
 
 inline const std::string atmosphere_file_path = "dat files/earth_atmosphere_transmissivity.nc";
 inline const std::string AM_spectra_file_name = "dat files/astmg173/ASTMG173.csv";
+inline const std::string sun_spectrum_path = "dat files/kurudz_full.dat";
 
 extern netCDF::NcFile atmosphere_transmissivity_file;
 
@@ -350,6 +351,18 @@ double am_0_spectra_extend(double wavelength_nm);
 */
 double am_1_5_spectra_extend(double wavelength_nm);
 
+
+/** 
+ * @brief Calculates the Earth atmosphere transmissivity if the dataset is not defined
+ * 
+ * @param wavelength_nm The wavelength at which to evaluate the transmissivity, measured in nm
+ * 
+ * @return The transmissivity
+*/
+double transmissivity_extend(double wavelength_nm);
+
+
+void setWavelengthArray();
 
 void getSolarSpectrumFromFile(const std::string& fileName);
 

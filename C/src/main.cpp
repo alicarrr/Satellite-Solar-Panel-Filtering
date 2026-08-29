@@ -126,6 +126,9 @@ void waitForPythonReadyMessage()
 
 void preLoadData()
 {
+    setWavelengthArray();
+
+
     std::cout << "Reading AM0 and AM1.5 spectra from file: " << AM_spectra_file_name << std::endl;
     Spectrum_t AM0 = readASTMGFileForAM0(AM_spectra_file_name);
     Spectrum_t AM1_5 = readASTMGFileForAM1_5(AM_spectra_file_name);
@@ -156,17 +159,26 @@ void preLoadData()
 
     std::cout << "Transmittance ends with " << AM0.values(N_samples_spectra - 2) << std::endl;
 
+    std::cout << "Reading Atmosphere Data" << std::endl;
+    getTransmittanceFromFile(atmosphere_file_path);
+
+    // std::cout << atmosphere_transmittance.segment(100, 5).transpose() << std::endl;
+
+    atmosphereTransmittance.values = atmosphere_transmittance;
+
+
 
     // get hamster albedo spectrum at a given location on Earth
     std::cout << "Reading albedo data from file: " << std::endl;
     read_albedo_data(hamster_day_of_year);
 
-    std::cout << "Reading Atmosphere Data" << std::endl;
-    getTransmittanceFromFile(atmosphere_file_path);
+    std::cout << "Getting sun spectrum" << std::endl;
+    getSolarSpectrumFromFile(sun_spectrum_path);
 
     // printVariableInformation("total_downward_transmissivity", atmosphere_transmissivity_file);
 
-    
+    double totalSunPower = sun_spectra.sum();
+    std::cout << "Total Solar Power is " << totalSunPower << "W" << std::endl;
 
     // Calculate transmission ratio from AM0 and AM1.5 spectra
     Spectrum_t transmission_ratio_AM1_5 = atmosphereTransissionRatio(AM0, AM1_5);
@@ -185,17 +197,18 @@ void preLoadData()
                     "set ylabel 'Spectral value'\n"
                     "set grid\n"
                     "plot '-' using 1:2 with lines title 'AM0', "
-                    "'-' using 1:2 with lines title 'AM1.5', "
+                    // "'-' using 1:2 with lines title 'AM1.5', "
                     "'-' using 1:2 with lines title 'Atmosphere Transmittance', "
-                    "'-' using 1:2 with lines title 'Reflected radiance'\n");
+                    "'-' using 1:2 with lines title 'Reflected radiance'\n"
+                    "set terminal pngcairo size 800,600 font 'Arial,12'\n");
 
-    for (Eigen::Index i = 0; i < AM0.wavelengths.size(); ++i)
-        std::fprintf(gnuplot, "%.17g %.17g\n", AM0.wavelengths(i), AM0.values(i));
+    for (Eigen::Index i = 0; i < sun_spectra.size(); ++i)
+        std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), sun_spectra(i));
     std::fprintf(gnuplot, "e\n");
 
-    for (Eigen::Index i = 0; i < AM1_5.wavelengths.size(); ++i)
-        std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
-    std::fprintf(gnuplot, "e\n");
+    // for (Eigen::Index i = 0; i < AM1_5.wavelengths.size(); ++i)
+    //     std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
+    // std::fprintf(gnuplot, "e\n");
 
     std::fflush(gnuplot);
     pclose(gnuplot);
@@ -213,7 +226,8 @@ void preLoadData()
                     "set xlabel 'Wavelength'\n"
                     "set ylabel 'Spectral value'\n"
                     "set grid\n"
-                    "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n");
+                    "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n"
+                    "set terminal pngcairo size 800,600 font 'Arial,12'\n");
 
     for (Eigen::Index i = 0; i < atmosphereTransmittance.wavelengths.size(); ++i)
         std::fprintf(gnuplot, "%.17g %.17g\n", atmosphereTransmittance.wavelengths(i), atmosphereTransmittance.values(i));

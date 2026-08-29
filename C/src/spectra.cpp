@@ -1376,6 +1376,33 @@ double am_1_5_spectra_extend(double wavelength_nm)
     return 0;
 }
 
+double transmissivity_extend(double wavelength_nm)
+{
+    return 0;
+}
+
+
+void setWavelengthArray()
+{
+    std::vector<double> wavelengths = calculateBinCentreWavelengths(min_wavelength_nm, max_wavelength_nm, d_wavelength_nm);
+
+    spectra_wavelengths_nm = Eigen::Map<SpectraVector_t>(wavelengths.data(), wavelengths.size());
+}
+
+
+
+void getSolarSpectrumFromFile(const std::string& fileName)
+{
+    Spectrum_t sun_spec = readSpectrumDat(fileName);
+
+    std::vector<double> sun_wavelengths_nm(sun_spec.wavelengths.data(), sun_spec.wavelengths.data() + sun_spec.wavelengths.size());
+    std::vector<double> sun_spectrum_data(sun_spec.values.data(), sun_spec.values.data() + sun_spec.values.size());
+
+    std::vector<double> sun_spectrum = rebinSpectrumConservingFlux(sun_wavelengths_nm, sun_spectrum_data, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, sun_spectra_extend);
+
+    // Need to convert from mW/m^2/nm to W
+    sun_spectra = Eigen::Map<SpectraVector_t>(sun_spectrum.data(), sun_spectrum.size()) * 1e-3 * d_wavelength_nm * (4.0 * M_PI * pow(AU, 2));
+}
 
 void getTransmittanceFromFile(const std::string& fileName)
 {
@@ -1396,7 +1423,13 @@ void getTransmittanceFromFile(const std::string& fileName)
     count[0] = dimension;
 
     wavelength_var.getVar(start, count, wavelengths_nm.data());
+    transmissivity_var.getVar(start, count, transmissivity_vals.data());
 
-    std::cout << wavelengths_nm[101] << std::endl;
+    std::vector<double> transmissivity = resampleAndExtendSpectrum(wavelengths_nm, transmissivity_vals, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, transmissivity_extend);
+
+    // std::cout << wavelengths_nm[500] << ", " << wavelengths_nm[501] << std::endl;
+    // std::cout << transmissivity_vals[500] << ", " << transmissivity_vals[501] << std::endl;
+
+    atmosphere_transmittance = Eigen::Map<SpectraVector_t>(transmissivity.data(), transmissivity.size());
 
 }
