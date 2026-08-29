@@ -56,7 +56,7 @@ from pathlib import Path
 # True  -> run libRadtran and write OUTPUT_CSV.
 # False -> read OUTPUT_CSV and draw OUTPUT_PLOT with matplotlib.  No libRadtran
 #          call is made, so the plot reflects whatever produced the CSV.
-GENERATE_DATA = True
+GENERATE_DATA = False
 
 SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 
@@ -75,7 +75,7 @@ OUTPUT_PLOT = SCRIPT_DIRECTORY / "earth_atmosphere_transmissivity.png"
 # LOWTRAN supports roughly 250 nm to just below 100000 nm (100 micrometres).
 # The hybrid mode reaches down to 120 nm through the REPTRAN solar table.
 # The default below produces 280 nm to 50 um.
-MIN_WAVELENGTH_NM = 280.0
+MIN_WAVELENGTH_NM = 100.0
 MAX_WAVELENGTH_NM = 100000.0 - 1
 WAVELENGTH_INTERVAL_NM = 1.0
 
@@ -123,12 +123,12 @@ NUMBER_OF_STREAMS = 20
 # is about 5 nm in the visible but widens as lambda^2: roughly 200 nm at 10 um
 # and a few micrometres at 50 um.  Sampling more finely than that costs solver
 # time without adding spectral information.
-LOWTRAN_MIN_WAVELENGTH_NM = 250.0
+LOWTRAN_MIN_WAVELENGTH_NM = 100.0
 LOWTRAN_MAX_WAVELENGTH_NM_EXCLUSIVE = 100000.0
 
 # REPTRAN solar table limits, and the wavelength at which the hybrid mode hands
 # over to LOWTRAN.  The solar table runs out shortly above the split.
-REPTRAN_MIN_WAVELENGTH_NM = 120.0
+REPTRAN_MIN_WAVELENGTH_NM =100.0
 REPTRAN_SOLAR_THERMAL_SPLIT_NM = 5000.0
 
 
