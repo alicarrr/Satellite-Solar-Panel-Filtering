@@ -66,3 +66,6 @@ Eigen::Vector3d unit_vector(const Eigen::Vector3d& a);
 void vecmul(double a[3], double b, double result[3]);
 
 void inverse(double A[3][3], double A_inv[3][3]);
+
+
+std::vector<double> to_std_vector(const Eigen::VectorXd& x);

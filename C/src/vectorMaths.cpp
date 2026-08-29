@@ -423,3 +423,8 @@ void vecmul(double a[3], double b, double result[3])
     result[2] = a[2] * b;
 }
 
+
+std::vector<double> to_std_vector(const Eigen::VectorXd& x) {
+    return std::vector<double>(x.data(), x.data() + x.size());
+}
+

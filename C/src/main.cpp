@@ -15,11 +15,14 @@
 #include <unistd.h>
 #include <cstdlib>
 
+#include <netcdf>
+
 
 #include "simParams.hpp"
 
 #include "satDynamics.hpp"
 #include "LSODA.hpp"
+
 
 
 
@@ -71,6 +74,7 @@ void setSimParams()
 void clearMem()
 {
     delete simParams.ephemeris;
+    albedo_file.close();
 }
 
 
@@ -120,8 +124,104 @@ void waitForPythonReadyMessage()
 }
 
 
+void preLoadData()
+{
+    const std::string& AM_spectra_file_name = "dat files/astmg173/ASTMG173.csv";
+    
+    std::cout << "Reading AM0 and AM1.5 spectra from file: " << AM_spectra_file_name << std::endl;
+    Spectrum_t AM0 = readASTMGFileForAM0(AM_spectra_file_name);
+    Spectrum_t AM1_5 = readASTMGFileForAM1_5(AM_spectra_file_name);
+
+    std::vector<double> AM0_wavelengths_nm = to_std_vector(AM0.wavelengths);
+    std::vector<double> AM1_5_wavelengths_nm = to_std_vector(AM1_5.wavelengths);
+    std::vector<double> AM0_irradiance = to_std_vector(AM0.values);
+    std::vector<double> AM1_5_irradiance = to_std_vector(AM1_5.values);
+
+    std::vector<double> wavelengths_nm_vec = calculateBinCentreWavelengths(min_wavelength_nm, max_wavelength_nm, d_wavelength_nm);
+
+    SpectraVector_t wavelengths_nm = Eigen::Map<SpectraVector_t>(wavelengths_nm_vec.data(), wavelengths_nm_vec.size());
+
+    SpectraVector_t AM0_irradiances_binned = Eigen::Map<SpectraVector_t>(rebinSpectrumConservingFlux(AM0_wavelengths_nm, AM0_irradiance, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, am_0_spectra_extend).data(), wavelengths_nm_vec.size());
+
+    SpectraVector_t AM1_5_irradiances_binned = Eigen::Map<SpectraVector_t>(rebinSpectrumConservingFlux(AM1_5_wavelengths_nm, AM1_5_irradiance, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, am_1_5_spectra_extend).data(), wavelengths_nm_vec.size());
+
+    AM0.wavelengths = wavelengths_nm;
+    AM0.values = AM0_irradiances_binned;
+
+    AM1_5.wavelengths = wavelengths_nm;
+    AM1_5.values = AM1_5_irradiances_binned;
+
+    std::cout << "Arrays are of size: " << AM0.wavelengths.size() << std::endl;
+    std::cout << "Arrays end with " << AM0.values(N_samples_spectra - 2) << std::endl;
+
+    Spectrum_t atmosphereTransmittance = opticalTransmittanceAtmosphereFromData(AM0, AM1_5);
+
+    std::cout << "Transmittance ends with " << AM0.values(N_samples_spectra - 2) << std::endl;
+
+    // get hamster albedo spectrum at a given location on Earth
+    std::cout << "Reading albedo data from file: " << std::endl;
+    read_albedo_data(hamster_day_of_year);
+
+    // Calculate transmission ratio from AM0 and AM1.5 spectra
+    Spectrum_t transmission_ratio_AM1_5 = atmosphereTransissionRatio(AM0, AM1_5);
+
+
+    // Testing plotting
+    FILE* gnuplot = popen("gnuplot -persistent", "w");
+    if (gnuplot == nullptr)
+    {
+        std::cerr << "Could not open gnuplot." << std::endl;
+        return;
+    }
+    std::fprintf(gnuplot,
+                    "set title 'Albedo and reflected radiance spectra'\n"
+                    "set xlabel 'Wavelength'\n"
+                    "set ylabel 'Spectral value'\n"
+                    "set grid\n"
+                    "plot '-' using 1:2 with lines title 'AM0', "
+                    "'-' using 1:2 with lines title 'AM1.5', "
+                    "'-' using 1:2 with lines title 'Atmosphere Transmittance', "
+                    "'-' using 1:2 with lines title 'Reflected radiance'\n");
+
+    for (Eigen::Index i = 0; i < AM0.wavelengths.size(); ++i)
+        std::fprintf(gnuplot, "%.17g %.17g\n", AM0.wavelengths(i), AM0.values(i));
+    std::fprintf(gnuplot, "e\n");
+
+    for (Eigen::Index i = 0; i < AM1_5.wavelengths.size(); ++i)
+        std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
+    std::fprintf(gnuplot, "e\n");
+
+    std::fflush(gnuplot);
+    pclose(gnuplot);
+
+
+    // Testing plotting
+    gnuplot = popen("gnuplot -persistent", "w");
+    if (gnuplot == nullptr)
+    {
+        std::cerr << "Could not open gnuplot." << std::endl;
+        return;
+    }
+    std::fprintf(gnuplot,
+                    "set title 'Albedo and reflected radiance spectra'\n"
+                    "set xlabel 'Wavelength'\n"
+                    "set ylabel 'Spectral value'\n"
+                    "set grid\n"
+                    "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n");
+
+    for (Eigen::Index i = 0; i < atmosphereTransmittance.wavelengths.size(); ++i)
+        std::fprintf(gnuplot, "%.17g %.17g\n", atmosphereTransmittance.wavelengths(i), atmosphereTransmittance.values(i));
+    std::fprintf(gnuplot, "e\n");
+
+    std::fflush(gnuplot);
+    pclose(gnuplot);
+}
+
+
 void doSimLoop()
 {
+    preLoadData();
+
     LSODA solver;
 
     using clock = std::chrono::steady_clock;
@@ -146,30 +246,24 @@ void doSimLoop()
             /** TODO: Calculate incident flux stuff here. */
 
             // test albedo toa calculation with one position in orbit and one visible albedo patch. This is a test to see if the function works and returns a reasonable spectrum.
-            const std::string& file_name = "dat files/astmg173/ASTMG173.csv";
+            
 
-            std::cout << "Reading AM0 and AM1.5 spectra from file: " << file_name << std::endl;
-            Spectrum_t AM0 = readASTMGFileForAM0(file_name);
-            Spectrum_t AM1_5 = readASTMGFileForAM1_5(file_name);
+            
 
-            Spectrum_t atmosphereTransmittance = opticalTransmittanceAtmosphereFromData(AM0, AM1_5);
-
-            // get hamster albedo spectrum at a given location on Earth
-            std::cout << "Reading albedo data from file: " << std::endl;
-            AlbedoData albedo_data = read_albedo_data();
+            // AlbedoData albedo_data = read_albedo_data();
             // take current llh of satellite and get albedo spectrum at that location
             Eigen::Vector3d sat_pos_ECEF = simParams.ephemeris->eciToEcef(cubesatState.position_GC_ECI, t);
             Eigen::Vector3d sat_llh = ecef_to_llh(sat_pos_ECEF);
-            Eigen::VectorXd albedo_values = get_albedo_spectrum(albedo_data, sat_llh(0), sat_llh(1));
+            // Eigen::VectorXd albedo_values = get_albedo_spectrum(albedo_data, sat_llh(0), sat_llh(1));
             
-            Spectrum_t albedo_spectrum_at_loc = 
-            {
-                .wavelengths = albedo_data.wavelength,
-                .values = albedo_values
-            };
+            // Spectrum_t albedo_spectrum_at_loc = 
+            // {
+            //     .wavelengths = albedo_data.wavelength,
+            //     .values = albedo_values
+            // };
 
             // test the interpolation function by interpolating the albedo spectrum to the wavelengths of the AM1.5 spectrum
-            Spectrum_t albedo_spectrum_at_loc_interp = interpolateSpectrum(albedo_spectrum_at_loc, AM1_5.wavelengths);
+            // Spectrum_t albedo_spectrum_at_loc_interp = interpolateSpectrum(albedo_spectrum_at_loc, AM1_5.wavelengths);
 
             Eigen::Vector3d albedo_patch_pos_llh = Eigen::Vector3d(sat_llh(0), sat_llh(1), 0); // lat, lon, alt= 6371000 m (Earth radius)
 
@@ -181,119 +275,57 @@ void doSimLoop()
             Eigen::Vector3d panel_pos_G = panelPosInG(cubesat.panels[0].position_rel_GC_in_B, cubesatState.rotation_matrix_ECI_from_B, cubesatState.position_GC_ECI);
             Eigen::Vector3d sun_pos_G = s_sol_ECI;
             
-            // Calculate transmission ratio from AM0 and AM1.5 spectra
-            Spectrum_t transmission_ratio_AM1_5 = atmosphereTransissionRatio(AM0, AM1_5);
+            
 
             std::cout << "Entering function" << std::endl;
-            Spectrum_t test_spectra = albedoRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_spectrum_at_loc, albedo_patch_pos_eci, albedo_patch_norm_vector, panel_pos_G, sun_pos_G);
+            // Spectrum_t test_spectra = albedoRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_spectrum_at_loc, albedo_patch_pos_eci, albedo_patch_norm_vector, panel_pos_G, sun_pos_G);
 
             // Plot the albedo and reflected spectra using inline gnuplot data.
-            FILE* gnuplot = popen("gnuplot -persistent", "w");
-            if (gnuplot == nullptr)
-            {
-                std::cerr << "Could not open gnuplot." << std::endl;
-                return;
-            }
+            // FILE* gnuplot = popen("gnuplot -persistent", "w");
+            // if (gnuplot == nullptr)
+            // {
+            //     std::cerr << "Could not open gnuplot." << std::endl;
+            //     return;
+            // }
 
-            std::fprintf(gnuplot,
-                         "set title 'Albedo and reflected radiance spectra'\n"
-                         "set xlabel 'Wavelength'\n"
-                         "set ylabel 'Spectral value'\n"
-                         "set grid\n"
-                         "plot '-' using 1:2 with lines title 'AM0', "
-                         "'-' using 1:2 with lines title 'AM1.5', "
-                         "'-' using 1:2 with lines title 'Atmosphere Transmittance', "
-                         "'-' using 1:2 with lines title 'Reflected radiance'\n");
+            
 
-            for (Eigen::Index i = 0; i < AM0.wavelengths.size(); ++i)
-                std::fprintf(gnuplot, "%.17g %.17g\n", AM0.wavelengths(i), AM0.values(i));
-            std::fprintf(gnuplot, "e\n");
+            // // calculate earth ir spectrum at the patch and plot it
+            // Spectrum_t earth_ir_spectrum = EarthIRRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_patch_pos_eci, panel_pos_G);
 
-            for (Eigen::Index i = 0; i < AM1_5.wavelengths.size(); ++i)
-                std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
-            std::fprintf(gnuplot, "e\n");
+            // // get black body spectrum at earth temp
+            // double earth_temp_K = 288.0; // K
+            // Spectrum_t earth_blackbody_spectrum = blackBodySpectrum(earth_temp_K, AM0);
 
-            for (Eigen::Index i = 0; i < test_spectra.wavelengths.size(); ++i)
-                std::fprintf(gnuplot, "%.17g %.17g\n", test_spectra.wavelengths(i), test_spectra.values(i));
-            std::fprintf(gnuplot, "e\n");
-
-            // for (Eigen::Index i = 0; i < albedo_spectrum_at_loc.wavelengths.size(); ++i)
+            // gnuplot = popen("gnuplot -persistent", "w");
+            // if (gnuplot == nullptr)
+            // {
+            //     std::cerr << "Could not open gnuplot." << std::endl;
+            //     return;
+            // }
+            // std::fprintf(gnuplot,
+            //              "set title 'Earth IR radiance spectrum'\n"
+            //              "set xlabel 'Wavelength'\n"
+            //              "set ylabel 'Spectral value'\n"
+            //              "set grid\n"
+            //              "plot '-' using 1:2 with lines title 'Earth IR radiance'\n"
+            //              "'-' using 1:2 with lines title 'Earth black body'\n");
+            // for (Eigen::Index i = 0; i < earth_ir_spectrum.wavelengths.size(); i++)
             // {
             //     std::fprintf(gnuplot, "%.17g %.17g\n",
-            //                  albedo_spectrum_at_loc.wavelengths(i),
-            //                  albedo_spectrum_at_loc.values(i));
+            //                  earth_ir_spectrum.wavelengths(i),
+            //                  earth_ir_spectrum.values(i));
+            // }
+            // // plot black body spectrum for comparison
+            // for (Eigen::Index i = 0; i < earth_blackbody_spectrum.wavelengths.size(); i++)
+            // {
+            //     std::fprintf(gnuplot, "%.17g %.17g\n",
+            //                  earth_blackbody_spectrum.wavelengths(i),
+            //                  earth_blackbody_spectrum.values(i));
             // }
             // std::fprintf(gnuplot, "e\n");
-
-            // for (Eigen::Index i = 0; i < test_spectra.wavelengths.size(); ++i)
-            // {
-            //     std::fprintf(gnuplot, "%.17g %.17g\n",
-            //                  test_spectra.wavelengths(i),
-            //                  test_spectra.values(i));
-            // }
-            std::fprintf(gnuplot, "e\n");
-            std::fflush(gnuplot);
-            pclose(gnuplot);
-
-            // make plot of just the reflected radiance spectrum
-            gnuplot = popen("gnuplot -persistent", "w");
-            if (gnuplot == nullptr)
-            {
-                std::cerr << "Could not open gnuplot." << std::endl;
-                return;
-            }
-            std::fprintf(gnuplot,
-                         "set title 'Reflected radiance spectrum'\n"
-                         "set xlabel 'Wavelength'\n"
-                         "set ylabel 'Spectral value'\n"
-                         "set grid\n"
-                         "plot '-' using 1:2 with lines title 'Reflected radiance'\n");
-            for (Eigen::Index i = 0; i < test_spectra.wavelengths.size(); ++i)
-            {
-                std::fprintf(gnuplot, "%.17g %.17g\n",
-                             test_spectra.wavelengths(i),
-                             test_spectra.values(i));
-            }
-            std::fprintf(gnuplot, "e\n");
-            std::fflush(gnuplot);
-            pclose(gnuplot);
-
-            // calculate earth ir spectrum at the patch and plot it
-            Spectrum_t earth_ir_spectrum = EarthIRRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_patch_pos_eci, panel_pos_G);
-
-            // get black body spectrum at earth temp
-            double earth_temp_K = 288.0; // K
-            Spectrum_t earth_blackbody_spectrum = blackBodySpectrum(earth_temp_K, AM0);
-
-            gnuplot = popen("gnuplot -persistent", "w");
-            if (gnuplot == nullptr)
-            {
-                std::cerr << "Could not open gnuplot." << std::endl;
-                return;
-            }
-            std::fprintf(gnuplot,
-                         "set title 'Earth IR radiance spectrum'\n"
-                         "set xlabel 'Wavelength'\n"
-                         "set ylabel 'Spectral value'\n"
-                         "set grid\n"
-                         "plot '-' using 1:2 with lines title 'Earth IR radiance'\n"
-                         "'-' using 1:2 with lines title 'Earth black body'\n");
-            for (Eigen::Index i = 0; i < earth_ir_spectrum.wavelengths.size(); i++)
-            {
-                std::fprintf(gnuplot, "%.17g %.17g\n",
-                             earth_ir_spectrum.wavelengths(i),
-                             earth_ir_spectrum.values(i));
-            }
-            // plot black body spectrum for comparison
-            for (Eigen::Index i = 0; i < earth_blackbody_spectrum.wavelengths.size(); i++)
-            {
-                std::fprintf(gnuplot, "%.17g %.17g\n",
-                             earth_blackbody_spectrum.wavelengths(i),
-                             earth_blackbody_spectrum.values(i));
-            }
-            std::fprintf(gnuplot, "e\n");
-            std::fflush(gnuplot);
-            pclose(gnuplot);
+            // std::fflush(gnuplot);
+            // pclose(gnuplot);
             
 
             /** TODO: Send flux data to Python Here */

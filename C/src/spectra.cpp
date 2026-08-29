@@ -9,8 +9,15 @@
 #include <iostream>
 #include <cstdio>
 
+#include <cmath>
+#include <limits>
+
 #include <sstream>
 
+SpectraVector_t spectra_wavelengths_nm;
+SpectraVector_t sun_spectra; // In watts, binned 
+SpectraVector_t atmosphere_transmittance; // Dimensionless, put to power of AM
+SpectraVector_t earth_ir_spectra; // In watts, binned
 
 
 Spectrum_t readSpectrumDat(const std::string& file_name)
@@ -296,7 +303,18 @@ Spectrum_t opticalTransmittanceAtmosphereFromData(const Spectrum_t& AM0_spectrum
     opticalTransmittance.wavelengths = AM0_spectrum_binned.wavelengths;
 
     // Calculate fraction
-    opticalTransmittance.values = AM1_5_spectrum_binned.values.cwiseProduct(AM0_spectrum_binned.values.cwiseInverse());
+    opticalTransmittance.values = AM1_5_spectrum_binned.values;
+    for (int i = 0; i < AM0_spectrum_binned.wavelengths.size(); i++)
+    {
+        if (AM0_spectrum_binned.values(i) == 0)
+        {
+            opticalTransmittance.values(i) = 0;
+        }
+        else
+        {
+            opticalTransmittance.values(i) /= AM0_spectrum_binned.values(i);
+        }
+    }
 
     // Raise fraction to 2/3 (i.e. 1/1.5)
     for (int i = 0; i < opticalTransmittance.values.size(); i++)
@@ -578,4 +596,522 @@ SatelliteResults_t computeOrbitalSpectralLoads(CubesatState_t cubesat_state, con
 
     }
     return satellite_results;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////
+/////////////               SPECTRAL RE-BINNING          ///////////////
+////////////////////////////////////////////////////////////////////////
+
+static double evaluateExtensionFunction(double (*extension_function)(double), double wavelength_nm)
+{
+    const double value = extension_function(wavelength_nm);
+
+    if (!std::isfinite(value))
+    {
+        throw std::domain_error(
+            "The domain extension function returned a non-finite value.");
+    }
+
+    return value;
+}
+
+
+static double simpsonEstimate(double lower_wavelength_nm, double upper_wavelength_nm, double lower_value, double midpoint_value, double upper_value)
+{
+    return (upper_wavelength_nm - lower_wavelength_nm)
+        * (lower_value + 4.0 * midpoint_value + upper_value)
+        / 6.0;
+}
+
+
+static double adaptiveSimpsonRecursive(
+    double (*extension_function)(double),
+    double lower_wavelength_nm,
+    double upper_wavelength_nm,
+    double lower_value,
+    double midpoint_value,
+    double upper_value,
+    double previous_estimate,
+    double tolerance,
+    unsigned int remaining_depth)
+{
+    const double midpoint_nm =
+        lower_wavelength_nm
+        + 0.5 * (upper_wavelength_nm - lower_wavelength_nm);
+
+    const double left_midpoint_nm =
+        lower_wavelength_nm
+        + 0.5 * (midpoint_nm - lower_wavelength_nm);
+
+    const double right_midpoint_nm =
+        midpoint_nm
+        + 0.5 * (upper_wavelength_nm - midpoint_nm);
+
+    const double left_midpoint_value =
+        evaluateExtensionFunction(
+            extension_function,
+            left_midpoint_nm);
+
+    const double right_midpoint_value =
+        evaluateExtensionFunction(
+            extension_function,
+            right_midpoint_nm);
+
+    const double left_estimate = simpsonEstimate(
+        lower_wavelength_nm,
+        midpoint_nm,
+        lower_value,
+        left_midpoint_value,
+        midpoint_value);
+
+    const double right_estimate = simpsonEstimate(
+        midpoint_nm,
+        upper_wavelength_nm,
+        midpoint_value,
+        right_midpoint_value,
+        upper_value);
+
+    const double refined_estimate =
+        left_estimate + right_estimate;
+
+    const double estimated_error =
+        refined_estimate - previous_estimate;
+
+    if (remaining_depth == 0
+        || std::fabs(estimated_error) <= 15.0 * tolerance)
+    {
+        // Richardson correction for Simpson integration.
+        return refined_estimate + estimated_error / 15.0;
+    }
+
+    return adaptiveSimpsonRecursive(
+               extension_function,
+               lower_wavelength_nm,
+               midpoint_nm,
+               lower_value,
+               left_midpoint_value,
+               midpoint_value,
+               left_estimate,
+               0.5 * tolerance,
+               remaining_depth - 1)
+        + adaptiveSimpsonRecursive(
+               extension_function,
+               midpoint_nm,
+               upper_wavelength_nm,
+               midpoint_value,
+               right_midpoint_value,
+               upper_value,
+               right_estimate,
+               0.5 * tolerance,
+               remaining_depth - 1);
+}
+
+
+static double integrateExtensionFunction(
+    double (*extension_function)(double),
+    double lower_wavelength_nm,
+    double upper_wavelength_nm)
+{
+    if (extension_function == nullptr
+        || upper_wavelength_nm <= lower_wavelength_nm)
+    {
+        return 0.0;
+    }
+
+    const double midpoint_nm =
+        lower_wavelength_nm
+        + 0.5 * (upper_wavelength_nm - lower_wavelength_nm);
+
+    const double lower_value =
+        evaluateExtensionFunction(
+            extension_function,
+            lower_wavelength_nm);
+
+    const double midpoint_value =
+        evaluateExtensionFunction(
+            extension_function,
+            midpoint_nm);
+
+    const double upper_value =
+        evaluateExtensionFunction(
+            extension_function,
+            upper_wavelength_nm);
+
+    const double initial_estimate = simpsonEstimate(
+        lower_wavelength_nm,
+        upper_wavelength_nm,
+        lower_value,
+        midpoint_value,
+        upper_value);
+
+    const double absolute_tolerance = 1.0e-12;
+    const double relative_tolerance = 1.0e-10;
+
+    const double tolerance =
+        absolute_tolerance
+        + relative_tolerance * std::fabs(initial_estimate);
+
+    const unsigned int maximum_recursion_depth = 20;
+
+    return adaptiveSimpsonRecursive(
+        extension_function,
+        lower_wavelength_nm,
+        upper_wavelength_nm,
+        lower_value,
+        midpoint_value,
+        upper_value,
+        initial_estimate,
+        tolerance,
+        maximum_recursion_depth);
+}
+
+static double evaluateCumulativeSourceFlux(const std::vector<double>& wavelengths_nm, const std::vector<double>& spectral_irradiances, const std::vector<double>& cumulative_flux, double wavelength_nm)
+{
+    if (wavelength_nm <= wavelengths_nm.front())
+    {
+        return 0.0;
+    }
+
+    if (wavelength_nm >= wavelengths_nm.back())
+    {
+        return cumulative_flux.back();
+    }
+
+    const std::vector<double>::const_iterator upper_iterator = std::upper_bound(wavelengths_nm.begin(), wavelengths_nm.end(), wavelength_nm);
+
+    const unsigned int upper_index = static_cast<unsigned int>(upper_iterator - wavelengths_nm.begin());
+
+    const unsigned int lower_index = upper_index - 1;
+
+    const double interval_width_nm = wavelengths_nm[upper_index] - wavelengths_nm[lower_index];
+
+    const double slope = (spectral_irradiances[upper_index] - spectral_irradiances[lower_index]) / interval_width_nm;
+
+    const double offset_nm = wavelength_nm - wavelengths_nm[lower_index];
+
+    return cumulative_flux[lower_index] + spectral_irradiances[lower_index] * offset_nm + 0.5 * slope * offset_nm * offset_nm;
+}
+
+
+
+std::vector<double> rebinSpectrumConservingFlux(
+    const std::vector<double>& wavelengths_nm,
+    const std::vector<double>& spectral_irradiances,
+    double min_wavelength_nm,
+    double max_wavelength_nm,
+    double step_wavelength_nm,
+    double (*domain_extension_function)(double))
+{
+    if (wavelengths_nm.size() != spectral_irradiances.size())
+    {
+        throw std::invalid_argument(
+            "The wavelength and spectral irradiance vectors "
+            "must have the same length.");
+    }
+
+    if (wavelengths_nm.size() < 2)
+    {
+        throw std::invalid_argument(
+            "At least two source spectrum points are required.");
+    }
+
+    if (!std::isfinite(min_wavelength_nm)
+        || !std::isfinite(max_wavelength_nm)
+        || !std::isfinite(step_wavelength_nm))
+    {
+        throw std::invalid_argument(
+            "The output wavelength parameters must be finite.");
+    }
+
+    if (max_wavelength_nm <= min_wavelength_nm)
+    {
+        throw std::invalid_argument(
+            "The maximum wavelength must exceed the minimum wavelength.");
+    }
+
+    if (step_wavelength_nm <= 0.0)
+    {
+        throw std::invalid_argument(
+            "The wavelength step must be positive.");
+    }
+
+    if (wavelengths_nm.size()
+        > std::numeric_limits<unsigned int>::max())
+    {
+        throw std::length_error(
+            "The input spectrum contains too many points.");
+    }
+
+    const unsigned int number_of_input_points =
+        static_cast<unsigned int>(wavelengths_nm.size());
+
+    for (unsigned int i = 0; i < number_of_input_points; ++i)
+    {
+        if (!std::isfinite(wavelengths_nm[i])
+            || !std::isfinite(spectral_irradiances[i]))
+        {
+            throw std::invalid_argument(
+                "All source wavelengths and irradiances must be finite.");
+        }
+
+        if (i > 0 && wavelengths_nm[i] <= wavelengths_nm[i - 1])
+        {
+            throw std::invalid_argument(
+                "The source wavelengths must be strictly increasing.");
+        }
+    }
+
+    const double unrounded_number_of_bins =
+        (max_wavelength_nm - min_wavelength_nm)
+        / step_wavelength_nm;
+
+    const double rounded_number_of_bins =
+        std::round(unrounded_number_of_bins);
+
+    const double bin_count_tolerance =
+        1.0e-10
+        * std::max(1.0, std::fabs(unrounded_number_of_bins));
+
+    if (std::fabs(
+            unrounded_number_of_bins - rounded_number_of_bins)
+        > bin_count_tolerance)
+    {
+        throw std::invalid_argument(
+            "The output wavelength range must be divisible "
+            "by the wavelength step.");
+    }
+
+    if (rounded_number_of_bins < 1.0
+        || rounded_number_of_bins
+            > static_cast<double>(
+                std::numeric_limits<unsigned int>::max()))
+    {
+        throw std::length_error(
+            "The requested number of output bins is invalid.");
+    }
+
+    const unsigned int number_of_output_bins =
+        static_cast<unsigned int>(rounded_number_of_bins);
+
+    /*
+     * cumulative_flux[i] is the integrated piecewise-linear source
+     * spectrum between wavelengths_nm[0] and wavelengths_nm[i].
+     */
+    std::vector<double> cumulative_flux(
+        number_of_input_points,
+        0.0);
+
+    for (unsigned int i = 0;
+         i + 1 < number_of_input_points;
+         ++i)
+    {
+        const double interval_width_nm =
+            wavelengths_nm[i + 1] - wavelengths_nm[i];
+
+        const double interval_flux =
+            0.5
+            * (spectral_irradiances[i]
+               + spectral_irradiances[i + 1])
+            * interval_width_nm;
+
+        cumulative_flux[i + 1] =
+            cumulative_flux[i] + interval_flux;
+
+        if (!std::isfinite(cumulative_flux[i + 1]))
+        {
+            throw std::overflow_error(
+                "The integrated source flux overflowed.");
+        }
+    }
+
+    const double source_min_wavelength_nm =
+        wavelengths_nm.front();
+
+    const double source_max_wavelength_nm =
+        wavelengths_nm.back();
+
+    std::vector<double> output_spectrum;
+    std::vector<double> output_wavelengths_nm;
+
+    output_wavelengths_nm.reserve(number_of_output_bins);
+    output_spectrum.reserve(number_of_output_bins);
+
+    for (unsigned int j = 0;
+         j < number_of_output_bins;
+         ++j)
+    {
+        const double bin_lower_nm =
+            min_wavelength_nm
+            + static_cast<double>(j) * step_wavelength_nm;
+
+        /*
+         * Set the final edge directly from max_wavelength_nm to avoid
+         * accumulation of floating-point error.
+         */
+        const double bin_upper_nm =
+            (j + 1 == number_of_output_bins)
+            ? max_wavelength_nm
+            : min_wavelength_nm
+                + static_cast<double>(j + 1)
+                    * step_wavelength_nm;
+
+        const double bin_width_nm =
+            bin_upper_nm - bin_lower_nm;
+
+        double bin_flux = 0.0;
+
+        /*
+         * Integrate the portion covered by the source dataset.
+         */
+        const double known_lower_nm =
+            std::max(bin_lower_nm, source_min_wavelength_nm);
+
+        const double known_upper_nm =
+            std::min(bin_upper_nm, source_max_wavelength_nm);
+
+        if (known_upper_nm > known_lower_nm)
+        {
+            bin_flux += evaluateCumulativeSourceFlux(
+                            wavelengths_nm,
+                            spectral_irradiances,
+                            cumulative_flux,
+                            known_upper_nm)
+                - evaluateCumulativeSourceFlux(
+                            wavelengths_nm,
+                            spectral_irradiances,
+                            cumulative_flux,
+                            known_lower_nm);
+        }
+
+        /*
+         * Integrate any part of the bin below the source domain.
+         */
+        const double lower_extension_upper_nm =
+            std::min(bin_upper_nm, source_min_wavelength_nm);
+
+        if (lower_extension_upper_nm > bin_lower_nm)
+        {
+            bin_flux += integrateExtensionFunction(
+                domain_extension_function,
+                bin_lower_nm,
+                lower_extension_upper_nm);
+        }
+
+        /*
+         * Integrate any part of the bin above the source domain.
+         */
+        const double upper_extension_lower_nm =
+            std::max(bin_lower_nm, source_max_wavelength_nm);
+
+        if (bin_upper_nm > upper_extension_lower_nm)
+        {
+            bin_flux += integrateExtensionFunction(
+                domain_extension_function,
+                upper_extension_lower_nm,
+                bin_upper_nm);
+        }
+
+        const double bin_centre_nm =
+            bin_lower_nm + 0.5 * bin_width_nm;
+
+        const double bin_average_irradiance =
+            bin_flux / bin_width_nm;
+
+        output_wavelengths_nm.push_back(bin_centre_nm);
+        output_spectrum.push_back(
+            bin_average_irradiance);
+    }
+
+    return output_spectrum;
+}
+
+
+
+std::vector<double> calculateBinCentreWavelengths(double min_wavelength_nm, double max_wavelength_nm, double step_wavelength_nm)
+{
+    if (!std::isfinite(min_wavelength_nm)
+        || !std::isfinite(max_wavelength_nm)
+        || !std::isfinite(step_wavelength_nm))
+    {
+        throw std::invalid_argument(
+            "Wavelength parameters must be finite.");
+    }
+
+    if (max_wavelength_nm <= min_wavelength_nm)
+    {
+        throw std::invalid_argument(
+            "Maximum wavelength must exceed minimum wavelength.");
+    }
+
+    if (step_wavelength_nm <= 0.0)
+    {
+        throw std::invalid_argument(
+            "Wavelength step must be positive.");
+    }
+
+    const double unrounded_number_of_bins =
+        (max_wavelength_nm - min_wavelength_nm)
+        / step_wavelength_nm;
+
+    const double rounded_number_of_bins =
+        std::round(unrounded_number_of_bins);
+
+    const double tolerance =
+        1.0e-10
+        * std::max(1.0, std::fabs(unrounded_number_of_bins));
+
+    if (std::fabs(
+            unrounded_number_of_bins - rounded_number_of_bins)
+        > tolerance)
+    {
+        throw std::invalid_argument(
+            "Wavelength range must be divisible by the wavelength step.");
+    }
+
+    if (rounded_number_of_bins
+        > static_cast<double>(
+            std::numeric_limits<unsigned int>::max()))
+    {
+        throw std::length_error(
+            "Requested number of wavelength bins is too large.");
+    }
+
+    const unsigned int number_of_bins =
+        static_cast<unsigned int>(rounded_number_of_bins);
+
+    std::vector<double> bin_centres(number_of_bins);
+
+    for (unsigned int i = 0; i < number_of_bins; ++i)
+    {
+        bin_centres[i] =
+            min_wavelength_nm
+            + (static_cast<double>(i) + 0.5)
+                * step_wavelength_nm;
+    }
+
+    return bin_centres;
+}
+
+
+
+double sun_spectra_extend(double wavelength_nm)
+{
+    return 0;
+}
+
+double earth_ir_spectra_extend(double wavelength_nm)
+{
+    return 0;
+}
+
+double am_0_spectra_extend(double wavelength_nm)
+{
+    return 0;
+}
+
+double am_1_5_spectra_extend(double wavelength_nm)
+{
+    return 0;
 }

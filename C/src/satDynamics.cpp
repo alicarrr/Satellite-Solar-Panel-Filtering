@@ -2,6 +2,7 @@
 #include "satParams.hpp"
 #include "LSODA.hpp"
 #include "RK78.hpp"
+#include "vectorMaths.hpp"
 
 #include <vector>
 #include <iostream>
@@ -234,10 +235,6 @@ void getRotationSimDerivatives(double t, double* x, double* x_dot, void* params)
     }
 }
 
-
-std::vector<double> to_std_vector(const Eigen::VectorXd& x) {
-    return std::vector<double>(x.data(), x.data() + x.size());
-}
 
 
 

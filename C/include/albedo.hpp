@@ -1,6 +1,15 @@
 #pragma once
 
 #include <eigen3/Eigen/Dense>
+#include "constants.hpp"
+#include "spectra.hpp"
+
+#include <vector>
+#include <netcdf>
+
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 
 // Directory containing the HAMSTER DOYxxx.nc files.
@@ -14,6 +23,13 @@ const unsigned int hamster_day_of_year = 265;
 // The spatial sampling interval is chosen automatically from the file size.
 const unsigned int hamster_max_albedo_memory_mb = 512;
 
+extern unsigned int n_spectra_albedo; // Number of wavelengths in the albedo data
+
+inline constexpr double d_lambda = 10 * nm; // metres
+inline constexpr double d_lat = 0.25; // degrees
+inline constexpr double d_lon = 0.25; // degrees
+
+extern netCDF::NcFile albedo_file;
 
 /**
  * @brief In-memory HAMSTER spectral albedo data.
@@ -60,6 +76,9 @@ typedef struct
  */
 AlbedoData read_albedo_data();
 
+void read_albedo_data(unsigned int doy);
+void printVariableInformation(const std::string& variable_name);
+
 
 /**
  * @brief Get the HAMSTER albedo spectrum at the nearest stored pixel.
@@ -81,3 +100,6 @@ Eigen::VectorXd get_albedo_spectrum(
     double latitude_deg,
     double longitude_deg
 );
+
+
+SpectraVector_t reBinAlbedoSpectra(unsigned int lat_i, unsigned int lon_i);

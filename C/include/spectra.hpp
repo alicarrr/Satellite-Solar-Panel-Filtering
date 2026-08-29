@@ -5,8 +5,26 @@
 #include <eigen3/Eigen/Dense>
 #include <string>
 
-// all spectrum vector types have the same length
-#define VectorSpectrum_t Eigen::Vector<double, N_samples_spectra>
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+#include <vector>
+
+
+inline constexpr double min_wavelength_nm = 10;
+inline constexpr double max_wavelength_nm = 50e3;
+inline constexpr double d_wavelength_nm = 10;
+
+// Number of frequencies with data for input and output spectra
+inline constexpr int N_samples_spectra = ceil((max_wavelength_nm - min_wavelength_nm)/d_wavelength_nm);
+
+typedef Eigen::Vector<double, N_samples_spectra> SpectraVector_t;
+
+extern SpectraVector_t spectra_wavelengths_nm;
+extern SpectraVector_t sun_spectra; // In watts, binned 
+extern SpectraVector_t atmosphere_transmittance; // Dimensionless, put to power of AM
+extern SpectraVector_t earth_ir_spectra; // In watts, binned
 
 /**
  * @brief Spectrum with corresponding wavelength values.
@@ -15,6 +33,12 @@ typedef struct {
     Eigen::VectorXd wavelengths;
     Eigen::VectorXd values;
 } Spectrum_t;
+
+
+typedef struct {
+    std::vector<double> wavelengths_nm;
+    std::vector<double> spectra;
+} FileSpectrum_t;
 
 /**
  * @brief Struct to hold the final results of the simulation for each panel at each time step.
@@ -155,3 +179,124 @@ Spectrum_t scaledTransmissivityForAM(double air_mass, const Spectrum_t& atmosphe
 Spectrum_t blackBodySpectrum(double temperature_K, const Spectrum_t& wavelength_spectrum);
 
 Spectrum_t EarthIRRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const Spectrum_t& AM0, Eigen::Vector3d patch_pos_G, Eigen::Vector3d panel_pos_G);
+
+
+
+/**
+ * @brief Conservatively rebins and extends a point-sampled spectral
+ * irradiance dataset.
+ *
+ * The input spectral irradiances are treated as point values connected by
+ * piecewise-linear segments. Each output value is calculated by integrating
+ * this reconstructed spectrum over the output bin and dividing by the bin
+ * width. Consequently, the returned values are bin-average spectral
+ * irradiances rather than point samples.
+ *
+ * The requested minimum and maximum wavelengths are treated as the outer
+ * edges of the output domain. The output wavelength values are the centres
+ * of bins having width step_wavelength_nm. The output range must therefore
+ * contain an integer number of bins.
+ *
+ * Source data outside the requested output domain are discarded without
+ * renormalisation. Regions inside the requested output domain but outside
+ * the source dataset are filled using domain_extension_function. Passing
+ * nullptr uses zero outside the source domain.
+ *
+ * @param wavelengths_nm Strictly increasing source wavelengths in nm.
+ *
+ * @param spectral_irradiances Source spectral irradiance point values. These
+ * must have the same length as wavelengths_nm and must be expressed per nm.
+ *
+ * @param min_wavelength_nm Lower outer edge of the output domain in nm.
+ *
+ * @param max_wavelength_nm Upper outer edge of the output domain in nm.
+ *
+ * @param step_wavelength_nm Width of every output wavelength bin in nm.
+ *
+ * @param domain_extension_function Pointer to a function that takes a
+ * wavelength in nm and returns the extended spectral irradiance at that
+ * wavelength. The returned value must use the same units as the source
+ * spectral irradiances. A nullptr selects zero extension.
+ *
+ * @return A std::vector containing the average
+ * spectral irradiance of every output bin.
+ *
+ * @throws std::invalid_argument If the input vectors are invalid, the
+ * wavelengths are not strictly increasing, the output parameters are
+ * invalid, or the output range is not divisible by the requested step.
+ *
+ * @throws std::domain_error If the extension function returns a non-finite
+ * value.
+ */
+std::vector<double> rebinSpectrumConservingFlux(
+    const std::vector<double>& wavelengths_nm,
+    const std::vector<double>& spectral_irradiances,
+    double min_wavelength_nm,
+    double max_wavelength_nm,
+    double step_wavelength_nm,
+    double (*domain_extension_function)(double));
+
+
+/**
+ * @brief Calculates the centre wavelength of each uniformly spaced bin.
+ *
+ * The minimum and maximum wavelengths are treated as the outer edges of the
+ * complete wavelength domain. The range must contain an integer number of
+ * bins having width step_wavelength_nm.
+ *
+ * @param min_wavelength_nm Lower outer edge of the wavelength domain in nm.
+ *
+ * @param max_wavelength_nm Upper outer edge of the wavelength domain in nm.
+ *
+ * @param step_wavelength_nm Width of each wavelength bin in nm.
+ *
+ * @return A vector containing the centre wavelength of each bin in nm.
+ */
+std::vector<double> calculateBinCentreWavelengths(double min_wavelength_nm, double max_wavelength_nm, double step_wavelength_nm);
+
+
+/** 
+ * @brief Calculates the sun spectrum if the dataset is not defined.
+ * 
+ * @param wavelength_nm The wavelength at which to evaluate the spectral irradiance (in W/m^2/nm), measured in nm
+ * 
+ * @return The spectral irradiance in W/m^2/nm
+*/
+double sun_spectra_extend(double wavelength_nm);
+
+
+/** 
+ * @brief Calculates the Earth IR spectrum if the dataset is not defined.
+ * 
+ * @param wavelength_nm The wavelength at which to evaluate the spectral irradiance (in W/m^2/nm), measured in nm
+ * 
+ * @return The spectral irradiance in W/m^2/nm
+*/
+double earth_ir_spectra_extend(double wavelength_nm);
+
+
+/** 
+ * @brief Calculates the AM0 spectrum if the dataset is not defined.
+ * 
+ * @param wavelength_nm The wavelength at which to evaluate the spectral irradiance (in W/m^2/nm), measured in nm
+ * 
+ * @return The spectral irradiance in W/m^2/nm
+*/
+double am_0_spectra_extend(double wavelength_nm);
+
+
+/** 
+ * @brief Calculates the AM1.5 spectrum if the dataset is not defined.
+ * 
+ * @param wavelength_nm The wavelength at which to evaluate the spectral irradiance (in W/m^2/nm), measured in nm
+ * 
+ * @return The spectral irradiance in W/m^2/nm
+*/
+double am_1_5_spectra_extend(double wavelength_nm);
+
+
+void getSolarSpectrumFromFile(const std::string& fileName);
+
+void getTransmittanceFromFile(const std::string& fileName);
+
+void getEarthIRSpectrumFromFile(const std::string& fileName);

@@ -14,6 +14,15 @@ find_package(Eigen3 3.4 REQUIRED) # Make sure that the compiler goes and finds E
 find_package(lcm REQUIRED)
 find_package(netCDF CONFIG REQUIRED)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(
+    NETCDF_CXX
+    REQUIRED
+    IMPORTED_TARGET
+    GLOBAL
+    netcdf-cxx4
+)
+
 
 # Add include directories, these are the directories when you #include "package"
 include_directories(
@@ -110,6 +119,7 @@ target_link_libraries(spectra PUBLIC
 target_link_libraries(albedo PUBLIC
     m
     netCDF::netcdf
+    PkgConfig::NETCDF_CXX
 )
 
 target_link_libraries(vectorMaths PUBLIC

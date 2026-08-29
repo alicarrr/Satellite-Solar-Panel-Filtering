@@ -1,5 +1,6 @@
 #include "albedo.hpp"
 #include <netcdf.h>
+#include <netcdf>
 
 #include <cmath>
 #include <cstdio>
@@ -7,6 +8,7 @@
 #include <limits>
 #include <stdexcept>
 
+netCDF::NcFile albedo_file;
 
 /**
  * @brief Check the return status of a NetCDF function.
@@ -445,4 +447,52 @@ Eigen::VectorXd get_albedo_spectrum(
         longitude_index;
 
     return albedo_data.albedo.row(row).transpose();
+}
+
+
+
+void read_albedo_data(unsigned int doy)
+{
+    int width = 3;
+
+    std::ostringstream stream;
+    stream << hamster_dir << "/" << "DOY" << std::setfill('0') << std::setw(width) << doy << ".nc";
+    std::string file_name = stream.str();
+
+    std::cout << file_name << std::endl;
+
+    albedo_file.open(file_name, netCDF::NcFile::read);
+}
+
+
+
+void printVariableInformation(const std::string& variable_name)
+{
+    netCDF::NcVar variable = albedo_file.getVar(variable_name);
+
+    if (variable.isNull())
+    {
+        throw std::runtime_error(
+            "Variable not found: " + variable_name);
+    }
+
+    std::cout << "Variable: " << variable.getName() << '\n';
+    std::cout << "Stored type: "
+              << variable.getType().getName() << '\n';
+
+    std::vector<netCDF::NcDim> dimensions = variable.getDims();
+
+    std::cout << "Number of dimensions: "
+              << dimensions.size() << '\n';
+
+    for (int i = 0;
+         i < static_cast<int>(dimensions.size());
+         ++i)
+    {
+        std::cout
+            << "  Dimension " << i
+            << ": " << dimensions[i].getName()
+            << ", size = " << dimensions[i].getSize()
+            << '\n';
+    }
 }
