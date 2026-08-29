@@ -126,8 +126,6 @@ void waitForPythonReadyMessage()
 
 void preLoadData()
 {
-    const std::string& AM_spectra_file_name = "dat files/astmg173/ASTMG173.csv";
-    
     std::cout << "Reading AM0 and AM1.5 spectra from file: " << AM_spectra_file_name << std::endl;
     Spectrum_t AM0 = readASTMGFileForAM0(AM_spectra_file_name);
     Spectrum_t AM1_5 = readASTMGFileForAM1_5(AM_spectra_file_name);
@@ -158,9 +156,17 @@ void preLoadData()
 
     std::cout << "Transmittance ends with " << AM0.values(N_samples_spectra - 2) << std::endl;
 
+
     // get hamster albedo spectrum at a given location on Earth
     std::cout << "Reading albedo data from file: " << std::endl;
     read_albedo_data(hamster_day_of_year);
+
+    std::cout << "Reading Atmosphere Data" << std::endl;
+    getTransmittanceFromFile(atmosphere_file_path);
+
+    // printVariableInformation("total_downward_transmissivity", atmosphere_transmissivity_file);
+
+    
 
     // Calculate transmission ratio from AM0 and AM1.5 spectra
     Spectrum_t transmission_ratio_AM1_5 = atmosphereTransissionRatio(AM0, AM1_5);

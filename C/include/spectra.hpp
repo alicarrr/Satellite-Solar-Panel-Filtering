@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include <netcdf>
+
 
 inline constexpr double min_wavelength_nm = 10;
 inline constexpr double max_wavelength_nm = 50e3;
@@ -25,6 +27,11 @@ extern SpectraVector_t spectra_wavelengths_nm;
 extern SpectraVector_t sun_spectra; // In watts, binned 
 extern SpectraVector_t atmosphere_transmittance; // Dimensionless, put to power of AM
 extern SpectraVector_t earth_ir_spectra; // In watts, binned
+
+inline const std::string atmosphere_file_path = "dat files/earth_atmosphere_transmissivity.nc";
+inline const std::string AM_spectra_file_name = "dat files/astmg173/ASTMG173.csv";
+
+extern netCDF::NcFile atmosphere_transmissivity_file;
 
 /**
  * @brief Spectrum with corresponding wavelength values.
@@ -231,6 +238,55 @@ Spectrum_t EarthIRRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const 
 std::vector<double> rebinSpectrumConservingFlux(
     const std::vector<double>& wavelengths_nm,
     const std::vector<double>& spectral_irradiances,
+    double min_wavelength_nm,
+    double max_wavelength_nm,
+    double step_wavelength_nm,
+    double (*domain_extension_function)(double));
+
+
+
+/**
+ * @brief Resamples and extends spectral data without conserving integrated
+ * area.
+ *
+ * The minimum and maximum wavelengths are treated as the outer edges of the
+ * output domain. One output value is calculated for each uniformly spaced
+ * bin.
+ *
+ * If one or more source data points lie inside an output bin, their values
+ * are combined using an arithmetic mean. If no source points lie inside the
+ * bin, the value is calculated by linearly interpolating the source data at
+ * the bin centre.
+ *
+ * If the bin centre lies outside the source wavelength domain,
+ * domain_extension_function is evaluated at the bin centre. Passing nullptr
+ * uses zero outside the source domain.
+ *
+ * This function does not preserve the integrated area of the input spectrum.
+ * It is suitable for dimensionless spectral properties such as
+ * transmissivity, reflectivity, absorptivity or quantum efficiency.
+ *
+ * @param wavelengths_nm Strictly increasing source wavelengths in nm.
+ *
+ * @param spectral_values Source spectral values corresponding to each
+ * wavelength.
+ *
+ * @param min_wavelength_nm Lower outer edge of the output domain in nm.
+ *
+ * @param max_wavelength_nm Upper outer edge of the output domain in nm.
+ *
+ * @param step_wavelength_nm Width of each output wavelength bin in nm.
+ *
+ * @param domain_extension_function Pointer to a function that takes a
+ * wavelength in nm and returns the extended spectral value at that
+ * wavelength. A nullptr selects zero extension.
+ *
+ * @return A vector containing one resampled spectral value for each output
+ * wavelength bin.
+ */
+std::vector<double> resampleAndExtendSpectrum(
+    const std::vector<double>& wavelengths_nm,
+    const std::vector<double>& spectral_values,
     double min_wavelength_nm,
     double max_wavelength_nm,
     double step_wavelength_nm,

@@ -9,3 +9,4 @@ C/lib/Hamster/**
 C/lib/HAMSTER/**
 *:Zone.Identifier
 **/poetry.lock
+*.lock

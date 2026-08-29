@@ -77,8 +77,7 @@ typedef struct
 AlbedoData read_albedo_data();
 
 void read_albedo_data(unsigned int doy);
-void printVariableInformation(const std::string& variable_name);
-
+void printVariableInformation(const std::string& variable_name, const netCDF::NcFile& file);
 
 /**
  * @brief Get the HAMSTER albedo spectrum at the nearest stored pixel.

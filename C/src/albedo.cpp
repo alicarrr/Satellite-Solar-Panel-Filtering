@@ -466,9 +466,9 @@ void read_albedo_data(unsigned int doy)
 
 
 
-void printVariableInformation(const std::string& variable_name)
+void printVariableInformation(const std::string& variable_name, const netCDF::NcFile& file)
 {
-    netCDF::NcVar variable = albedo_file.getVar(variable_name);
+    netCDF::NcVar variable = file.getVar(variable_name);
 
     if (variable.isNull())
     {

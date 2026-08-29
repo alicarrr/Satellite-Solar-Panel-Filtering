@@ -19,6 +19,8 @@ SpectraVector_t sun_spectra; // In watts, binned
 SpectraVector_t atmosphere_transmittance; // Dimensionless, put to power of AM
 SpectraVector_t earth_ir_spectra; // In watts, binned
 
+netCDF::NcFile atmosphere_transmissivity_file;
+
 
 Spectrum_t readSpectrumDat(const std::string& file_name)
 {
@@ -1096,6 +1098,264 @@ std::vector<double> calculateBinCentreWavelengths(double min_wavelength_nm, doub
 
 
 
+
+static double interpolateSpectralValue(
+    const std::vector<double>& wavelengths_nm,
+    const std::vector<double>& spectral_values,
+    double wavelength_nm)
+{
+    if (wavelength_nm <= wavelengths_nm.front())
+    {
+        return spectral_values.front();
+    }
+
+    if (wavelength_nm >= wavelengths_nm.back())
+    {
+        return spectral_values.back();
+    }
+
+    const std::vector<double>::const_iterator upper_iterator =
+        std::lower_bound(
+            wavelengths_nm.begin(),
+            wavelengths_nm.end(),
+            wavelength_nm);
+
+    const unsigned int upper_index =
+        static_cast<unsigned int>(
+            upper_iterator - wavelengths_nm.begin());
+
+    /*
+     * Return the original value directly if the requested wavelength
+     * exactly matches a source wavelength.
+     */
+    if (wavelengths_nm[upper_index] == wavelength_nm)
+    {
+        return spectral_values[upper_index];
+    }
+
+    const unsigned int lower_index = upper_index - 1;
+
+    const double interpolation_fraction =
+        (wavelength_nm - wavelengths_nm[lower_index])
+        / (wavelengths_nm[upper_index]
+           - wavelengths_nm[lower_index]);
+
+    return spectral_values[lower_index]
+        + interpolation_fraction
+            * (spectral_values[upper_index]
+               - spectral_values[lower_index]);
+}
+
+
+std::vector<double> resampleAndExtendSpectrum(
+    const std::vector<double>& wavelengths_nm,
+    const std::vector<double>& spectral_values,
+    double min_wavelength_nm,
+    double max_wavelength_nm,
+    double step_wavelength_nm,
+    double (*domain_extension_function)(double))
+{
+    if (wavelengths_nm.size() != spectral_values.size())
+    {
+        throw std::invalid_argument(
+            "Wavelength and spectral value vectors must have equal lengths.");
+    }
+
+    if (wavelengths_nm.size() < 2)
+    {
+        throw std::invalid_argument(
+            "At least two source spectrum points are required.");
+    }
+
+    if (!std::isfinite(min_wavelength_nm)
+        || !std::isfinite(max_wavelength_nm)
+        || !std::isfinite(step_wavelength_nm))
+    {
+        throw std::invalid_argument(
+            "Output wavelength parameters must be finite.");
+    }
+
+    if (max_wavelength_nm <= min_wavelength_nm)
+    {
+        throw std::invalid_argument(
+            "Maximum wavelength must exceed minimum wavelength.");
+    }
+
+    if (step_wavelength_nm <= 0.0)
+    {
+        throw std::invalid_argument(
+            "Wavelength step must be positive.");
+    }
+
+    if (wavelengths_nm.size()
+        > std::numeric_limits<unsigned int>::max())
+    {
+        throw std::length_error(
+            "The source spectrum contains too many points.");
+    }
+
+    const unsigned int number_of_source_points =
+        static_cast<unsigned int>(wavelengths_nm.size());
+
+    for (unsigned int i = 0; i < number_of_source_points; ++i)
+    {
+        if (!std::isfinite(wavelengths_nm[i])
+            || !std::isfinite(spectral_values[i]))
+        {
+            throw std::invalid_argument(
+                "All source wavelengths and values must be finite.");
+        }
+
+        if (i > 0 && wavelengths_nm[i] <= wavelengths_nm[i - 1])
+        {
+            throw std::invalid_argument(
+                "Source wavelengths must be strictly increasing.");
+        }
+    }
+
+    const double unrounded_number_of_bins =
+        (max_wavelength_nm - min_wavelength_nm)
+        / step_wavelength_nm;
+
+    const double rounded_number_of_bins =
+        std::round(unrounded_number_of_bins);
+
+    const double tolerance =
+        1.0e-10
+        * std::max(1.0, std::fabs(unrounded_number_of_bins));
+
+    if (std::fabs(
+            unrounded_number_of_bins - rounded_number_of_bins)
+        > tolerance)
+    {
+        throw std::invalid_argument(
+            "The wavelength range must be divisible by the wavelength step.");
+    }
+
+    if (rounded_number_of_bins
+        > static_cast<double>(
+            std::numeric_limits<unsigned int>::max()))
+    {
+        throw std::length_error(
+            "The requested number of output bins is too large.");
+    }
+
+    const unsigned int number_of_output_bins =
+        static_cast<unsigned int>(rounded_number_of_bins);
+
+    std::vector<double> output_values;
+    output_values.reserve(number_of_output_bins);
+
+    for (unsigned int i = 0; i < number_of_output_bins; ++i)
+    {
+        const double bin_lower_nm =
+            min_wavelength_nm
+            + static_cast<double>(i) * step_wavelength_nm;
+
+        const double bin_upper_nm =
+            (i + 1 == number_of_output_bins)
+            ? max_wavelength_nm
+            : min_wavelength_nm
+                + static_cast<double>(i + 1)
+                    * step_wavelength_nm;
+
+        const double bin_centre_nm =
+            bin_lower_nm + 0.5 * (bin_upper_nm - bin_lower_nm);
+
+        /*
+         * Use the extension function whenever the bin centre lies outside
+         * the source dataset's domain.
+         */
+        if (bin_centre_nm < wavelengths_nm.front()
+            || bin_centre_nm > wavelengths_nm.back())
+        {
+            double extended_value = 0.0;
+
+            if (domain_extension_function != nullptr)
+            {
+                extended_value =
+                    domain_extension_function(bin_centre_nm);
+
+                if (!std::isfinite(extended_value))
+                {
+                    throw std::domain_error(
+                        "The domain extension function returned "
+                        "a non-finite value.");
+                }
+            }
+
+            output_values.push_back(extended_value);
+            continue;
+        }
+
+        /*
+         * Use half-open bins [lower, upper), except for the final bin,
+         * which includes its upper boundary.
+         */
+        const std::vector<double>::const_iterator first_iterator =
+            std::lower_bound(
+                wavelengths_nm.begin(),
+                wavelengths_nm.end(),
+                bin_lower_nm);
+
+        std::vector<double>::const_iterator end_iterator;
+
+        if (i + 1 == number_of_output_bins)
+        {
+            end_iterator = std::upper_bound(
+                wavelengths_nm.begin(),
+                wavelengths_nm.end(),
+                bin_upper_nm);
+        }
+        else
+        {
+            end_iterator = std::lower_bound(
+                wavelengths_nm.begin(),
+                wavelengths_nm.end(),
+                bin_upper_nm);
+        }
+
+        const unsigned int first_index =
+            static_cast<unsigned int>(
+                first_iterator - wavelengths_nm.begin());
+
+        const unsigned int end_index =
+            static_cast<unsigned int>(
+                end_iterator - wavelengths_nm.begin());
+
+        const unsigned int number_of_points_in_bin =
+            end_index - first_index;
+
+        if (number_of_points_in_bin > 0)
+        {
+            double value_sum = 0.0;
+
+            for (unsigned int j = first_index;
+                 j < end_index;
+                 ++j)
+            {
+                value_sum += spectral_values[j];
+            }
+
+            output_values.push_back(
+                value_sum
+                / static_cast<double>(number_of_points_in_bin));
+        }
+        else
+        {
+            output_values.push_back(
+                interpolateSpectralValue(
+                    wavelengths_nm,
+                    spectral_values,
+                    bin_centre_nm));
+        }
+    }
+
+    return output_values;
+}
+
+
+
 double sun_spectra_extend(double wavelength_nm)
 {
     return 0;
@@ -1114,4 +1374,29 @@ double am_0_spectra_extend(double wavelength_nm)
 double am_1_5_spectra_extend(double wavelength_nm)
 {
     return 0;
+}
+
+
+void getTransmittanceFromFile(const std::string& fileName)
+{
+    atmosphere_transmissivity_file.open(fileName, netCDF::NcFile::read);
+
+    netCDF::NcVar wavelength_var = atmosphere_transmissivity_file.getVar("wavelength_nm");
+    netCDF::NcVar transmissivity_var = atmosphere_transmissivity_file.getVar("total_downward_transmissivity");
+
+    int dimension = wavelength_var.getDim(0).getSize();
+
+    std::vector<double> wavelengths_nm(dimension);
+    std::vector<double> transmissivity_vals(dimension);
+
+    std::vector<std::size_t> start(1);
+    start[0] = 0;
+
+    std::vector<std::size_t> count(1);
+    count[0] = dimension;
+
+    wavelength_var.getVar(start, count, wavelengths_nm.data());
+
+    std::cout << wavelengths_nm[101] << std::endl;
+
 }
