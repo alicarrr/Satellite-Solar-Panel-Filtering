@@ -484,9 +484,11 @@ Spectrum_t albedoRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const S
         .values = scaled_transmittance.values.array() * AM0.values.array()
     };
 
-    albedo_toa_spectrum.values = (transmissionSpectrumAMTotal.values.array() * albedo_spectrum_at_loc.values.array() * cos_zenith * (AU * AU / patch_to_sun_G.squaredNorm())/M_PI).matrix();
+    // radiance in W/m^2/sr/nm at the top of the atmosphere (TOA)
 
-    // albedo_toa_spectrum.values = (AM0_spectrum_binned.values.array() * transmission_ratio_AM1_5.pow(total_AM_scale) * albedo_spectrum_at_loc.values.array() * cos_zenith * (AU * AU / patch_to_sun_G.squaredNorm())/M_PI).matrix();
+    albedo_toa_spectrum.values = transmissionSpectrumAMTotal.values.array() * albedo_spectrum_at_loc.values.array() / M_PI;
+
+    // NOTE: to get irradiance at panel multiply by cos(angle between panel and patch), patch area, and divide by distance squared. 
 
     return albedo_toa_spectrum;
 }
@@ -505,8 +507,6 @@ Spectrum_t blackBodySpectrum(double temperature_K, const Spectrum_t& wavelength_
         double wavelength_m = wavelength_spectrum.wavelengths(i) * nm; // Convert nm to m
         double exponent = (h * c) / (wavelength_m * k * temperature_K);
         blackbody_spectrum.values(i) = (2.0 * h * c * c) / (std::pow(wavelength_m, 5) * (std::exp(exponent) - 1.0)); 
-        // convert to W/m^2/nm 
-        blackbody_spectrum.values(i) *= 1e-9; // Convert from W/m^2/m to W/m^2/nm
     }
 
     return blackbody_spectrum;

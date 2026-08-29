@@ -451,7 +451,7 @@ int main()
 
     // Test binning the spectrum to a new wavelength range and step size
     double min_wavelength = 300.0;
-    double max_wavelength = 2500.0;
+    double max_wavelength = 50000.0;
     double wavelength_step_size = 10.0;
 
     Spectrum_t binned_spectrum = binSpectrum(spectrum, min_wavelength, max_wavelength, wavelength_step_size);
