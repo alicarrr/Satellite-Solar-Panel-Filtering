@@ -128,45 +128,16 @@ void preLoadData()
 {
     setWavelengthArray();
 
+    getAlbedoFileParams();
 
-    std::cout << "Reading AM0 and AM1.5 spectra from file: " << AM_spectra_file_name << std::endl;
-    Spectrum_t AM0 = readASTMGFileForAM0(AM_spectra_file_name);
-    Spectrum_t AM1_5 = readASTMGFileForAM1_5(AM_spectra_file_name);
+    std::cout << d_lat_file << ", " << d_lon_file << std::endl;
 
-    std::vector<double> AM0_wavelengths_nm = to_std_vector(AM0.wavelengths);
-    std::vector<double> AM1_5_wavelengths_nm = to_std_vector(AM1_5.wavelengths);
-    std::vector<double> AM0_irradiance = to_std_vector(AM0.values);
-    std::vector<double> AM1_5_irradiance = to_std_vector(AM1_5.values);
+    std::cout << latitudes_file.minCoeff() << ", " << latitudes_file.maxCoeff() << std::endl;
+    std::cout << longitudes_file.minCoeff() << ", " << longitudes_file.maxCoeff() << std::endl;
 
-    std::vector<double> wavelengths_nm_vec = calculateBinCentreWavelengths(min_wavelength_nm, max_wavelength_nm, d_wavelength_nm);
-
-    SpectraVector_t wavelengths_nm = Eigen::Map<SpectraVector_t>(wavelengths_nm_vec.data(), wavelengths_nm_vec.size());
-
-    SpectraVector_t AM0_irradiances_binned = Eigen::Map<SpectraVector_t>(rebinSpectrumConservingFlux(AM0_wavelengths_nm, AM0_irradiance, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, am_0_spectra_extend).data(), wavelengths_nm_vec.size());
-
-    SpectraVector_t AM1_5_irradiances_binned = Eigen::Map<SpectraVector_t>(rebinSpectrumConservingFlux(AM1_5_wavelengths_nm, AM1_5_irradiance, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, am_1_5_spectra_extend).data(), wavelengths_nm_vec.size());
-
-    AM0.wavelengths = wavelengths_nm;
-    AM0.values = AM0_irradiances_binned;
-
-    AM1_5.wavelengths = wavelengths_nm;
-    AM1_5.values = AM1_5_irradiances_binned;
-
-    std::cout << "Arrays are of size: " << AM0.wavelengths.size() << std::endl;
-    std::cout << "Arrays end with " << AM0.values(N_samples_spectra - 2) << std::endl;
-
-    Spectrum_t atmosphereTransmittance = opticalTransmittanceAtmosphereFromData(AM0, AM1_5);
-
-    std::cout << "Transmittance ends with " << AM0.values(N_samples_spectra - 2) << std::endl;
 
     std::cout << "Reading Atmosphere Data" << std::endl;
     getTransmittanceFromFile(atmosphere_file_path);
-
-    // std::cout << atmosphere_transmittance.segment(100, 5).transpose() << std::endl;
-
-    atmosphereTransmittance.values = atmosphere_transmittance;
-
-
 
     // get hamster albedo spectrum at a given location on Earth
     std::cout << "Reading albedo data from file: " << std::endl;
@@ -179,9 +150,6 @@ void preLoadData()
 
     double totalSunPower = sun_spectra.sum();
     std::cout << "Total Solar Power is " << totalSunPower << "W" << std::endl;
-
-    // Calculate transmission ratio from AM0 and AM1.5 spectra
-    Spectrum_t transmission_ratio_AM1_5 = atmosphereTransissionRatio(AM0, AM1_5);
 
 
     // Testing plotting
@@ -229,8 +197,8 @@ void preLoadData()
                     "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n"
                     "set terminal pngcairo size 800,600 font 'Arial,12'\n");
 
-    for (Eigen::Index i = 0; i < atmosphereTransmittance.wavelengths.size(); ++i)
-        std::fprintf(gnuplot, "%.17g %.17g\n", atmosphereTransmittance.wavelengths(i), atmosphereTransmittance.values(i));
+    for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
+        std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), atmosphere_transmittance(i));
     std::fprintf(gnuplot, "e\n");
 
     std::fflush(gnuplot);

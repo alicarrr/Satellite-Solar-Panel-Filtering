@@ -14,10 +14,10 @@
 
 // Directory containing the HAMSTER DOYxxx.nc files.
 // The executable is run from the project root.
-const char hamster_dir[] = "C/lib/HAMSTER";
+const char hamster_dir[] = "C/lib/HAMSTER/hamster_1140_720/data/albedo/hamster";
 
 // HAMSTER day of year to load.
-const unsigned int hamster_day_of_year = 265;
+const unsigned int hamster_day_of_year = 32;
 
 // Maximum memory used to store albedo data after loading.
 // The spatial sampling interval is chosen automatically from the file size.
@@ -28,6 +28,19 @@ extern unsigned int n_spectra_albedo; // Number of wavelengths in the albedo dat
 inline constexpr double d_lambda = 10 * nm; // metres
 inline constexpr double d_lat = 0.25; // degrees
 inline constexpr double d_lon = 0.25; // degrees
+
+extern double d_lat_file;
+extern double d_lon_file;
+
+extern double lat_min_file;
+extern double lat_max_file;
+extern double lon_min_file;
+extern double lon_max_file;
+
+extern int albedo_spectra_file_len;
+
+extern Eigen::VectorXd latitudes_file;
+extern Eigen::VectorXd longitudes_file;
 
 extern netCDF::NcFile albedo_file;
 
@@ -112,3 +125,21 @@ Eigen::VectorXd get_albedo_spectrum(
 double getVisibilityConeAngle(double distance, double r);
 
 SpectraVector_t reBinAlbedoSpectra(unsigned int lat_i, unsigned int lon_i);
+
+Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI);
+
+void getAlbedoFileParams();
+
+void openAlbedoFile();
+
+int getIndexOfEntry(const Eigen::VectorXd& v, double val);
+
+SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH);
+
+SpectraVector_t getPowerOnAlbedoSurface(double lat, double lon);
+
+SpectraVector_t getEarthIRPowerOnAlbedoSurface(double lat, double lon);
+
+SpectraVector_t getIncidentFluxOnFace(Eigen::Vector3d r_ECI, double t, int panel_i, const SimParams_t& simParams);
+
+std::vector<SpectraVector_t> getAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, double t, const SimParams_t& simParams);

@@ -7,6 +7,21 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <fstream>
+#include <sstream>
+
+double d_lat_file;
+double d_lon_file;
+
+double lat_min_file;
+double lat_max_file;
+double lon_min_file;
+double lon_max_file;
+
+int albedo_spectra_file_len;
+
+Eigen::VectorXd latitudes_file;
+Eigen::VectorXd longitudes_file;
 
 netCDF::NcFile albedo_file;
 
@@ -503,4 +518,150 @@ double getVisibilityConeAngle(double distance, double r)
     double theta = acos(r/distance);
 
     return theta;
+}
+
+void openAlbedoFile()
+{
+    std::cout << "loading in Albedo data" << std::endl;
+    read_albedo_data(hamster_day_of_year);
+}
+
+void getAlbedoFileParams()
+{
+    if (albedo_file.isNull())
+    {
+        openAlbedoFile();
+    }
+
+    // Use for larger HAMSTER files
+    // netCDF::NcVar latitudeVar = albedo_file.getVar("Latitude");
+    // netCDF::NcVar longitudeVar = albedo_file.getVar("Longitude");
+    // netCDF::NcVar spectrumVar = albedo_file.getVar("Wavelength");
+
+    // Use fpr smaller HAMSTER files
+    netCDF::NcVar latitudeVar = albedo_file.getVar("lat");
+    netCDF::NcVar longitudeVar = albedo_file.getVar("lon");
+    netCDF::NcVar spectrumVar = albedo_file.getVar("spectral");
+
+    const int dimensionLat = latitudeVar.getDim(0).getSize();
+    const int dimensionLon = longitudeVar.getDim(0).getSize();
+    albedo_spectra_file_len = spectrumVar.getDim(0).getSize();
+
+
+    std::vector<double> lats(2);
+    std::vector<double> lons(2);
+
+    std::vector<double> latitudes(dimensionLat);
+    std::vector<double> longitudes(dimensionLon);
+
+
+    std::vector<std::size_t> start(1);
+    start[0] = 0;
+    
+    std::vector<std::size_t> count(1);
+    count[0] = 2;
+
+    std::vector<std::size_t> countLat(1);
+    countLat[0] = dimensionLat;
+
+    std::vector<std::size_t> countLon(1);
+    countLon[0] = dimensionLon;
+
+    latitudeVar.getVar(start, count, lats.data());
+    longitudeVar.getVar(start, count, lons.data());
+
+    latitudeVar.getVar(start, countLat, latitudes.data());
+    longitudeVar.getVar(start, countLon, longitudes.data());
+
+    latitudes_file = Eigen::Map<Eigen::VectorXd>(latitudes.data(), latitudes.size());
+    longitudes_file = Eigen::Map<Eigen::VectorXd>(longitudes.data(), longitudes.size());
+
+    d_lat_file = std::abs(std::round((lats[1] - lats[0]) * 1000) / 1000);
+    d_lon_file = std::abs(std::round((lons[1] - lons[0]) * 1000) / 1000);
+
+    lat_min_file = latitudes_file.minCoeff();
+    lat_max_file = latitudes_file.maxCoeff();
+    lon_min_file = longitudes_file.minCoeff();
+    lon_max_file = longitudes_file.maxCoeff();
+
+}
+
+
+int getIndexOfEntry(const Eigen::VectorXd& v, double val)
+{
+    Eigen::Index index;
+
+    (v.array() - val).abs().minCoeff(&index);
+
+    return (int)index;
+}
+
+
+double wrapValue(double val, double min_val, double max_val) {
+    double range = max_val - min_val;
+    if (range == 0.0) return min_val;
+    
+    // std::fmod handles remainder, but can return negative numbers if 'val - min_val' is negative
+    double result = min_val + std::fmod(val - min_val, range);
+    
+    // If result is negative, shift it back into the positive range [min_val, max_val)
+    if (result < min_val) {
+        result += range;
+    }
+    
+    return result;
+}
+
+
+std::vector<int> getLatLonIndices(Eigen::Vector3d LLH)
+{
+    double lat = LLH(0);
+    double lon = LLH(1);
+
+    lat = wrapValue(lat, lat_min_file, lat_max_file);
+    lon = wrapValue(lon, lon_min_file, lon_max_file);
+
+    std::vector<int> indices(2);
+
+    // LARGE FILES: The indices in the file are ordered lat then lon
+    // indices[0] = getIndexOfEntry(latitudes_file, lat);
+    // indices[1] = getIndexOfEntry(longitudes_file, lon);
+
+    // SMALL FILES: The indices in the file are ordered lon then lat
+    indices[1] = getIndexOfEntry(latitudes_file, lat);
+    indices[0] = getIndexOfEntry(longitudes_file, lon);
+
+    return indices;
+}
+
+
+SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
+{
+    std::vector<int> indices = getLatLonIndices(LLH);
+
+    std::vector<double> spectra(albedo_spectra_file_len);
+
+    // Long files
+    // netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
+
+    // Short files
+    netCDF::NcVar albedoData = albedo_file.getVar("albedo");
+
+    std::vector<double> albedoSpectra(albedo_spectra_file_len);
+
+    std::vector<std::size_t> start(3);
+    start[0] = indices[0];
+    start[1] = indices[1];
+    start[2] = 0;
+    
+    std::vector<std::size_t> count(3);
+    count[0] = 1;
+    count[1] = 1;
+    count[2] = albedo_spectra_file_len;
+
+    albedoData.getVar(start, count, albedoSpectra.data());
+
+    SpectraVector_t albedoSpectraVec = Eigen::Map<SpectraVector_t>(albedoSpectra.data(), albedoSpectra.size());
+
+    return albedoSpectraVec;
 }
