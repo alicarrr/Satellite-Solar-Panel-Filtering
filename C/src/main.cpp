@@ -160,9 +160,10 @@ void preLoadData()
         return;
     }
     std::fprintf(gnuplot,
-                    "set title 'Albedo and reflected radiance spectra'\n"
+                    "set title 'Sun Power spectra'\n"
                     "set xlabel 'Wavelength'\n"
                     "set ylabel 'Spectral value'\n"
+                    "set logscale x\n"
                     "set grid\n"
                     "plot '-' using 1:2 with lines title 'Sun Spectra'\n"
                     "set terminal pngcairo size 800,600 font 'Arial,12'\n");
@@ -187,9 +188,10 @@ void preLoadData()
         return;
     }
     std::fprintf(gnuplot,
-                    "set title 'Albedo and reflected radiance spectra'\n"
+                    "set title 'Atmosphere Transmittance'\n"
                     "set xlabel 'Wavelength'\n"
                     "set ylabel 'Spectral value'\n"
+                    "set logscale x\n"
                     "set grid\n"
                     "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n"
                     "set terminal pngcairo size 800,600 font 'Arial,12'\n");
@@ -227,6 +229,7 @@ void preLoadData()
         "set title 'Albedo incident power spectra'\n"
         "set xlabel 'Wavelength'\n"
         "set ylabel 'Power (W)'\n"
+        "set logscale x\n"
         "set grid\n"
         "plot '-' using 1:2 with lines title 'Panel +x Power', "
             "'-' using 1:2 with lines title 'Panel -x Power', "
