@@ -50,6 +50,7 @@ extern int albedo_spectra_file_len;
 
 extern Eigen::VectorXd latitudes_file;
 extern Eigen::VectorXd longitudes_file;
+extern std::vector<double> wavelengths_file_nm;
 
 extern netCDF::NcFile albedo_file;
 
@@ -143,12 +144,16 @@ void openAlbedoFile();
 
 int getIndexOfEntry(const Eigen::VectorXd& v, double val);
 
+std::vector<int> getLatLonIndices(Eigen::Vector3d LLH);
+
 SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH);
 
-SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI);
+SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
 
-SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH);
+SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t);
 
 SpectraVector_t getIncidentFluxOnFace(Eigen::Vector3d r_ECI, double t, int panel_i, const SimParams_t& simParams);
 
-std::vector<SpectraVector_t> getAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
+std::vector<SpectraVector_t> getIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
+
+double fillAlbedoData(double lambda_nm);

@@ -24,6 +24,7 @@ int albedo_spectra_file_len;
 
 Eigen::VectorXd latitudes_file;
 Eigen::VectorXd longitudes_file;
+std::vector<double> wavelengths_file_nm;
 
 netCDF::NcFile albedo_file;
 
@@ -576,14 +577,21 @@ void getAlbedoFileParams()
     std::vector<std::size_t> countLon(1);
     countLon[0] = dimensionLon;
 
+    std::vector<std::size_t> countWav(1);
+    countWav[0] = albedo_spectra_file_len;
+
     latitudeVar.getVar(start, count, lats.data());
     longitudeVar.getVar(start, count, lons.data());
 
     latitudeVar.getVar(start, countLat, latitudes.data());
     longitudeVar.getVar(start, countLon, longitudes.data());
 
+    wavelengths_file_nm = std::vector<double>(albedo_spectra_file_len);
+    spectrumVar.getVar(start, countWav, wavelengths_file_nm.data());
+
     latitudes_file = Eigen::Map<Eigen::VectorXd>(latitudes.data(), latitudes.size());
     longitudes_file = Eigen::Map<Eigen::VectorXd>(longitudes.data(), longitudes.size());
+    
 
     d_lat_file = std::abs(std::round((lats[1] - lats[0]) * 1000) / 1000);
     d_lon_file = std::abs(std::round((lons[1] - lons[0]) * 1000) / 1000);
@@ -647,6 +655,12 @@ std::vector<int> getLatLonIndices(Eigen::Vector3d LLH)
 }
 
 
+double fillAlbedoData(double lambda_nm)
+{
+    return 0;
+}
+
+
 SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
 {
     std::vector<int> indices = getLatLonIndices(LLH);
@@ -674,16 +688,132 @@ SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
 
     albedoData.getVar(start, count, albedoSpectra.data());
 
-    SpectraVector_t albedoSpectraVec = Eigen::Map<SpectraVector_t>(albedoSpectra.data(), albedoSpectra.size());
+    // Need to rebin the data from the File
+    std::vector<double> albedoSpectraExtended = resampleAndExtendSpectrum(wavelengths_file_nm, albedoSpectra, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, fillAlbedoData);
+
+    SpectraVector_t albedoSpectraVec = Eigen::Map<SpectraVector_t>(albedoSpectraExtended.data(), albedoSpectraExtended.size());
+    
 
     return albedoSpectraVec;
 }
 
 
-SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI)
+Eigen::Vector3d getNormalToEarthEcef(double lat, double lon)
+{
+    double e_earth = sqrt(1 - pow((b_earth/a_earth), 2));
+    double b_over_a_earth = b_earth/a_earth;
+    Eigen::Vector3d n_hat_ecef = Eigen::Vector3d({b_over_a_earth * cos(lat)*cos(lon), b_over_a_earth * cos(lat)*sin(lon), sin(lat)})/sqrt(1 - pow(e_earth * cos(lat), 2));
+
+    return n_hat_ecef;
+}
+
+SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
+{
+    
+
+    double lat = LLH[0];
+    double lon = LLH[1];
+
+    Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH);
+
+    /** Normal vector for oblate sphereoid */
+    Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
+
+    Eigen::Vector3d r_sol_ecef = simParams.ephemeris->eciToEcef(r_sol_ECI, t);
+
+    Eigen::Vector3d r_hat_patch_to_sun = (r_sol_ecef - r_patch_ecef).normalized();
+
+    double r = (r_sol_ecef - r_patch_ecef).norm();
+
+    /** Approximately correct, uses differential area of oblate sphereoid */
+    double A_patch = a_earth * cos(lat) * sqrt(pow(a_earth * sin(lat), 2) + pow(b_earth * cos(lat), 2)) * d_lat * d_lon;
+
+    double zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sun);
+    if (zenith_cosine < 0)
+    {
+        zenith_cosine = 0;
+    }
+    double zenith_theta = acos(zenith_cosine);
+
+    double AM_frac = AMKastenYoung(zenith_theta);
+
+    SpectraVector_t transmission = atmosphere_transmittance.array().pow(AM_frac);
+    
+
+    // Flux is (transmittance^AM) * total power / (4pi r^2), power is flux * patch area * cos(zenith) (where negative zenith = 0)
+    SpectraVector_t incidentPower = transmission.cwiseProduct(sun_spectra / (4.0 * M_PI * pow(r, 2))) * A_patch * zenith_cosine;
+
+    return incidentPower;
+}
+
+
+SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t)
+{
+    /** TODO: Fix with actual IR spectrum */
+    return SpectraVector_t::Zero();
+}
+
+
+SpectraVector_t reBinAlbedoSpectra(unsigned int lat_i, unsigned int lon_i)
+{
+
+}
+
+
+std::vector<SpectraVector_t> getIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
 {
     Eigen::Vector3d LLH_0 = LLH;
     LLH_0[2] = 0; // Just double check that the height is zero.
 
-    Eigen::Vector3d r_patch_ecef = 
+    double lat = LLH[0];
+    double lon = LLH[1];
+
+    SpectraVector_t incidentPowerPatch = getPowerOnAlbedoSurface(LLH_0, r_sol_ECI, t, simParams);
+
+    SpectraVector_t emittedIRPower = getEarthIRPowerOnAlbedoSurface(LLH_0, t);
+
+    Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH_0);
+    Eigen::Vector3d r_sat_ecef = simParams.ephemeris->eciToEcef(r_ECI, t);
+
+    Eigen::Vector3d r_patch_to_sat_ecef = r_sat_ecef - r_patch_ecef;
+    Eigen::Vector3d r_hat_patch_to_sat_ecef = r_patch_to_sat_ecef.normalized();
+
+    Eigen::Vector3d r_hat_patch_to_sat_eci = simParams.ephemeris->ecefToEci(r_hat_patch_to_sat_ecef, t);
+
+    Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
+
+    double r = r_patch_to_sat_ecef.norm();
+
+    double zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sat_ecef);
+    if (zenith_cosine < 0)
+    {
+        zenith_cosine = 0;
+    }
+    double zenith_theta = acos(zenith_cosine);
+
+    double AM_frac = AMKastenYoung(zenith_theta);
+
+    SpectraVector_t transmission = atmosphere_transmittance.array().pow(AM_frac);
+
+    SpectraVector_t albedo = getAlbedoSpectra(LLH);
+
+    SpectraVector_t powerFromPatch = albedo.cwiseProduct(incidentPowerPatch) + emittedIRPower;
+
+    int n_panels = cubesat.panels.size();
+    std::vector<SpectraVector_t> panelIncidentPower(n_panels);
+
+    for (int i = 0; i < n_panels; i++)
+    {
+        Eigen::Vector3d n_hat_panel_eci = R_eci_from_B * cubesat.panels[i].normal_vector;
+
+        double incident_cosine = -n_hat_panel_eci.dot(r_hat_patch_to_sat_eci);
+        if (incident_cosine < 0)
+        {
+            incident_cosine = 0;
+        }
+
+        panelIncidentPower[i] = transmission * (powerFromPatch / (M_PI * pow(r, 2))) * zenith_cosine * incident_cosine * cubesat.panels[i].size;
+    }
+
+    return panelIncidentPower;
 }
