@@ -89,7 +89,7 @@ void setInitialOrbitState()
 
     double argp = 30 * DEG2RAD;
     double raan = -90 * DEG2RAD;
-    double inc = 60 * DEG2RAD;
+    double inc = 10 * DEG2RAD;
 
 
     tuple<Eigen::Vector3d, Eigen::Vector3d> r_v_eci = angular_parameters_to_eci(M, e, mean_motion, inc, raan, argp, mu_earth);
@@ -164,10 +164,7 @@ void preLoadData()
                     "set xlabel 'Wavelength'\n"
                     "set ylabel 'Spectral value'\n"
                     "set grid\n"
-                    "plot '-' using 1:2 with lines title 'AM0', "
-                    // "'-' using 1:2 with lines title 'AM1.5', "
-                    "'-' using 1:2 with lines title 'Atmosphere Transmittance', "
-                    "'-' using 1:2 with lines title 'Reflected radiance'\n"
+                    "plot '-' using 1:2 with lines title 'Sun Spectra'\n"
                     "set terminal pngcairo size 800,600 font 'Arial,12'\n");
 
     for (Eigen::Index i = 0; i < sun_spectra.size(); ++i)
@@ -203,12 +200,59 @@ void preLoadData()
 
     std::fflush(gnuplot);
     pclose(gnuplot);
+
+
+    // Testing Albedo
+    Eigen::Vector3d s_sol_ECI;
+    // Get initial sun position in ECI frame at t=0
+    s_sol_ECI = get_sun_location_eci(0, simParams.ephemeris);
+
+    std::vector<SpectraVector_t> albedoPowerPerPanel = getTotalIncidentAlbedoAndIRPowerSpectra(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI, 0, simParams);
+
+
+    std::cout << "Total power per panel = " << std::endl;
+    for (int n = 0; n < cubesat.panels.size(); n++)
+    {
+        std::cout << albedoPowerPerPanel[n].sum() << std::endl;
+    }
+
+    gnuplot = popen("gnuplot -persistent", "w");
+    if (gnuplot == nullptr)
+    {
+        std::cerr << "Could not open gnuplot." << std::endl;
+        return;
+    }
+    std::fprintf(
+        gnuplot,
+        "set title 'Albedo incident power spectra'\n"
+        "set xlabel 'Wavelength'\n"
+        "set ylabel 'Power (W)'\n"
+        "set grid\n"
+        "plot '-' using 1:2 with lines title 'Panel +x Power', "
+            "'-' using 1:2 with lines title 'Panel -x Power', "
+            "'-' using 1:2 with lines title 'Panel +y Power', "
+            "'-' using 1:2 with lines title 'Panel -y Power', "
+            "'-' using 1:2 with lines title 'Panel +z Power', "
+            "'-' using 1:2 with lines title 'Panel -z Power'\n"
+    );
+    
+    for (int n = 0; n < cubesat.panels.size(); n++)
+    {
+        for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
+        {
+            std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), (albedoPowerPerPanel[n])(i));
+        }
+        
+        std::fprintf(gnuplot, "e\n");
+    }
+
+    std::fflush(gnuplot);
+    pclose(gnuplot);
 }
 
 
 void doSimLoop()
 {
-    preLoadData();
 
     LSODA solver;
 
@@ -353,10 +397,13 @@ This function is your executable function, it is the function that gets called w
 */
 int main()
 {
+
+    waitForPythonReadyMessage();
+
     setSimParams();
     setInitialOrbitState();
 
-    waitForPythonReadyMessage();
+    preLoadData();
 
     doSimLoop();
 

@@ -12,7 +12,7 @@
 #include <sstream>
 #include <string>
 
-#define useLargeHamster false;
+#define useLargeHamster true
 
 // Directory containing the HAMSTER DOYxxx.nc files.
 // The executable is run from the project root.
@@ -26,7 +26,7 @@
 
 
 // HAMSTER day of year to load.
-const unsigned int hamster_day_of_year = 32;
+const unsigned int hamster_day_of_year = 265;
 
 // Maximum memory used to store albedo data after loading.
 // The spatial sampling interval is chosen automatically from the file size.
@@ -134,10 +134,6 @@ Eigen::VectorXd get_albedo_spectrum(
  */
 double getVisibilityConeAngle(double distance, double r);
 
-SpectraVector_t reBinAlbedoSpectra(unsigned int lat_i, unsigned int lon_i);
-
-Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI);
-
 void getAlbedoFileParams();
 
 void openAlbedoFile();
@@ -157,3 +153,7 @@ SpectraVector_t getIncidentFluxOnFace(Eigen::Vector3d r_ECI, double t, int panel
 std::vector<SpectraVector_t> getIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
 
 double fillAlbedoData(double lambda_nm);
+
+Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI, double t, const SimParams_t& simParams);
+
+std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
