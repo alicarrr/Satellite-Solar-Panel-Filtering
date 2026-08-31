@@ -4,3 +4,6 @@ DO NOT MODIFY BY HAND!!!!
 """
 
 from .sim_data_t import sim_data_t
+from .spectrum_metadata_t import spectrum_metadata_t
+from .spectrum_data_t import spectrum_data_t
+from .sim_ready_t import sim_ready_t

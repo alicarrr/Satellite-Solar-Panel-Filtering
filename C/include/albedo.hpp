@@ -12,7 +12,7 @@
 #include <sstream>
 #include <string>
 
-#define useLargeHamster true
+#define useLargeHamster false
 
 // Directory containing the HAMSTER DOYxxx.nc files.
 // The executable is run from the project root.
@@ -26,7 +26,7 @@
 
 
 // HAMSTER day of year to load.
-const unsigned int hamster_day_of_year = 265;
+const unsigned int hamster_day_of_year = 244;
 
 // Maximum memory used to store albedo data after loading.
 // The spatial sampling interval is chosen automatically from the file size.
@@ -148,9 +148,7 @@ SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_s
 
 SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t);
 
-SpectraVector_t getIncidentFluxOnFace(Eigen::Vector3d r_ECI, double t, int panel_i, const SimParams_t& simParams);
-
-std::vector<SpectraVector_t> getIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
+std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
 
 double fillAlbedoData(double lambda_nm);
 

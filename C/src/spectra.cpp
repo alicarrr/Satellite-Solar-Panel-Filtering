@@ -1433,3 +1433,68 @@ void getTransmittanceFromFile(const std::string& fileName)
     atmosphere_transmittance = Eigen::Map<SpectraVector_t>(transmissivity.data(), transmissivity.size());
 
 }
+
+
+
+std::vector<SpectraVector_t> solarPowerPerPanel(Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI)
+{
+    Eigen::Vector3d r_sat_rel_sun_eci = r_ECI - r_sol_ECI;
+
+    double r = r_sat_rel_sun_eci.norm();
+    Eigen::Vector3d r_hat_flux = r_sat_rel_sun_eci.normalized();
+
+    SpectraVector_t sunFlux = sun_spectra/(4.0 * M_PI * pow(r, 2));
+
+
+    // Calculate eclipse fraction (approximate but accounts for size of sun percent)
+    double theta = acos(r_sol_ECI.normalized().dot(r_ECI.normalized()));
+    double phi_S = acos(R_sol / r_sol_ECI.norm());
+    double phi_E = acos(R_earth / r_ECI.norm());
+
+    double d_theta = phi_E - theta;
+
+    double in_view_factor;
+    if (d_theta > phi_S)
+    {
+        in_view_factor = 0.0;
+    }
+    else if (d_theta < 0)
+    {
+        in_view_factor = 1;
+    }
+    else
+    {
+        in_view_factor = 1 - d_theta / phi_S;
+    }
+
+    int N_panel = cubesat.panels.size();
+    std::vector<SpectraVector_t> powerPerPanel(N_panel);
+    for (int i = 0; i < N_panel; i++)
+    {
+        powerPerPanel[i] = SpectraVector_t::Zero();
+    }
+
+    if (in_view_factor == 0)
+    {
+        // Sun not visible, no need to do more maths
+        return powerPerPanel;
+    }
+
+    for (int i = 0; i < N_panel; i++)
+    {
+        Eigen::Vector3d n_hat_panel_eci = R_eci_from_B * cubesat.panels[i].normal_vector;
+
+        double flux_cosine = -r_hat_flux.dot(n_hat_panel_eci);
+        if (flux_cosine <= 0)
+        {
+            // If this panel has no flux then just skip the loop
+            continue;
+        }
+
+        powerPerPanel[i] = sunFlux * cubesat.panels[i].size * flux_cosine;
+
+    }
+
+    return powerPerPanel;
+    
+}

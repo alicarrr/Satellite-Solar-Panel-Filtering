@@ -1,12 +1,17 @@
 // Your main file doesn't have to be called main, but it must contain the main function.
 #include "spectra.hpp"
 #include "albedo.hpp"
+#include "spectra.hpp"
 #include "satParams.hpp"
 #include "vectorMaths.hpp"
 
 #include <lcm/lcm-cpp.hpp>
-#include <vector>
 #include "simMessages/sim_data_t.hpp"
+#include "simMessages/sim_ready_t.hpp"
+#include "simMessages/spectrum_metadata_t.hpp"
+#include "simMessages/spectrum_data_t.hpp"
+
+#include <vector>
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -24,20 +29,132 @@
 #include "LSODA.hpp"
 
 
+bool ready = false;
 
+inline constexpr bool sendDynamics = false;
+
+Eigen::Vector3d s_sol_ECI;
 
 SimParams_t simParams;
 
 SimState_t simState;
 CubesatState_t cubesatState;
 
+std::vector<SpectraVector_t> panelPowerState;
+
 const double dt_data = 1.0; 
 const double dt = 1e-1; // Sim Time Step
 const std::string date_0 = "2025-01-09T01:01:10.050000";
 
-const double t_final_sim = 0.5 * second;
+const double t_final_sim = 30 * second;
 
 double t_last_data = -2 * dt_data;
+
+double t = 0;
+
+
+class ReadyHandler
+{
+    public:
+        ~ReadyHandler() {}
+
+        void handleMessage(const lcm::ReceiveBuffer* rbuf, const std::string& chan, const simMessages::sim_ready_t* msg)
+        {
+            if (msg->is_ready)
+            {
+                ready = true;
+                std::cout << "Python Listener is Ready" << std::endl;
+            }
+        }
+};
+
+void publishSimDone(lcm::LCM* lcm)
+{
+    simMessages::sim_ready_t simDoneMsg;
+
+    simDoneMsg.is_ready = true;
+
+    lcm->publish("SimStatus", &simDoneMsg);
+}
+
+void publishSimData(lcm::LCM* lcm)
+{
+    if constexpr (sendDynamics)
+    {
+        simMessages::sim_data_t dynData;
+        dynData.t = t;
+
+        for (int i = 0; i < 3; i++)
+        {
+            dynData.pos_sat_eci[i] = simState.s_COM_in_G(i);
+            dynData.pos_sun_eci[i] = s_sol_ECI(i);
+            for (int j = 0; j < 3; j++)
+            {
+                dynData.R_eci_from_B[i][j] = simState.R_G_from_B(i, j);
+            }
+        }
+
+        lcm->publish("DynamicsData", &dynData);
+        
+    }
+
+    simMessages::spectrum_data_t simData;
+
+    simData.t = t;
+    simData.N_panel = cubesat.panels.size();
+    simData.N_spectra = N_samples_spectra;
+
+    simData.panelTypes.resize(simData.N_panel);
+    simData.panelPowers.resize(simData.N_panel);
+
+    for (int i = 0; i < simData.N_panel; i++)
+    {
+        simData.panelPowers[i].resize(N_samples_spectra);
+    }
+
+    for (int i = 0; i < simData.N_panel; i++)
+    {
+        simData.panelTypes[i] = cubesat.panels[i].panel_type;
+
+        for (int j = 0; j < N_samples_spectra; j++)
+        {
+            simData.panelPowers[i][j] = panelPowerState[i][j];
+        }
+    }
+
+    lcm->publish("SpectraData", &simData);
+
+}
+
+
+void publishSimMetadata(lcm::LCM* lcm)
+{
+    simMessages::spectrum_metadata_t spectraData;
+
+    spectraData.N_spectra = N_samples_spectra;
+    spectraData.wavelengths.resize(N_samples_spectra);
+
+    for (int i = 0; i < N_samples_spectra; i++)
+    {
+        spectraData.wavelengths[i] = spectra_wavelengths_nm(i);
+    }
+
+    lcm->publish("SpectraMetaData", &spectraData);
+}
+
+
+void calculateSpectralPowersOnSatellite()
+{
+    std::vector<SpectraVector_t> albedoPowerPerPanel = getTotalIncidentAlbedoAndIRPowerSpectra(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI, t, simParams);
+
+    std::vector<SpectraVector_t> solarPowersPerPanel = solarPowerPerPanel(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI);
+
+    for (int i = 0; i < cubesat.panels.size(); i++)
+    {
+        panelPowerState[i] = albedoPowerPerPanel[i] + solarPowersPerPanel[i];
+    }
+    
+}
 
 
 void setSimParams()
@@ -75,6 +192,7 @@ void clearMem()
 {
     delete simParams.ephemeris;
     albedo_file.close();
+    atmosphere_transmissivity_file.close();
 }
 
 
@@ -118,9 +236,14 @@ void setInitialOrbitState()
 }
 
 
-void waitForPythonReadyMessage()
+void waitForPythonReadyMessage(lcm::LCM* lcm)
 {
-    /** TODO: Loop LCM receiving until Python sends a ready message*/
+    ReadyHandler handler;
+    lcm->subscribe("ListenerReady", &ReadyHandler::handleMessage, &handler);
+    while (!ready)
+    {
+        lcm->handle();
+    }
 }
 
 
@@ -129,6 +252,9 @@ void preLoadData()
     setWavelengthArray();
 
     getAlbedoFileParams();
+
+    // Get initial sun position in ECI frame at t=0
+    s_sol_ECI = get_sun_location_eci(0, simParams.ephemeris);
 
     std::cout << d_lat_file << ", " << d_lon_file << std::endl;
 
@@ -160,13 +286,13 @@ void preLoadData()
         return;
     }
     std::fprintf(gnuplot,
+                    "set termoption font ',4'\n"
                     "set title 'Sun Power spectra'\n"
-                    "set xlabel 'Wavelength'\n"
+                    "set xlabel 'Wavelength (nm)'\n"
                     "set ylabel 'Spectral value'\n"
                     "set logscale x\n"
                     "set grid\n"
-                    "plot '-' using 1:2 with lines title 'Sun Spectra'\n"
-                    "set terminal pngcairo size 800,600 font 'Arial,12'\n");
+                    "plot '-' using 1:2 with lines title 'Sun Spectra'\n");
 
     for (Eigen::Index i = 0; i < sun_spectra.size(); ++i)
         std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), sun_spectra(i));
@@ -188,13 +314,13 @@ void preLoadData()
         return;
     }
     std::fprintf(gnuplot,
+                    "set termoption font ',4'\n"
                     "set title 'Atmosphere Transmittance'\n"
-                    "set xlabel 'Wavelength'\n"
+                    "set xlabel 'Wavelength (nm)'\n"
                     "set ylabel 'Spectral value'\n"
                     "set logscale x\n"
                     "set grid\n"
-                    "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n"
-                    "set terminal pngcairo size 800,600 font 'Arial,12'\n");
+                    "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n");
 
     for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
         std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), atmosphere_transmittance(i));
@@ -205,12 +331,10 @@ void preLoadData()
 
 
     // Testing Albedo
-    Eigen::Vector3d s_sol_ECI;
-    // Get initial sun position in ECI frame at t=0
-    s_sol_ECI = get_sun_location_eci(0, simParams.ephemeris);
 
     std::vector<SpectraVector_t> albedoPowerPerPanel = getTotalIncidentAlbedoAndIRPowerSpectra(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI, 0, simParams);
 
+    panelPowerState = albedoPowerPerPanel;
 
     std::cout << "Total power per panel = " << std::endl;
     for (int n = 0; n < cubesat.panels.size(); n++)
@@ -226,8 +350,9 @@ void preLoadData()
     }
     std::fprintf(
         gnuplot,
+        "set termoption font ',4'\n"
         "set title 'Albedo incident power spectra'\n"
-        "set xlabel 'Wavelength'\n"
+        "set xlabel 'Wavelength (nm)'\n"
         "set ylabel 'Power (W)'\n"
         "set logscale x\n"
         "set grid\n"
@@ -254,7 +379,7 @@ void preLoadData()
 }
 
 
-void doSimLoop()
+void doSimLoop(lcm::LCM* lcm)
 {
 
     LSODA solver;
@@ -265,11 +390,10 @@ void doSimLoop()
 
     std::cout << "Starting simulation loop..." << std::endl;
 
-    Eigen::Vector3d s_sol_ECI;
     // Get initial sun position in ECI frame at t=0
     s_sol_ECI = get_sun_location_eci(0, simParams.ephemeris);
 
-    double t = 0;
+    
     while (t < t_final_sim)
     {
         auto wall_start = clock::now();
@@ -278,92 +402,12 @@ void doSimLoop()
         {
             t_last_data = t;
 
-            /** TODO: Calculate incident flux stuff here. */
-
-            // test albedo toa calculation with one position in orbit and one visible albedo patch. This is a test to see if the function works and returns a reasonable spectrum.
+            /** Calculate incident flux stuff here. */
+            calculateSpectralPowersOnSatellite();
             
-
+            /** Send flux data to Python Here */
+            publishSimData(lcm);
             
-
-            // AlbedoData albedo_data = read_albedo_data();
-            // take current llh of satellite and get albedo spectrum at that location
-            Eigen::Vector3d sat_pos_ECEF = simParams.ephemeris->eciToEcef(cubesatState.position_GC_ECI, t);
-            Eigen::Vector3d sat_llh = ecef_to_llh(sat_pos_ECEF);
-            // Eigen::VectorXd albedo_values = get_albedo_spectrum(albedo_data, sat_llh(0), sat_llh(1));
-            
-            // Spectrum_t albedo_spectrum_at_loc = 
-            // {
-            //     .wavelengths = albedo_data.wavelength,
-            //     .values = albedo_values
-            // };
-
-            // test the interpolation function by interpolating the albedo spectrum to the wavelengths of the AM1.5 spectrum
-            // Spectrum_t albedo_spectrum_at_loc_interp = interpolateSpectrum(albedo_spectrum_at_loc, AM1_5.wavelengths);
-
-            Eigen::Vector3d albedo_patch_pos_llh = Eigen::Vector3d(sat_llh(0), sat_llh(1), 0); // lat, lon, alt= 6371000 m (Earth radius)
-
-            Eigen::Vector3d albedo_patch_pos_ecef = llh_to_ecef(albedo_patch_pos_llh); 
-            Eigen::Vector3d albedo_patch_pos_eci = simParams.ephemeris->ecefToEci(albedo_patch_pos_ecef, t);
-            // convert to ECI at t=0
-            Eigen::Vector3d albedo_patch_norm_vector = albedo_patch_pos_eci.cwiseProduct(1.0/albedo_patch_pos_eci.norm() * Eigen::Vector3d::Ones()); // normal vector pointing up from the surface of the Earth
-
-            Eigen::Vector3d panel_pos_G = panelPosInG(cubesat.panels[0].position_rel_GC_in_B, cubesatState.rotation_matrix_ECI_from_B, cubesatState.position_GC_ECI);
-            Eigen::Vector3d sun_pos_G = s_sol_ECI;
-            
-            
-
-            std::cout << "Entering function" << std::endl;
-            // Spectrum_t test_spectra = albedoRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_spectrum_at_loc, albedo_patch_pos_eci, albedo_patch_norm_vector, panel_pos_G, sun_pos_G);
-
-            // Plot the albedo and reflected spectra using inline gnuplot data.
-            // FILE* gnuplot = popen("gnuplot -persistent", "w");
-            // if (gnuplot == nullptr)
-            // {
-            //     std::cerr << "Could not open gnuplot." << std::endl;
-            //     return;
-            // }
-
-            
-
-            // // calculate earth ir spectrum at the patch and plot it
-            // Spectrum_t earth_ir_spectrum = EarthIRRadianceTOA(transmission_ratio_AM1_5, AM0, albedo_patch_pos_eci, panel_pos_G);
-
-            // // get black body spectrum at earth temp
-            // double earth_temp_K = 288.0; // K
-            // Spectrum_t earth_blackbody_spectrum = blackBodySpectrum(earth_temp_K, AM0);
-
-            // gnuplot = popen("gnuplot -persistent", "w");
-            // if (gnuplot == nullptr)
-            // {
-            //     std::cerr << "Could not open gnuplot." << std::endl;
-            //     return;
-            // }
-            // std::fprintf(gnuplot,
-            //              "set title 'Earth IR radiance spectrum'\n"
-            //              "set xlabel 'Wavelength'\n"
-            //              "set ylabel 'Spectral value'\n"
-            //              "set grid\n"
-            //              "plot '-' using 1:2 with lines title 'Earth IR radiance'\n"
-            //              "'-' using 1:2 with lines title 'Earth black body'\n");
-            // for (Eigen::Index i = 0; i < earth_ir_spectrum.wavelengths.size(); i++)
-            // {
-            //     std::fprintf(gnuplot, "%.17g %.17g\n",
-            //                  earth_ir_spectrum.wavelengths(i),
-            //                  earth_ir_spectrum.values(i));
-            // }
-            // // plot black body spectrum for comparison
-            // for (Eigen::Index i = 0; i < earth_blackbody_spectrum.wavelengths.size(); i++)
-            // {
-            //     std::fprintf(gnuplot, "%.17g %.17g\n",
-            //                  earth_blackbody_spectrum.wavelengths(i),
-            //                  earth_blackbody_spectrum.values(i));
-            // }
-            // std::fprintf(gnuplot, "e\n");
-            // std::fflush(gnuplot);
-            // pclose(gnuplot);
-            
-
-            /** TODO: Send flux data to Python Here */
         }
 
         // Do simulation step
@@ -390,8 +434,6 @@ void doSimLoop()
 
         t += dt;
     }
-    std::cout << std::endl;
-    std::cout << s_sol_ECI.transpose()/AU << ", " << s_sol_ECI.norm()/AU << std::endl;
 }
 
 
@@ -400,99 +442,28 @@ This function is your executable function, it is the function that gets called w
 */
 int main()
 {
+    lcm::LCM lcm;
 
-    waitForPythonReadyMessage();
+    if(!lcm.good())
+    {
+        return 1;
+    }
+
+
+    waitForPythonReadyMessage(&lcm);
 
     setSimParams();
     setInitialOrbitState();
 
     preLoadData();
 
-    doSimLoop();
+    publishSimMetadata(&lcm);
+
+    doSimLoop(&lcm);
 
     std::cout << "Simulation Finished" << std::endl;
 
-    // std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-
-    // lcm::LCM lcm;
-
-    // if(!lcm.good())
-    // {
-    //     return 1;
-    // }
-    
-    // // std::cout<<getSunSpectrum("hi")<<std::endl;
-
-    // for (int i=0; i<3; i++)
-    // {
-    //     simMessages::sim_data_t test;
-    //     test.t = 0;
-    //     test.pos[0] = 0;
-    //     test.pos[1] = 1;
-    //     test.pos[2] = -2;
-
-    //     lcm.publish("TEST", &test);
-    //     std::cout<<"Published"<<std::endl;
-    // }
-
-    // // Call albedo data reading function to test it
-    // AlbedoData albedo_data = read_albedo_data();
-
-    // double latitude_deg = 23.0f; // Example latitude
-    // double longitude_deg = 30.0f; // Example longitude
-
-    // Eigen::VectorXd albedo_spectrum = get_albedo_spectrum(albedo_data, latitude_deg, longitude_deg);
-
-    // std::cout << "Albedo Spectrum:" << std::endl;
-    // for (int i = 0; i < albedo_spectrum.size(); ++i) {
-    //     std::cout << albedo_spectrum(i) << " ";
-    // }
-    // std::cout << std::endl;
-
-
-    // FILE* gnuplot = popen("gnuplot -persistent", "w");
-
-    // if (gnuplot == nullptr)
-    // {
-    //     std::cerr << "Could not open gnuplot." << std::endl;
-    //     return 1;
-    // }
-
-    // fprintf(gnuplot, "set title 'HAMSTER spectral albedo'\n");
-    // fprintf(gnuplot, "set xlabel 'Wavelength [nm]'\n");
-    // fprintf(gnuplot, "set ylabel 'Black-sky albedo'\n");
-    // fprintf(gnuplot, "set grid\n");
-
-    // fprintf(
-    //     gnuplot,
-    //     "plot '-' with lines title 'Lat %.2f, Lon %.2f'\n",
-    //     latitude_deg,
-    //     longitude_deg
-    // );
-
-    // for (unsigned int i = 0; i < albedo_data.n_wavelength; i++)
-    // {
-    //     fprintf(
-    //         gnuplot,
-    //         "%f %f\n",
-    //         albedo_data.wavelength(i),
-    //         albedo_spectrum(i)
-    //     );
-    // }
-
-    // fprintf(gnuplot, "e\n");
-
-    // pclose(gnuplot);
-
-    //Test spectrum reading from file and binning
-    Spectrum_t spectrum = readSpectrumDat("dat files/kurudz_full.dat");
-
-    // Test binning the spectrum to a new wavelength range and step size
-    double min_wavelength = 300.0;
-    double max_wavelength = 50000.0;
-    double wavelength_step_size = 10.0;
-
-    Spectrum_t binned_spectrum = binSpectrum(spectrum, min_wavelength, max_wavelength, wavelength_step_size);
+    publishSimDone(&lcm);
 
 
     clearMem();

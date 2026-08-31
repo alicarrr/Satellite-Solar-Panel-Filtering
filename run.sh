@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export LCM_DEFAULT_URL="udpm://239.255.76.67:7667?recv_buf_size=4194304"
+
 # Compile the code into a build folder
 cmake -S . -B build \
   --log-level=NOTICE \

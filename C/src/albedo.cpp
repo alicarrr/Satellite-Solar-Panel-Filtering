@@ -671,7 +671,9 @@ SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
     #if useLargeHamster == true
         netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
     #else
-        netCDF::NcVar albedoData = albedo_file.getVar("albedo");
+        netCDF::NcGroup maps_group = albedo_file.getGroup("maps");
+        netCDF::NcGroup lambertian_group = maps_group.getGroup("lambertian");
+        netCDF::NcVar albedoData = lambertian_group.getVar("albedo");
     #endif
 
     std::vector<double> albedoSpectra(albedo_spectra_file_len);
@@ -760,7 +762,7 @@ SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t)
 
 
 
-std::vector<SpectraVector_t> getIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
+std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
 {
     Eigen::Vector3d LLH_0 = LLH;
     LLH_0[2] = 0; // Just double check that the height is zero.
@@ -817,9 +819,10 @@ std::vector<SpectraVector_t> getIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d 
         Eigen::Vector3d n_hat_panel_eci = R_eci_from_B * cubesat.panels[i].normal_vector;
 
         double incident_cosine = -n_hat_panel_eci.dot(r_hat_patch_to_sat_eci);
-        if (incident_cosine < 0)
+        if (incident_cosine <= 0)
         {
-            incident_cosine = 0;
+            // If this panel has no flux on it then just skip the maths
+            continue;
         }
 
         panelIncidentPower[i] = transmission.cwiseProduct(powerFromPatch / (M_PI * pow(r, 2))) * zenith_cosine * incident_cosine * cubesat.panels[i].size;
@@ -863,7 +866,7 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
         for (int j = 0; j < N_lon; j++)
         {
             // We do + and - visibility
-            std::vector<SpectraVector_t> panelIncidentPower_ij = getIncidentAlbedoAndIRPowerSpectra(LLH_sat, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
+            std::vector<SpectraVector_t> panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectra(LLH_sat, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
             for (int k = 0; k < n_panels; k++)
             {
                 panelIncidentPower[k] += panelIncidentPower_ij[k];

@@ -5,5 +5,27 @@ package simMessages;
 struct sim_data_t
 {
     double t;
-    double pos[3];
+    double pos_sat_eci[3];
+    double pos_sun_eci[3];
+    double R_eci_from_B[3][3];
+}
+
+struct sim_ready_t
+{
+    boolean is_ready;
+}
+
+struct spectrum_metadata_t
+{
+    int16_t N_spectra;
+    double wavelengths[N_spectra];
+}
+
+struct spectrum_data_t
+{
+    double t;
+    int16_t N_spectra;
+    int16_t N_panel;
+    int16_t panelTypes[N_panel];
+    double panelPowers[N_panel][N_spectra];
 }

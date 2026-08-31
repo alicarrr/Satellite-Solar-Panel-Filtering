@@ -188,6 +188,8 @@ Spectrum_t blackBodySpectrum(double temperature_K, const Spectrum_t& wavelength_
 
 Spectrum_t EarthIRRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const Spectrum_t& AM0, Eigen::Vector3d patch_pos_G, Eigen::Vector3d panel_pos_G);
 
+std::vector<SpectraVector_t> solarPowerPerPanel(Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI);
+
 
 
 /**
@@ -313,7 +315,7 @@ std::vector<double> calculateBinCentreWavelengths(double min_wavelength_nm, doub
 
 
 /** 
- * @brief Calculates the sun spectrum if the dataset is not defined.
+ * @brief Calculates the sun spectrum value if the dataset is not defined.
  * 
  * @param wavelength_nm The wavelength at which to evaluate the spectral irradiance (in W/m^2/nm), measured in nm
  * 
@@ -323,7 +325,7 @@ double sun_spectra_extend(double wavelength_nm);
 
 
 /** 
- * @brief Calculates the Earth IR spectrum if the dataset is not defined.
+ * @brief Calculates the Earth IR spectrum value if the dataset is not defined.
  * 
  * @param wavelength_nm The wavelength at which to evaluate the spectral irradiance (in W/m^2/nm), measured in nm
  * 
@@ -333,7 +335,7 @@ double earth_ir_spectra_extend(double wavelength_nm);
 
 
 /** 
- * @brief Calculates the AM0 spectrum if the dataset is not defined.
+ * @brief Calculates the AM0 spectrum value if the dataset is not defined.
  * 
  * @param wavelength_nm The wavelength at which to evaluate the spectral irradiance (in W/m^2/nm), measured in nm
  * 
@@ -343,7 +345,7 @@ double am_0_spectra_extend(double wavelength_nm);
 
 
 /** 
- * @brief Calculates the AM1.5 spectrum if the dataset is not defined.
+ * @brief Calculates the AM1.5 spectrum value if the dataset is not defined.
  * 
  * @param wavelength_nm The wavelength at which to evaluate the spectral irradiance (in W/m^2/nm), measured in nm
  * 
@@ -353,7 +355,7 @@ double am_1_5_spectra_extend(double wavelength_nm);
 
 
 /** 
- * @brief Calculates the Earth atmosphere transmissivity if the dataset is not defined
+ * @brief Calculates the Earth atmosphere transmissivity value if the dataset is not defined
  * 
  * @param wavelength_nm The wavelength at which to evaluate the transmissivity, measured in nm
  * 
