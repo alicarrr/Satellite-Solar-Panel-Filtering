@@ -40,13 +40,13 @@ SimParams_t simParams;
 SimState_t simState;
 CubesatState_t cubesatState;
 
-std::vector<SpectraVector_t> panelPowerState;
+std::vector<SpectraVector_t> panelPowerState(cubesat.panels.size(), SpectraVector_t::Zero());
 
 const double dt_data = 1.0; 
 const double dt = 1e-1; // Sim Time Step
 const std::string date_0 = "2025-01-09T01:01:10.050000";
 
-const double t_final_sim = 30 * second;
+const double t_final_sim = 1 * minute;
 
 double t_last_data = -2 * dt_data;
 
@@ -145,15 +145,25 @@ void publishSimMetadata(lcm::LCM* lcm)
 
 void calculateSpectralPowersOnSatellite()
 {
-    std::vector<SpectraVector_t> albedoPowerPerPanel = getTotalIncidentAlbedoAndIRPowerSpectra(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI, t, simParams);
+    std::vector<SpectraVector_t> albedoPowerPerPanel = getTotalIncidentAlbedoAndIRPowerSpectra(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI, t, &simParams);
 
     std::vector<SpectraVector_t> solarPowersPerPanel = solarPowerPerPanel(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI);
+
+    // double totalPower = 0.0;
+    // double totalAlbedoPower = 0.0;
+    // double totalSolarPower = 0.0;
 
     for (int i = 0; i < cubesat.panels.size(); i++)
     {
         panelPowerState[i] = albedoPowerPerPanel[i] + solarPowersPerPanel[i];
+        // totalPower += panelPowerState[i].sum();
+        // totalAlbedoPower += albedoPowerPerPanel[i].sum();
+        // totalSolarPower += solarPowersPerPanel[i].sum();
     }
     
+    // std::cout << "Total power on satellite at t=" << t << "s: " << totalPower*1000 << " mW" << std::endl;
+    // std::cout << "Total albedo power: " << totalAlbedoPower*1000 << " mW" << std::endl;
+    // std::cout << "Total solar power: " << totalSolarPower*1000 << " mW" << std::endl;
 }
 
 
@@ -203,7 +213,7 @@ void setInitialOrbitState()
     double mean_motion = (2.0 * M_PI) / period;
 
     double e = 0.002; // Eccentricity
-    double M = 0.15 * M_PI; // Mean anomaly at epoch
+    double M = -0.5 * M_PI; // Mean anomaly at epoch
 
     double argp = 30 * DEG2RAD;
     double raan = -90 * DEG2RAD;
@@ -219,7 +229,7 @@ void setInitialOrbitState()
     std::cout << "Initial velocity in G frame (km/s): " << v_com_in_G.transpose()/km << std::endl;
 
     Eigen::Vector3d thetas(-1.0, 0.2, 1.0); // rad -- Euler Roll Pitch Yaw angles 
-    Eigen::Vector3d theta_dots(0*DEG2RAD, 0*DEG2RAD, 0*DEG2RAD); // rad/s
+    Eigen::Vector3d theta_dots(3*DEG2RAD, 2*DEG2RAD, 0*DEG2RAD); // rad/s
 
     Eigen::Matrix3d R_G_from_B = euler_to_rotation_matrix(thetas);
     Eigen::Matrix3d J_omega = euler_rates_omega_jac(thetas);
@@ -278,104 +288,104 @@ void preLoadData()
     std::cout << "Total Solar Power is " << totalSunPower << "W" << std::endl;
 
 
-    // Testing plotting
-    FILE* gnuplot = popen("gnuplot -persistent", "w");
-    if (gnuplot == nullptr)
-    {
-        std::cerr << "Could not open gnuplot." << std::endl;
-        return;
-    }
-    std::fprintf(gnuplot,
-                    "set termoption font ',4'\n"
-                    "set title 'Sun Power spectra'\n"
-                    "set xlabel 'Wavelength (nm)'\n"
-                    "set ylabel 'Spectral value'\n"
-                    "set logscale x\n"
-                    "set grid\n"
-                    "plot '-' using 1:2 with lines title 'Sun Spectra'\n");
+//     // Testing plotting
+//     FILE* gnuplot = popen("gnuplot -persistent", "w");
+//     if (gnuplot == nullptr)
+//     {
+//         std::cerr << "Could not open gnuplot." << std::endl;
+//         return;
+//     }
+//     std::fprintf(gnuplot,
+//                     "set termoption font ',4'\n"
+//                     "set title 'Sun Power spectra'\n"
+//                     "set xlabel 'Wavelength (nm)'\n"
+//                     "set ylabel 'Spectral value'\n"
+//                     "set logscale x\n"
+//                     "set grid\n"
+//                     "plot '-' using 1:2 with lines title 'Sun Spectra'\n");
 
-    for (Eigen::Index i = 0; i < sun_spectra.size(); ++i)
-        std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), sun_spectra(i));
-    std::fprintf(gnuplot, "e\n");
+//     for (Eigen::Index i = 0; i < sun_spectra.size(); ++i)
+//         std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), sun_spectra(i));
+//     std::fprintf(gnuplot, "e\n");
 
-    // for (Eigen::Index i = 0; i < AM1_5.wavelengths.size(); ++i)
-    //     std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
-    // std::fprintf(gnuplot, "e\n");
+//     // for (Eigen::Index i = 0; i < AM1_5.wavelengths.size(); ++i)
+//     //     std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
+//     // std::fprintf(gnuplot, "e\n");
 
-    std::fflush(gnuplot);
-    pclose(gnuplot);
-
-
-    // Testing plotting
-    gnuplot = popen("gnuplot -persistent", "w");
-    if (gnuplot == nullptr)
-    {
-        std::cerr << "Could not open gnuplot." << std::endl;
-        return;
-    }
-    std::fprintf(gnuplot,
-                    "set termoption font ',4'\n"
-                    "set title 'Atmosphere Transmittance'\n"
-                    "set xlabel 'Wavelength (nm)'\n"
-                    "set ylabel 'Spectral value'\n"
-                    "set logscale x\n"
-                    "set grid\n"
-                    "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n");
-
-    for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
-        std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), atmosphere_transmittance(i));
-    std::fprintf(gnuplot, "e\n");
-
-    std::fflush(gnuplot);
-    pclose(gnuplot);
+//     std::fflush(gnuplot);
+//     pclose(gnuplot);
 
 
-    // Testing Albedo
+//     // Testing plotting
+//     gnuplot = popen("gnuplot -persistent", "w");
+//     if (gnuplot == nullptr)
+//     {
+//         std::cerr << "Could not open gnuplot." << std::endl;
+//         return;
+//     }
+//     std::fprintf(gnuplot,
+//                     "set termoption font ',4'\n"
+//                     "set title 'Atmosphere Transmittance'\n"
+//                     "set xlabel 'Wavelength (nm)'\n"
+//                     "set ylabel 'Spectral value'\n"
+//                     "set logscale x\n"
+//                     "set grid\n"
+//                     "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n");
 
-    std::vector<SpectraVector_t> albedoPowerPerPanel = getTotalIncidentAlbedoAndIRPowerSpectra(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI, 0, simParams);
+//     for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
+//         std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), atmosphere_transmittance(i));
+//     std::fprintf(gnuplot, "e\n");
 
-    panelPowerState = albedoPowerPerPanel;
+//     std::fflush(gnuplot);
+//     pclose(gnuplot);
 
-    std::cout << "Total power per panel = " << std::endl;
-    for (int n = 0; n < cubesat.panels.size(); n++)
-    {
-        std::cout << albedoPowerPerPanel[n].sum() << std::endl;
-    }
 
-    gnuplot = popen("gnuplot -persistent", "w");
-    if (gnuplot == nullptr)
-    {
-        std::cerr << "Could not open gnuplot." << std::endl;
-        return;
-    }
-    std::fprintf(
-        gnuplot,
-        "set termoption font ',4'\n"
-        "set title 'Albedo incident power spectra'\n"
-        "set xlabel 'Wavelength (nm)'\n"
-        "set ylabel 'Power (W)'\n"
-        "set logscale x\n"
-        "set grid\n"
-        "plot '-' using 1:2 with lines title 'Panel +x Power', "
-            "'-' using 1:2 with lines title 'Panel -x Power', "
-            "'-' using 1:2 with lines title 'Panel +y Power', "
-            "'-' using 1:2 with lines title 'Panel -y Power', "
-            "'-' using 1:2 with lines title 'Panel +z Power', "
-            "'-' using 1:2 with lines title 'Panel -z Power'\n"
-    );
+//     // Testing Albedo
+
+    // std::vector<SpectraVector_t> albedoPowerPerPanel = getTotalIncidentAlbedoAndIRPowerSpectra(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI, 0, simParams);
+
+    // panelPowerState = albedoPowerPerPanel;
+
+//     std::cout << "Total power per panel = " << std::endl;
+//     for (int n = 0; n < cubesat.panels.size(); n++)
+//     {
+//         std::cout << albedoPowerPerPanel[n].sum() << std::endl;
+//     }
+
+//     gnuplot = popen("gnuplot -persistent", "w");
+//     if (gnuplot == nullptr)
+//     {
+//         std::cerr << "Could not open gnuplot." << std::endl;
+//         return;
+//     }
+//     std::fprintf(
+//         gnuplot,
+//         "set termoption font ',4'\n"
+//         "set title 'Albedo incident power spectra'\n"
+//         "set xlabel 'Wavelength (nm)'\n"
+//         "set ylabel 'Power (W)'\n"
+//         "set logscale x\n"
+//         "set grid\n"
+//         "plot '-' using 1:2 with lines title 'Panel +x Power', "
+//             "'-' using 1:2 with lines title 'Panel -x Power', "
+//             "'-' using 1:2 with lines title 'Panel +y Power', "
+//             "'-' using 1:2 with lines title 'Panel -y Power', "
+//             "'-' using 1:2 with lines title 'Panel +z Power', "
+//             "'-' using 1:2 with lines title 'Panel -z Power'\n"
+//     );
     
-    for (int n = 0; n < cubesat.panels.size(); n++)
-    {
-        for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
-        {
-            std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), (albedoPowerPerPanel[n])(i));
-        }
+//     for (int n = 0; n < cubesat.panels.size(); n++)
+//     {
+//         for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
+//         {
+//             std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), (albedoPowerPerPanel[n])(i));
+//         }
         
-        std::fprintf(gnuplot, "e\n");
-    }
+//         std::fprintf(gnuplot, "e\n");
+//     }
 
-    std::fflush(gnuplot);
-    pclose(gnuplot);
+//     std::fflush(gnuplot);
+//     pclose(gnuplot);
 }
 
 

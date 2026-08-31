@@ -723,7 +723,7 @@ double patchArea(Eigen::Vector3d LLH)
 
 
 
-SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t, const SimParams_t& simParams)
+SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t, const SimParams_t* simParams)
 {
     /** TODO: Fix with actual IR spectrum */
     return SpectraVector_t::Zero();
@@ -731,7 +731,7 @@ SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t, co
 
 
 
-SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
+SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
 {
     
 
@@ -745,7 +745,7 @@ SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_s
     /** Normal vector for oblate sphereoid */
     Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
 
-    Eigen::Vector3d r_sol_ecef = simParams.ephemeris->eciToEcef(r_sol_ECI, t);
+    Eigen::Vector3d r_sol_ecef = simParams->ephemeris->eciToEcef(r_sol_ECI, t);
 
     Eigen::Vector3d r_hat_patch_to_sun = (r_sol_ecef - r_patch_ecef).normalized();
 
@@ -766,7 +766,8 @@ SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_s
 
     double AM_frac = AMKastenYoung(zenith_theta);
 
-    SpectraVector_t transmission = atmosphere_transmittance.array().pow(AM_frac);
+    SpectraVector_t transmission = atmosphere_transmittance;
+    transmission = transmission.array().pow(AM_frac);
     
 
     // Flux is (transmittance^AM) * total power / (4pi r^2), power is flux * patch area * cos(zenith) (where negative zenith = 0)
@@ -778,7 +779,7 @@ SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_s
 
 
 
-std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
+std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
 {
     Eigen::Vector3d LLH_0 = LLH;
     LLH_0[2] = 0; // Just double check that the height is zero.
@@ -788,23 +789,20 @@ std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
 
 
     int n_panels = cubesat.panels.size();
-    std::vector<SpectraVector_t> panelIncidentPower(n_panels);
-    for (int i = 0; i < n_panels; i++)
-    {
-        panelIncidentPower[i] = SpectraVector_t::Zero();
-    }
+    std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero());
+    
 
     SpectraVector_t incidentPowerPatch = getPowerOnAlbedoSurface(LLH_0, r_sol_ECI, t, simParams);
 
     SpectraVector_t emittedIRPower = getEarthIRPowerOnAlbedoSurface(LLH_0, t, simParams);
 
     Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH_0);
-    Eigen::Vector3d r_sat_ecef = simParams.ephemeris->eciToEcef(r_ECI, t);
+    Eigen::Vector3d r_sat_ecef = simParams->ephemeris->eciToEcef(r_ECI, t);
 
     Eigen::Vector3d r_patch_to_sat_ecef = r_sat_ecef - r_patch_ecef;
     Eigen::Vector3d r_hat_patch_to_sat_ecef = r_patch_to_sat_ecef.normalized();
 
-    Eigen::Vector3d r_hat_patch_to_sat_eci = simParams.ephemeris->ecefToEci(r_hat_patch_to_sat_ecef, t);
+    Eigen::Vector3d r_hat_patch_to_sat_eci = simParams->ephemeris->ecefToEci(r_hat_patch_to_sat_ecef, t);
 
     Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
 
@@ -822,7 +820,8 @@ std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
 
     double AM_frac = AMKastenYoung(zenith_theta);
 
-    SpectraVector_t transmission = atmosphere_transmittance.array().pow(AM_frac);
+    SpectraVector_t transmission = atmosphere_transmittance;
+    transmission = transmission.array().pow(AM_frac);
 
     SpectraVector_t albedo = getAlbedoSpectra(LLH);
 
@@ -848,9 +847,9 @@ std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
 }
 
 
-Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI, double t, const SimParams_t& simParams)
+Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI, double t, const SimParams_t* simParams)
 {
-    Eigen::Vector3d r_ecef = simParams.ephemeris->eciToEcef(r_ECI, t);
+    Eigen::Vector3d r_ecef = simParams->ephemeris->eciToEcef(r_ECI, t);
 
     Eigen::Vector3d LLH = ecef_to_llh(r_ecef);
     Eigen::Vector3d LLH_0 = LLH;
@@ -860,14 +859,10 @@ Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI, double t, const SimParams_
 }
 
 
-std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
+std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
 {
     int n_panels = cubesat.panels.size();
-    std::vector<SpectraVector_t> panelIncidentPower(n_panels);
-    for (int i = 0; i < n_panels; i++)
-    {
-        panelIncidentPower[i] = SpectraVector_t::Zero();
-    }
+    std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero());
 
     // This is the difference in lat/lon either side of the direct projected LLH
     double theta_vis = getVisibilityConeAngle(r_ECI.norm(), b_earth);
@@ -882,7 +877,18 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
         for (int j = 0; j < N_lon; j++)
         {
             // We do + and - visibility
-            std::vector<SpectraVector_t> panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectra(LLH_sat, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
+            Eigen::Vector3d LLH_ij = LLH_sat;
+            LLH_ij[0] = LLH_sat[0] + (i - N_lat) * d_lat;
+            LLH_ij[1] = LLH_sat[1] + (j - N_lon) * d_lon;
+            std::vector<SpectraVector_t> panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectra(LLH_ij, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
+            for (int k = 0; k < n_panels; k++)
+            {
+                panelIncidentPower[k] += panelIncidentPower_ij[k];
+            }
+
+            LLH_ij[0] = LLH_sat[0] - (i - N_lat) * d_lat;
+            LLH_ij[1] = LLH_sat[1] - (j - N_lon) * d_lon;
+            panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectra(LLH_ij, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
             for (int k = 0; k < n_panels; k++)
             {
                 panelIncidentPower[k] += panelIncidentPower_ij[k];

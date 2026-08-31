@@ -2,6 +2,7 @@ import lcm
 from include.simMessages import sim_data_t, sim_ready_t, spectrum_metadata_t, spectrum_data_t
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 
 global sim_done
 sim_done = False
@@ -93,5 +94,15 @@ except KeyboardInterrupt:
 
 # Indexed by [time][panel num][wavelength index]
 panelPowers_arr = np.array(panelPowers)
+
+# Plot total power for each panel over time
+for i in range(N_panels):
+    plt.plot(panelPowers_arr[:, i, :].sum(axis=1), label=f"Panel {i+1}")
+
+plt.xlabel("Time")
+plt.ylabel("Total Power")
+plt.title("Power Output of Solar Panels Over Time")
+plt.legend()
+plt.show()
 
 print(panelPowers_arr.shape)

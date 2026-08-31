@@ -272,14 +272,14 @@ SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, Contr
     std::vector<double> x_rotation = to_std_vector(rotationStateVector);
 
     double x_orbit_next[n_orbit_state];
-    std::vector<double> x_rotation_next;
+    std::vector<double> y_rotation_next;
 
     // Do Rotation Step with LSODA stiff integrator
     int is_valid = 1;
 
     
 
-    solver->lsoda_update(getRotationSimDerivatives, n_rotate_state, x_rotation, x_rotation_next, &t0, tf, &is_valid, &rotationSimParams, rtol_lsoda, atol_lsoda);
+    solver->lsoda_update(getRotationSimDerivatives, n_rotate_state, x_rotation, y_rotation_next, &t0, tf, &is_valid, &rotationSimParams, rtol_lsoda, atol_lsoda);
 
     if (is_valid <= 0)
     {
@@ -287,6 +287,12 @@ SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, Contr
         std::cerr << SimState_to_StateVector(state).transpose() << std::endl;
 
         throw std::runtime_error("LSODA failed");
+    }
+
+    std::vector<double> x_rotation_next(y_rotation_next.size());
+    for (size_t i = 0; i < y_rotation_next.size(); i++)
+    {
+        x_rotation_next[i] = y_rotation_next[i+1];
     }
 
     RigidBodyStateVector rotationStateVectorNext = RigidBodyStateVector(x_rotation_next.data());
