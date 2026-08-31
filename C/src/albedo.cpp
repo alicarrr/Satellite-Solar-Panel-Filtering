@@ -2,6 +2,8 @@
 #include <netcdf.h>
 #include <netcdf>
 
+#include "transforms.hpp"
+
 #include <cmath>
 #include <cstdio>
 #include <iostream>
@@ -533,15 +535,22 @@ void getAlbedoFileParams()
         openAlbedoFile();
     }
 
-    // Use for larger HAMSTER files
-    // netCDF::NcVar latitudeVar = albedo_file.getVar("Latitude");
-    // netCDF::NcVar longitudeVar = albedo_file.getVar("Longitude");
-    // netCDF::NcVar spectrumVar = albedo_file.getVar("Wavelength");
 
-    // Use fpr smaller HAMSTER files
-    netCDF::NcVar latitudeVar = albedo_file.getVar("lat");
-    netCDF::NcVar longitudeVar = albedo_file.getVar("lon");
-    netCDF::NcVar spectrumVar = albedo_file.getVar("spectral");
+    #if useLargeHamster == true
+        // Use for larger HAMSTER files
+        netCDF::NcVar latitudeVar = albedo_file.getVar("Latitude");
+        netCDF::NcVar longitudeVar = albedo_file.getVar("Longitude");
+        netCDF::NcVar spectrumVar = albedo_file.getVar("Wavelength");
+    #else
+        // Use fpr smaller HAMSTER files
+        netCDF::NcVar latitudeVar = albedo_file.getVar("lat");
+        netCDF::NcVar longitudeVar = albedo_file.getVar("lon");
+        netCDF::NcVar spectrumVar = albedo_file.getVar("spectral");
+    #endif
+
+    
+
+    
 
     const int dimensionLat = latitudeVar.getDim(0).getSize();
     const int dimensionLon = longitudeVar.getDim(0).getSize();
@@ -624,12 +633,15 @@ std::vector<int> getLatLonIndices(Eigen::Vector3d LLH)
     std::vector<int> indices(2);
 
     // LARGE FILES: The indices in the file are ordered lat then lon
-    // indices[0] = getIndexOfEntry(latitudes_file, lat);
-    // indices[1] = getIndexOfEntry(longitudes_file, lon);
-
     // SMALL FILES: The indices in the file are ordered lon then lat
-    indices[1] = getIndexOfEntry(latitudes_file, lat);
-    indices[0] = getIndexOfEntry(longitudes_file, lon);
+
+    #if useLargeHamster == true
+        indices[0] = getIndexOfEntry(latitudes_file, lat);
+        indices[1] = getIndexOfEntry(longitudes_file, lon);
+    #else
+        indices[1] = getIndexOfEntry(latitudes_file, lat);
+        indices[0] = getIndexOfEntry(longitudes_file, lon);
+    #endif
 
     return indices;
 }
@@ -640,12 +652,13 @@ SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
     std::vector<int> indices = getLatLonIndices(LLH);
 
     std::vector<double> spectra(albedo_spectra_file_len);
+    
 
-    // Long files
-    // netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
-
-    // Short files
-    netCDF::NcVar albedoData = albedo_file.getVar("albedo");
+    #if useLargeHamster == true
+        netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
+    #else
+        netCDF::NcVar albedoData = albedo_file.getVar("albedo");
+    #endif
 
     std::vector<double> albedoSpectra(albedo_spectra_file_len);
 
@@ -664,4 +677,13 @@ SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
     SpectraVector_t albedoSpectraVec = Eigen::Map<SpectraVector_t>(albedoSpectra.data(), albedoSpectra.size());
 
     return albedoSpectraVec;
+}
+
+
+SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI)
+{
+    Eigen::Vector3d LLH_0 = LLH;
+    LLH_0[2] = 0; // Just double check that the height is zero.
+
+    Eigen::Vector3d r_patch_ecef = 
 }

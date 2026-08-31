@@ -3,6 +3,7 @@
 #include <eigen3/Eigen/Dense>
 #include "constants.hpp"
 #include "spectra.hpp"
+#include "simParams.hpp"
 
 #include <vector>
 #include <netcdf>
@@ -11,10 +12,18 @@
 #include <sstream>
 #include <string>
 
+#define useLargeHamster false;
 
 // Directory containing the HAMSTER DOYxxx.nc files.
 // The executable is run from the project root.
-const char hamster_dir[] = "C/lib/HAMSTER/hamster_1140_720/data/albedo/hamster";
+
+#if useLargeHamster == true
+    const char hamster_dir[] = "C/lib/HAMSTER";
+#else
+    const char hamster_dir[] = "C/lib/HAMSTER/hamster_1140_720/data/albedo/hamster";
+#endif
+
+
 
 // HAMSTER day of year to load.
 const unsigned int hamster_day_of_year = 32;
@@ -136,10 +145,10 @@ int getIndexOfEntry(const Eigen::VectorXd& v, double val);
 
 SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH);
 
-SpectraVector_t getPowerOnAlbedoSurface(double lat, double lon);
+SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI);
 
-SpectraVector_t getEarthIRPowerOnAlbedoSurface(double lat, double lon);
+SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH);
 
 SpectraVector_t getIncidentFluxOnFace(Eigen::Vector3d r_ECI, double t, int panel_i, const SimParams_t& simParams);
 
-std::vector<SpectraVector_t> getAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, double t, const SimParams_t& simParams);
+std::vector<SpectraVector_t> getAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
