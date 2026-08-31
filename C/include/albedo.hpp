@@ -146,7 +146,7 @@ SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH);
 
 SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
 
-SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t);
+SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t, const SimParams_t& simParams);
 
 std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams);
 

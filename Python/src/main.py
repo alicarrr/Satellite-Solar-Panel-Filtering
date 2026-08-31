@@ -44,17 +44,22 @@ def spectra_data_handler(channel, data):
     if (panelPowers is None):
         N_panels = msg.N_panel
         N_spectra = msg.N_spectra
+
+        #One time step of panel powers
         panelPower = np.array(msg.panelPowers)
         if (panelPower.shape[0] != N_panels):
             panelPower = panelPower.T
 
+        # Array for all times
         panelPowers = []
         panelPowers.append(panelPower)
+
     else:
         panelPower = np.array(msg.panelPowers)
         if (panelPower.shape[0] != N_panels):
             panelPower = panelPower.T
 
+        # Array for all times
         panelPowers.append(panelPower)
 
     
@@ -78,9 +83,12 @@ sim_done_sub = lc.subscribe("SimStatus", sim_finished_handler)
 
 try:
     while (not sim_done):
+        # keep checking for new messages
         lc.handle()
 except KeyboardInterrupt:
     pass
+
+# If you make it here then simulation is finished
 
 
 # Indexed by [time][panel num][wavelength index]

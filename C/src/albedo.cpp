@@ -709,6 +709,28 @@ Eigen::Vector3d getNormalToEarthEcef(double lat, double lon)
     return n_hat_ecef;
 }
 
+
+
+double patchArea(Eigen::Vector3d LLH)
+{
+    double lat = LLH[0];
+    double lon = LLH[1];
+
+    double A_patch = a_earth * cos(lat) * sqrt(pow(a_earth * sin(lat), 2) + pow(b_earth * cos(lat), 2)) * d_lat * d_lon;
+
+    return A_patch;
+}
+
+
+
+SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t, const SimParams_t& simParams)
+{
+    /** TODO: Fix with actual IR spectrum */
+    return SpectraVector_t::Zero();
+}
+
+
+
 SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
 {
     
@@ -730,7 +752,7 @@ SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_s
     double r = (r_sol_ecef - r_patch_ecef).norm();
 
     /** Approximately correct, uses differential area of oblate sphereoid */
-    double A_patch = a_earth * cos(lat) * sqrt(pow(a_earth * sin(lat), 2) + pow(b_earth * cos(lat), 2)) * d_lat * d_lon;
+    double A_patch = patchArea(LLH);
 
     double zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sun);
     if (zenith_cosine < 0)
@@ -754,12 +776,6 @@ SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_s
 }
 
 
-SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t)
-{
-    /** TODO: Fix with actual IR spectrum */
-    return SpectraVector_t::Zero();
-}
-
 
 
 std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t& simParams)
@@ -780,7 +796,7 @@ std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
 
     SpectraVector_t incidentPowerPatch = getPowerOnAlbedoSurface(LLH_0, r_sol_ECI, t, simParams);
 
-    SpectraVector_t emittedIRPower = getEarthIRPowerOnAlbedoSurface(LLH_0, t);
+    SpectraVector_t emittedIRPower = getEarthIRPowerOnAlbedoSurface(LLH_0, t, simParams);
 
     Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH_0);
     Eigen::Vector3d r_sat_ecef = simParams.ephemeris->eciToEcef(r_ECI, t);
