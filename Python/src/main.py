@@ -9,7 +9,7 @@ import pandas as pd
 ####################
 # NOTE: Need to change data save to use time instead of time step index
 ####################
-receive_new_data = False  
+receive_new_data = True  
 # Write all data to a pickle file
 simDataPickleFile = Path(__file__).resolve().parent / "Simulation Data" / "simulation_data.pkl"
 

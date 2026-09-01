@@ -13,6 +13,8 @@ include(ExternalProject) # Include the CMake command ExternalProject
 find_package(Eigen3 3.4 REQUIRED) # Make sure that the compiler goes and finds Eigen with min version 3.4 in our system packages, define the path variable ${EIGEN3_INCLUDE_DIR}
 find_package(lcm REQUIRED)
 find_package(netCDF CONFIG REQUIRED)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(
@@ -120,6 +122,7 @@ target_link_libraries(albedo PUBLIC
     m
     netCDF::netcdf
     PkgConfig::NETCDF_CXX
+    Threads::Threads
 )
 
 target_link_libraries(vectorMaths PUBLIC

@@ -4,13 +4,18 @@
 
 #include "transforms.hpp"
 
+#include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <exception>
 #include <iostream>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <fstream>
 #include <sstream>
+#include <thread>
+#include <utility>
 
 double d_lat_file;
 double d_lon_file;
@@ -27,6 +32,12 @@ Eigen::VectorXd longitudes_file;
 std::vector<double> wavelengths_file_nm;
 
 netCDF::NcFile albedo_file;
+
+typedef struct
+{
+    Eigen::Vector3d LLH;
+    std::vector<double> raw_albedo_spectrum;
+} AlbedoPatchTask_t;
 
 /**
  * @brief Check the return status of a NetCDF function.
@@ -632,8 +643,8 @@ double wrapValue(double val, double min_val, double max_val) {
 
 std::vector<int> getLatLonIndices(Eigen::Vector3d LLH)
 {
-    double lat = LLH(0);
-    double lon = LLH(1);
+    double lat = LLH(0) * RAD2DEG;
+    double lon = LLH(1) * RAD2DEG;
 
     lat = wrapValue(lat, lat_min_file, lat_max_file);
     lon = wrapValue(lon, lon_min_file, lon_max_file);
@@ -661,22 +672,21 @@ double fillAlbedoData(double lambda_nm)
 }
 
 
-SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
+/**
+ * @brief Read one raw HAMSTER spectrum from an already-resolved variable.
+ *
+ * This function must only be called by the thread that owns and opened the
+ * NetCDF file. The returned std::vector owns its data and can subsequently be
+ * passed to a worker thread.
+ */
+static std::vector<double> readRawAlbedoSpectrum(
+    netCDF::NcVar& albedoData,
+    const Eigen::Vector3d& LLH
+)
 {
     std::vector<int> indices = getLatLonIndices(LLH);
 
-    std::vector<double> spectra(albedo_spectra_file_len);
-    
-
-    #if useLargeHamster == true
-        netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
-    #else
-        netCDF::NcGroup maps_group = albedo_file.getGroup("maps");
-        netCDF::NcGroup lambertian_group = maps_group.getGroup("lambertian");
-        netCDF::NcVar albedoData = lambertian_group.getVar("albedo");
-    #endif
-
-    std::vector<double> albedoSpectra(albedo_spectra_file_len);
+    std::vector<double> raw_albedo_spectrum(albedo_spectra_file_len);
 
     std::vector<std::size_t> start(3);
     start[0] = indices[0];
@@ -688,10 +698,29 @@ SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
     count[1] = 1;
     count[2] = albedo_spectra_file_len;
 
-    albedoData.getVar(start, count, albedoSpectra.data());
+    albedoData.getVar(start, count, raw_albedo_spectrum.data());
+
+    return raw_albedo_spectrum;
+}
+
+
+SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
+{
+    #if useLargeHamster == true
+        netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
+    #else
+        netCDF::NcGroup maps_group = albedo_file.getGroup("maps");
+        netCDF::NcGroup lambertian_group = maps_group.getGroup("lambertian");
+        netCDF::NcVar albedoData = lambertian_group.getVar("albedo");
+    #endif
+
+    std::vector<double> raw_albedo_spectrum = readRawAlbedoSpectrum(
+        albedoData,
+        LLH
+    );
 
     // Need to rebin the data from the File
-    std::vector<double> albedoSpectraExtended = resampleAndExtendSpectrum(wavelengths_file_nm, albedoSpectra, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, fillAlbedoData);
+    std::vector<double> albedoSpectraExtended = resampleAndExtendSpectrum(wavelengths_file_nm, raw_albedo_spectrum, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, fillAlbedoData);
 
     SpectraVector_t albedoSpectraVec = Eigen::Map<SpectraVector_t>(albedoSpectraExtended.data(), albedoSpectraExtended.size());
     
@@ -790,8 +819,243 @@ SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_s
 }
 
 
+/**
+ * @brief Test the same patch-to-satellite visibility condition used by the
+ *        full patch calculation.
+ */
+static bool isAlbedoPatchVisible(
+    const Eigen::Vector3d& LLH,
+    const Eigen::Vector3d& r_sat_ecef
+)
+{
+    Eigen::Vector3d LLH_0 = LLH;
+    LLH_0[2] = 0;
+
+    Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH_0);
+    Eigen::Vector3d r_hat_patch_to_sat_ecef =
+        (r_sat_ecef - r_patch_ecef).normalized();
+
+    Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(
+        LLH_0[0],
+        LLH_0[1]
+    );
+
+    double zenith_cosine = n_hat_ecef.dot(
+        r_hat_patch_to_sat_ecef
+    );
+
+    return zenith_cosine >= 0.0;
+}
 
 
+/**
+ * @brief Calculate one patch using data that were loaded before worker threads
+ *        started.
+ *
+ * This helper contains no NetCDF, HDF5, or CSPICE calls. All inputs are either
+ * immutable global spectra or values owned by the current worker.
+ */
+static std::vector<SpectraVector_t>
+getPatchIncidentAlbedoAndIRPowerSpectraFromPreloadedData(
+    const Eigen::Vector3d& LLH,
+    const Eigen::Vector3d& r_sat_ecef,
+    const Eigen::Vector3d& r_sol_ecef,
+    const Eigen::Matrix3d& R_eci_from_ecef,
+    const Eigen::Matrix3d& R_eci_from_B,
+    const SpectraVector_t& earth_ir_power_per_square_metre,
+    const SpectraVector_t& albedo
+)
+{
+    Eigen::Vector3d LLH_0 = LLH;
+    LLH_0[2] = 0;
+
+    double lat = LLH_0[0];
+    double lon = LLH_0[1];
+
+    int n_panels = cubesat.panels.size();
+    std::vector<SpectraVector_t> panelIncidentPower(
+        n_panels,
+        SpectraVector_t::Zero()
+    );
+
+    Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH_0);
+    Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
+
+    Eigen::Vector3d r_patch_to_sat_ecef =
+        r_sat_ecef - r_patch_ecef;
+    double r_patch_to_sat = r_patch_to_sat_ecef.norm();
+    Eigen::Vector3d r_hat_patch_to_sat_ecef =
+        r_patch_to_sat_ecef.normalized();
+
+    double satellite_zenith_cosine = n_hat_ecef.dot(
+        r_hat_patch_to_sat_ecef
+    );
+
+    if (satellite_zenith_cosine < 0.0)
+    {
+        return panelIncidentPower;
+    }
+
+    double A_patch = patchArea(LLH_0);
+
+    SpectraVector_t incidentPowerPatch = SpectraVector_t::Zero();
+
+    Eigen::Vector3d r_patch_to_sun_ecef =
+        r_sol_ecef - r_patch_ecef;
+    double r_patch_to_sun = r_patch_to_sun_ecef.norm();
+    Eigen::Vector3d r_hat_patch_to_sun_ecef =
+        r_patch_to_sun_ecef.normalized();
+
+    double solar_zenith_cosine = n_hat_ecef.dot(
+        r_hat_patch_to_sun_ecef
+    );
+
+    if (solar_zenith_cosine >= 0.0)
+    {
+        double solar_zenith_theta = acos(solar_zenith_cosine);
+        double solar_AM_frac = AMKastenYoung(solar_zenith_theta);
+
+        SpectraVector_t solar_transmission = atmosphere_transmittance;
+        solar_transmission = solar_transmission.array().pow(
+            solar_AM_frac
+        );
+
+        incidentPowerPatch = solar_transmission.cwiseProduct(
+            sun_spectra / (4.0 * M_PI * pow(r_patch_to_sun, 2))
+        ) * A_patch * solar_zenith_cosine;
+    }
+
+    SpectraVector_t emittedIRPower =
+        earth_ir_power_per_square_metre * A_patch;
+
+    double satellite_zenith_theta = acos(
+        satellite_zenith_cosine
+    );
+    double satellite_AM_frac = AMKastenYoung(
+        satellite_zenith_theta
+    );
+
+    SpectraVector_t satellite_transmission = atmosphere_transmittance;
+    satellite_transmission = satellite_transmission.array().pow(
+        satellite_AM_frac
+    );
+
+    SpectraVector_t powerFromPatch =
+        albedo.cwiseProduct(incidentPowerPatch) + emittedIRPower;
+
+    Eigen::Vector3d r_hat_patch_to_sat_eci =
+        R_eci_from_ecef * r_hat_patch_to_sat_ecef;
+
+    for (int i = 0; i < n_panels; i++)
+    {
+        Eigen::Vector3d n_hat_panel_eci =
+            R_eci_from_B * cubesat.panels[i].normal_vector;
+
+        double incident_cosine = -n_hat_panel_eci.dot(
+            r_hat_patch_to_sat_eci
+        );
+
+        if (incident_cosine <= 0.0)
+        {
+            continue;
+        }
+
+        panelIncidentPower[i] = satellite_transmission.cwiseProduct(
+            powerFromPatch / (M_PI * pow(r_patch_to_sat, 2))
+        ) * satellite_zenith_cosine
+          * incident_cosine
+          * cubesat.panels[i].size;
+    }
+
+    return panelIncidentPower;
+}
+
+
+
+
+std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
+{
+    Eigen::Vector3d LLH_0 = LLH;
+    LLH_0[2] = 0; // Just double check that the height is zero.
+
+    double lat = LLH[0];
+    double lon = LLH[1];
+
+
+    int n_panels = cubesat.panels.size();
+    std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero());
+    
+
+    SpectraVector_t incidentPowerPatch = getPowerOnAlbedoSurface(LLH_0, r_sol_ECI, t, simParams);
+
+    SpectraVector_t emittedIRPower = getEarthIRPowerOnAlbedoSurface(LLH_0, t, simParams);
+
+    Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH_0);
+    Eigen::Vector3d r_sat_ecef = simParams->ephemeris->eciToEcef(r_ECI, t);
+
+    Eigen::Vector3d r_patch_to_sat_ecef = r_sat_ecef - r_patch_ecef;
+    Eigen::Vector3d r_hat_patch_to_sat_ecef = r_patch_to_sat_ecef.normalized();
+
+    Eigen::Vector3d r_hat_patch_to_sat_eci = simParams->ephemeris->ecefToEci(r_hat_patch_to_sat_ecef, t);
+
+    Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
+
+    double r = r_patch_to_sat_ecef.norm();
+
+    double zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sat_ecef);
+    if (zenith_cosine < 0)
+    {
+        zenith_cosine = 0;
+
+        // No need to do the rest of the calculations, this is not visible
+        return panelIncidentPower;
+    }
+    double zenith_theta = acos(zenith_cosine);
+
+    double AM_frac = AMKastenYoung(zenith_theta);
+
+    SpectraVector_t transmission = atmosphere_transmittance;
+    transmission = transmission.array().pow(AM_frac);
+
+    SpectraVector_t albedo = getAlbedoSpectra(LLH);
+
+    SpectraVector_t powerFromPatch = albedo.cwiseProduct(incidentPowerPatch) + emittedIRPower;
+
+    
+
+    for (int i = 0; i < n_panels; i++)
+    {
+        Eigen::Vector3d n_hat_panel_eci = R_eci_from_B * cubesat.panels[i].normal_vector;
+
+        double incident_cosine = -n_hat_panel_eci.dot(r_hat_patch_to_sat_eci);
+        if (incident_cosine <= 0)
+        {
+            // If this panel has no flux on it then just skip the maths
+            continue;
+        }
+
+        panelIncidentPower[i] = transmission.cwiseProduct(powerFromPatch / (M_PI * pow(r, 2))) * zenith_cosine * incident_cosine * cubesat.panels[i].size;
+    }
+
+    return panelIncidentPower;
+}
+
+
+Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI, double t, const SimParams_t* simParams)
+{
+    Eigen::Vector3d r_ecef = simParams->ephemeris->eciToEcef(r_ECI, t);
+
+    Eigen::Vector3d LLH = ecef_to_llh(r_ecef);
+    Eigen::Vector3d LLH_0 = LLH;
+    LLH_0[2] = 0;
+
+    return LLH_0;
+}
+
+
+
+// This one is single threaded
+/*
 std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
 {
     Eigen::Vector3d LLH_0 = LLH;
@@ -909,6 +1173,292 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
             {
                 panelIncidentPower[k] += panelIncidentPower_ij[k];
             }
+        }
+    }
+
+    return panelIncidentPower;
+}
+
+
+*/
+
+
+std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
+{
+    int n_panels = cubesat.panels.size();
+    std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero());
+
+    // This is the difference in lat/lon either side of the direct projected LLH
+    double theta_vis = getVisibilityConeAngle(r_ECI.norm(), b_earth);
+    // std::cout << "theta_vis: " << RAD2DEG * theta_vis << std::endl;
+
+    // This refreshes the ephemeris frame cache for t. All remaining ephemeris
+    // conversions are also completed before any worker is started.
+    Eigen::Vector3d LLH_sat = getLatLonOfSat(r_ECI, t, simParams);
+
+    int N_lat = theta_vis / (DEG2RAD * d_lat);
+    int N_lon = theta_vis / (DEG2RAD * d_lon);
+
+    // std::cout << "N_lat: " << N_lat << ", N_lon: " << N_lon << std::endl;
+
+    int patch_offset_count = N_lat * N_lon;
+    int candidate_task_count = 4 * patch_offset_count;
+
+    if (candidate_task_count <= 0)
+    {
+        return panelIncidentPower;
+    }
+
+    // Resolve every library-dependent quantity on the calling thread. No
+    // worker below accesses NetCDF, HDF5, or CSPICE.
+    Eigen::Vector3d r_sat_ecef = simParams->ephemeris->eciToEcef(
+        r_ECI,
+        t
+    );
+    Eigen::Vector3d r_sol_ecef = simParams->ephemeris->eciToEcef(
+        r_sol_ECI,
+        t
+    );
+
+    Eigen::Matrix3d R_eci_from_ecef;
+    R_eci_from_ecef.col(0) = simParams->ephemeris->ecefToEci(
+        Eigen::Vector3d::UnitX(),
+        t
+    );
+    R_eci_from_ecef.col(1) = simParams->ephemeris->ecefToEci(
+        Eigen::Vector3d::UnitY(),
+        t
+    );
+    R_eci_from_ecef.col(2) = simParams->ephemeris->ecefToEci(
+        Eigen::Vector3d::UnitZ(),
+        t
+    );
+
+    // This wavelength-dependent part of Earth IR is identical for every
+    // patch. Workers only multiply it by their patch area.
+    SpectraVector_t earth_ir_power_per_square_metre =
+        SpectraVector_t::Zero();
+    for (int i = 0; i < earth_ir_power_per_square_metre.size(); i++)
+    {
+        earth_ir_power_per_square_metre(i) =
+            blackBodySpectrum(T_earth, spectra_wavelengths_nm(i))
+            * d_wavelength_nm;
+    }
+
+    // Resolve the NetCDF variable once on the calling thread instead of
+    // repeating group/attribute discovery for every patch.
+    #if useLargeHamster == true
+        netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
+    #else
+        netCDF::NcGroup maps_group = albedo_file.getGroup("maps");
+        netCDF::NcGroup lambertian_group = maps_group.getGroup("lambertian");
+        netCDF::NcVar albedoData = lambertian_group.getVar("albedo");
+    #endif
+
+    // Read only the small raw HAMSTER spectrum for each visible patch. For
+    // 10,000 patches and 211 doubles this is about 16 MiB, rather than roughly
+    // 400 MiB if the 4,999-sample resampled spectra were stored.
+    std::vector<AlbedoPatchTask_t> patch_tasks;
+    patch_tasks.reserve(candidate_task_count);
+
+    for (int candidate_task_index = 0;
+         candidate_task_index < candidate_task_count;
+         candidate_task_index++)
+    {
+        int patch_offset_index = candidate_task_index / 4;
+        int sign_combination = candidate_task_index % 4;
+        int i = patch_offset_index / N_lon;
+        int j = patch_offset_index % N_lon;
+
+        // Enumerate the four independent latitude/longitude signs:
+        // (-,-), (-,+), (+,-), (+,+).
+        double latitude_direction =
+            (sign_combination < 2) ? -1.0 : 1.0;
+        double longitude_direction =
+            (sign_combination % 2 == 0) ? -1.0 : 1.0;
+
+        double latitude_offset =
+            (N_lat - i) * (DEG2RAD * d_lat);
+        double longitude_offset =
+            (N_lon - j) * (DEG2RAD * d_lon);
+
+        Eigen::Vector3d LLH_ij = LLH_sat;
+        LLH_ij[0] = LLH_sat[0]
+            + latitude_direction * latitude_offset;
+        LLH_ij[1] = LLH_sat[1]
+            + longitude_direction * longitude_offset;
+
+        // The original patch function returns zero before reading albedo for
+        // these patches, so they do not need to become worker tasks.
+        if (!isAlbedoPatchVisible(LLH_ij, r_sat_ecef))
+        {
+            continue;
+        }
+
+        AlbedoPatchTask_t patch_task;
+        patch_task.LLH = LLH_ij;
+        patch_task.raw_albedo_spectrum = readRawAlbedoSpectrum(
+            albedoData,
+            LLH_ij
+        );
+
+        patch_tasks.push_back(std::move(patch_task));
+    }
+
+    int task_count = static_cast<int>(patch_tasks.size());
+    if (task_count == 0)
+    {
+        return panelIncidentPower;
+    }
+
+    unsigned int worker_count = std::thread::hardware_concurrency();
+    if (worker_count == 0)
+    {
+        worker_count = 1;
+    }
+    if (worker_count > static_cast<unsigned int>(task_count))
+    {
+        worker_count = static_cast<unsigned int>(task_count);
+    }
+
+    // Each worker owns its accumulator, so the expensive vector additions do
+    // not need a mutex and cannot race with another worker.
+    std::vector<std::vector<SpectraVector_t> > worker_sums;
+    worker_sums.reserve(worker_count);
+    for (unsigned int worker_index = 0; worker_index < worker_count; worker_index++)
+    {
+        worker_sums.push_back(
+            std::vector<SpectraVector_t>(
+                n_panels,
+                SpectraVector_t::Zero()
+            )
+        );
+    }
+
+    // Workers dynamically claim the next visible, preloaded patch. This
+    // balances differences in the spectral maths between patches.
+    std::atomic<int> next_task(0);
+    std::atomic<bool> stop_workers(false);
+
+    std::exception_ptr worker_exception;
+    std::mutex worker_exception_mutex;
+
+    std::vector<std::thread> workers;
+    workers.reserve(worker_count);
+
+    try
+    {
+        for (unsigned int worker_index = 0; worker_index < worker_count; worker_index++)
+        {
+            workers.push_back(
+                std::thread(
+                    [&, worker_index]()
+                    {
+                        try
+                        {
+                            while (!stop_workers.load(std::memory_order_relaxed))
+                            {
+                                int task_index = next_task.fetch_add(
+                                    1,
+                                    std::memory_order_relaxed
+                                );
+
+                                if (task_index >= task_count)
+                                {
+                                    break;
+                                }
+
+                                const AlbedoPatchTask_t& patch_task =
+                                    patch_tasks[task_index];
+
+                                std::vector<double> albedo_spectrum_extended =
+                                    resampleAndExtendSpectrum(
+                                        wavelengths_file_nm,
+                                        patch_task.raw_albedo_spectrum,
+                                        min_wavelength_nm,
+                                        max_wavelength_nm,
+                                        d_wavelength_nm,
+                                        fillAlbedoData
+                                    );
+
+                                SpectraVector_t albedo =
+                                    Eigen::Map<SpectraVector_t>(
+                                        albedo_spectrum_extended.data(),
+                                        albedo_spectrum_extended.size()
+                                    );
+
+                                std::vector<SpectraVector_t>
+                                    panelIncidentPower_ij =
+                                        getPatchIncidentAlbedoAndIRPowerSpectraFromPreloadedData(
+                                            patch_task.LLH,
+                                            r_sat_ecef,
+                                            r_sol_ecef,
+                                            R_eci_from_ecef,
+                                            R_eci_from_B,
+                                            earth_ir_power_per_square_metre,
+                                            albedo
+                                        );
+
+                                for (int k = 0; k < n_panels; k++)
+                                {
+                                    worker_sums[worker_index][k]
+                                        += panelIncidentPower_ij[k];
+                                }
+                            }
+                        }
+                        catch (...)
+                        {
+                            stop_workers.store(true, std::memory_order_relaxed);
+
+                            std::lock_guard<std::mutex> exception_lock(
+                                worker_exception_mutex
+                            );
+
+                            if (!worker_exception)
+                            {
+                                worker_exception = std::current_exception();
+                            }
+                        }
+                    }
+                )
+            );
+        }
+    }
+    catch (...)
+    {
+        stop_workers.store(true, std::memory_order_relaxed);
+
+        for (unsigned int worker_index = 0;
+             worker_index < static_cast<unsigned int>(workers.size());
+             worker_index++)
+        {
+            if (workers[worker_index].joinable())
+            {
+                workers[worker_index].join();
+            }
+        }
+
+        throw;
+    }
+
+    for (unsigned int worker_index = 0;
+         worker_index < static_cast<unsigned int>(workers.size());
+         worker_index++)
+    {
+        workers[worker_index].join();
+    }
+
+    if (worker_exception)
+    {
+        std::rethrow_exception(worker_exception);
+    }
+
+    // No workers are running now, so this final reduction also needs no mutex.
+    for (unsigned int worker_index = 0; worker_index < worker_count; worker_index++)
+    {
+        for (int k = 0; k < n_panels; k++)
+        {
+            panelIncidentPower[k] += worker_sums[worker_index][k];
         }
     }
 
