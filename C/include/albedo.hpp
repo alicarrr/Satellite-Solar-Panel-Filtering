@@ -28,8 +28,9 @@
 // HAMSTER day of year to load.
 const unsigned int hamster_day_of_year = 244;
 
-// Maximum memory used to store albedo data after loading.
-// The spatial sampling interval is chosen automatically from the file size.
+// Maximum memory used by the older AlbedoData read_albedo_data() overload.
+// The full albedo_tile_spectra loader below deliberately does not subsample or
+// apply this limit.
 const unsigned int hamster_max_albedo_memory_mb = 512;
 
 extern unsigned int n_spectra_albedo; // Number of wavelengths in the albedo data
@@ -53,6 +54,25 @@ extern Eigen::VectorXd longitudes_file;
 extern std::vector<double> wavelengths_file_nm;
 
 extern netCDF::NcFile albedo_file;
+
+/**
+ * @brief Complete HAMSTER albedo cube stored contiguously in RAM.
+ *
+ * The vector is a flattened three-dimensional float array in the same order
+ * as the NetCDF albedo variable:
+ *
+ *     ((dimension_0_index * albedo_tile_dimension_1_size)
+ *       + dimension_1_index) * albedo_tile_wavelength_count
+ *       + wavelength_index
+ *
+ * For the smaller HAMSTER files the dimensions are
+ * [longitude][latitude][spectral]. The values are loaded once before the
+ * parallel albedo calculation and are read-only while workers are running.
+ */
+extern std::vector<float> albedo_tile_spectra;
+extern unsigned int albedo_tile_dimension_0_size;
+extern unsigned int albedo_tile_dimension_1_size;
+extern unsigned int albedo_tile_wavelength_count;
 
 /**
  * @brief In-memory HAMSTER spectral albedo data.
@@ -98,6 +118,16 @@ typedef struct
  * @throws std::runtime_error if the NetCDF file cannot be read or does not contain the expected HAMSTER variables.
  */
 AlbedoData read_albedo_data();
+
+/**
+ * @brief Load the complete albedo variable from the currently open HAMSTER
+ *        NetCDF file into albedo_tile_spectra.
+ *
+ * The source values are converted to float by NetCDF if required. This
+ * function performs one full-variable read and must be called before starting
+ * any albedo worker threads.
+ */
+void loadAlbedoTileSpectraIntoMemory();
 
 void read_albedo_data(unsigned int doy);
 void printVariableInformation(const std::string& variable_name, const netCDF::NcFile& file);

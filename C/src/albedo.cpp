@@ -33,10 +33,16 @@ std::vector<double> wavelengths_file_nm;
 
 netCDF::NcFile albedo_file;
 
+std::vector<float> albedo_tile_spectra;
+unsigned int albedo_tile_dimension_0_size = 0;
+unsigned int albedo_tile_dimension_1_size = 0;
+unsigned int albedo_tile_wavelength_count = 0;
+
+static unsigned int loaded_albedo_day_of_year = 0;
+
 typedef struct
 {
     Eigen::Vector3d LLH;
-    std::vector<double> raw_albedo_spectrum;
 } AlbedoPatchTask_t;
 
 /**
@@ -479,6 +485,148 @@ Eigen::VectorXd get_albedo_spectrum(
 }
 
 
+/**
+ * @brief Load the complete HAMSTER albedo cube into contiguous float storage.
+ */
+void loadAlbedoTileSpectraIntoMemory()
+{
+    if (albedo_file.isNull())
+    {
+        throw std::runtime_error(
+            "Cannot load HAMSTER albedo data before opening the file."
+        );
+    }
+
+    #if useLargeHamster == true
+        netCDF::NcVar albedoData =
+            albedo_file.getVar("Black_Sky_Albedo");
+    #else
+        netCDF::NcGroup maps_group = albedo_file.getGroup("maps");
+        netCDF::NcGroup lambertian_group =
+            maps_group.getGroup("lambertian");
+        netCDF::NcVar albedoData =
+            lambertian_group.getVar("albedo");
+    #endif
+
+    if (albedoData.isNull())
+    {
+        throw std::runtime_error(
+            "Could not find the HAMSTER albedo variable."
+        );
+    }
+
+    std::vector<netCDF::NcDim> dimensions = albedoData.getDims();
+    if (dimensions.size() != 3)
+    {
+        throw std::runtime_error(
+            "The HAMSTER albedo variable must have three dimensions."
+        );
+    }
+
+    #if useLargeHamster == true
+        if (
+            dimensions[0].getName() != "Latitude" ||
+            dimensions[1].getName() != "Longitude" ||
+            dimensions[2].getName() != "Wavelength"
+        )
+        {
+            throw std::runtime_error(
+                "Black_Sky_Albedo must be ordered as "
+                "[Latitude, Longitude, Wavelength]."
+            );
+        }
+    #else
+        if (
+            dimensions[0].getName() != "lon" ||
+            dimensions[1].getName() != "lat" ||
+            dimensions[2].getName() != "spectral"
+        )
+        {
+            throw std::runtime_error(
+                "Small-file albedo must be ordered as "
+                "[lon, lat, spectral]."
+            );
+        }
+    #endif
+
+    if (
+        dimensions[0].getSize()
+            > std::numeric_limits<unsigned int>::max() ||
+        dimensions[1].getSize()
+            > std::numeric_limits<unsigned int>::max() ||
+        dimensions[2].getSize()
+            > std::numeric_limits<unsigned int>::max()
+    )
+    {
+        throw std::runtime_error(
+            "A HAMSTER albedo dimension is too large for this build."
+        );
+    }
+
+    albedo_tile_dimension_0_size =
+        static_cast<unsigned int>(dimensions[0].getSize());
+    albedo_tile_dimension_1_size =
+        static_cast<unsigned int>(dimensions[1].getSize());
+    albedo_tile_wavelength_count =
+        static_cast<unsigned int>(dimensions[2].getSize());
+
+    unsigned long long total_value_count =
+        static_cast<unsigned long long>(albedo_tile_dimension_0_size)
+        * static_cast<unsigned long long>(albedo_tile_dimension_1_size)
+        * static_cast<unsigned long long>(albedo_tile_wavelength_count);
+
+    if (
+        total_value_count
+        > static_cast<unsigned long long>(
+            albedo_tile_spectra.max_size()
+        )
+    )
+    {
+        throw std::length_error(
+            "The HAMSTER albedo cube is too large for std::vector<float>."
+        );
+    }
+
+    albedo_tile_spectra.resize(
+        static_cast<std::size_t>(total_value_count)
+    );
+
+    std::vector<std::size_t> start(3, 0);
+    std::vector<std::size_t> count(3);
+    count[0] = albedo_tile_dimension_0_size;
+    count[1] = albedo_tile_dimension_1_size;
+    count[2] = albedo_tile_wavelength_count;
+
+    // This is the only full-cube NetCDF read. The vector retains the file's
+    // native dimension ordering and wavelength remains the fastest index.
+    albedoData.getVar(
+        start,
+        count,
+        albedo_tile_spectra.data()
+    );
+
+    albedo_spectra_file_len =
+        static_cast<int>(albedo_tile_wavelength_count);
+
+    double memory_mebibytes =
+        static_cast<double>(albedo_tile_spectra.size())
+        * static_cast<double>(sizeof(float))
+        / (1024.0 * 1024.0);
+
+    std::cout
+        << "Loaded HAMSTER albedo cube into RAM: "
+        << albedo_tile_dimension_0_size
+        << " x "
+        << albedo_tile_dimension_1_size
+        << " x "
+        << albedo_tile_wavelength_count
+        << " floats ("
+        << memory_mebibytes
+        << " MiB)."
+        << std::endl;
+}
+
+
 
 void read_albedo_data(unsigned int doy)
 {
@@ -488,9 +636,33 @@ void read_albedo_data(unsigned int doy)
     stream << hamster_dir << "/" << "DOY" << std::setfill('0') << std::setw(width) << doy << ".nc";
     std::string file_name = stream.str();
 
+    if (
+        !albedo_tile_spectra.empty() &&
+        loaded_albedo_day_of_year == doy
+    )
+    {
+        // The startup sequence asks for this day twice. Avoid reloading the
+        // approximately 835 MiB cube, but reopen the file if another caller
+        // closed it and still needs the coordinate metadata.
+        if (albedo_file.isNull())
+        {
+            albedo_file.open(file_name, netCDF::NcFile::read);
+        }
+
+        return;
+    }
+
     std::cout << file_name << std::endl;
 
+    if (!albedo_file.isNull())
+    {
+        albedo_file.close();
+    }
+
     albedo_file.open(file_name, netCDF::NcFile::read);
+    loadAlbedoTileSpectraIntoMemory();
+
+    loaded_albedo_day_of_year = doy;
 }
 
 
@@ -643,8 +815,8 @@ double wrapValue(double val, double min_val, double max_val) {
 
 std::vector<int> getLatLonIndices(Eigen::Vector3d LLH)
 {
-    double lat = LLH(0) * RAD2DEG;
-    double lon = LLH(1) * RAD2DEG;
+    double lat = LLH(0);
+    double lon = LLH(1);
 
     lat = wrapValue(lat, lat_min_file, lat_max_file);
     lon = wrapValue(lon, lon_min_file, lon_max_file);
@@ -673,32 +845,88 @@ double fillAlbedoData(double lambda_nm)
 
 
 /**
- * @brief Read one raw HAMSTER spectrum from an already-resolved variable.
+ * @brief Copy one raw HAMSTER spectrum from the in-memory float cube.
  *
- * This function must only be called by the thread that owns and opened the
- * NetCDF file. The returned std::vector owns its data and can subsequently be
- * passed to a worker thread.
+ * The returned vector converts the stored floats to doubles for the existing
+ * spectral resampling function. The global cube is read-only after startup,
+ * so this function can safely be called concurrently by worker threads.
  */
-static std::vector<double> readRawAlbedoSpectrum(
-    netCDF::NcVar& albedoData,
+static std::vector<double> readRawAlbedoSpectrumFromMemory(
     const Eigen::Vector3d& LLH
 )
 {
+    if (albedo_tile_spectra.empty())
+    {
+        throw std::runtime_error(
+            "HAMSTER albedo data have not been loaded into memory."
+        );
+    }
+
     std::vector<int> indices = getLatLonIndices(LLH);
 
-    std::vector<double> raw_albedo_spectrum(albedo_spectra_file_len);
+    if (
+        indices[0] < 0 ||
+        indices[1] < 0 ||
+        static_cast<unsigned int>(indices[0])
+            >= albedo_tile_dimension_0_size ||
+        static_cast<unsigned int>(indices[1])
+            >= albedo_tile_dimension_1_size
+    )
+    {
+        throw std::out_of_range(
+            "HAMSTER latitude/longitude index is outside the RAM cube."
+        );
+    }
 
-    std::vector<std::size_t> start(3);
-    start[0] = indices[0];
-    start[1] = indices[1];
-    start[2] = 0;
-    
-    std::vector<std::size_t> count(3);
-    count[0] = 1;
-    count[1] = 1;
-    count[2] = albedo_spectra_file_len;
+    unsigned long long spectrum_start =
+        (
+            static_cast<unsigned long long>(indices[0])
+            * static_cast<unsigned long long>(
+                albedo_tile_dimension_1_size
+            )
+            + static_cast<unsigned long long>(indices[1])
+        )
+        * static_cast<unsigned long long>(
+            albedo_tile_wavelength_count
+        );
 
-    albedoData.getVar(start, count, raw_albedo_spectrum.data());
+    unsigned long long spectrum_end =
+        spectrum_start
+        + static_cast<unsigned long long>(
+            albedo_tile_wavelength_count
+        );
+
+    if (
+        spectrum_end
+        > static_cast<unsigned long long>(albedo_tile_spectra.size())
+    )
+    {
+        throw std::out_of_range(
+            "HAMSTER spectrum extends beyond the RAM cube."
+        );
+    }
+
+    std::vector<double> raw_albedo_spectrum(
+        albedo_tile_wavelength_count
+    );
+
+    for (
+        unsigned int wavelength_index = 0;
+        wavelength_index < albedo_tile_wavelength_count;
+        wavelength_index++
+    )
+    {
+        unsigned long long source_index =
+            spectrum_start
+            + static_cast<unsigned long long>(wavelength_index);
+
+        raw_albedo_spectrum[wavelength_index] =
+            static_cast<double>(
+                albedo_tile_spectra[
+                    static_cast<std::size_t>(source_index)
+                ]
+            );
+    }
 
     return raw_albedo_spectrum;
 }
@@ -706,18 +934,10 @@ static std::vector<double> readRawAlbedoSpectrum(
 
 SpectraVector_t getAlbedoSpectra(Eigen::Vector3d LLH)
 {
-    #if useLargeHamster == true
-        netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
-    #else
-        netCDF::NcGroup maps_group = albedo_file.getGroup("maps");
-        netCDF::NcGroup lambertian_group = maps_group.getGroup("lambertian");
-        netCDF::NcVar albedoData = lambertian_group.getVar("albedo");
-    #endif
-
-    std::vector<double> raw_albedo_spectrum = readRawAlbedoSpectrum(
-        albedoData,
-        LLH
-    );
+    std::vector<double> raw_albedo_spectrum =
+        readRawAlbedoSpectrumFromMemory(
+            LLH
+        );
 
     // Need to rebin the data from the File
     std::vector<double> albedoSpectraExtended = resampleAndExtendSpectrum(wavelengths_file_nm, raw_albedo_spectrum, min_wavelength_nm, max_wavelength_nm, d_wavelength_nm, fillAlbedoData);
@@ -745,7 +965,7 @@ double patchArea(Eigen::Vector3d LLH)
     double lat = LLH[0];
     double lon = LLH[1];
 
-    double A_patch = a_earth * cos(lat) * sqrt(pow(a_earth * sin(lat), 2) + pow(b_earth * cos(lat), 2)) * d_lat * d_lon;
+    double A_patch = a_earth * cos(lat) * sqrt(pow(a_earth * sin(lat), 2) + pow(b_earth * cos(lat), 2)) * (DEG2RAD * d_lat) * (DEG2RAD * d_lon);
 
     return A_patch;
 }
@@ -1053,136 +1273,6 @@ Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI, double t, const SimParams_
 }
 
 
-
-// This one is single threaded
-/*
-std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d LLH, Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
-{
-    Eigen::Vector3d LLH_0 = LLH;
-    LLH_0[2] = 0; // Just double check that the height is zero.
-
-    double lat = LLH[0];
-    double lon = LLH[1];
-
-
-    int n_panels = cubesat.panels.size();
-    std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero());
-    
-
-    SpectraVector_t incidentPowerPatch = getPowerOnAlbedoSurface(LLH_0, r_sol_ECI, t, simParams);
-
-    SpectraVector_t emittedIRPower = getEarthIRPowerOnAlbedoSurface(LLH_0, t, simParams);
-
-    Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH_0);
-    Eigen::Vector3d r_sat_ecef = simParams->ephemeris->eciToEcef(r_ECI, t);
-
-    Eigen::Vector3d r_patch_to_sat_ecef = r_sat_ecef - r_patch_ecef;
-    Eigen::Vector3d r_hat_patch_to_sat_ecef = r_patch_to_sat_ecef.normalized();
-
-    Eigen::Vector3d r_hat_patch_to_sat_eci = simParams->ephemeris->ecefToEci(r_hat_patch_to_sat_ecef, t);
-
-    Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
-
-    double r = r_patch_to_sat_ecef.norm();
-
-    double zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sat_ecef);
-    if (zenith_cosine < 0)
-    {
-        zenith_cosine = 0;
-
-        // No need to do the rest of the calculations, this is not visible
-        return panelIncidentPower;
-    }
-    double zenith_theta = acos(zenith_cosine);
-
-    double AM_frac = AMKastenYoung(zenith_theta);
-
-    SpectraVector_t transmission = atmosphere_transmittance;
-    transmission = transmission.array().pow(AM_frac);
-
-    SpectraVector_t albedo = getAlbedoSpectra(LLH);
-
-    SpectraVector_t powerFromPatch = albedo.cwiseProduct(incidentPowerPatch) + emittedIRPower;
-
-    
-
-    for (int i = 0; i < n_panels; i++)
-    {
-        Eigen::Vector3d n_hat_panel_eci = R_eci_from_B * cubesat.panels[i].normal_vector;
-
-        double incident_cosine = -n_hat_panel_eci.dot(r_hat_patch_to_sat_eci);
-        if (incident_cosine <= 0)
-        {
-            // If this panel has no flux on it then just skip the maths
-            continue;
-        }
-
-        panelIncidentPower[i] = transmission.cwiseProduct(powerFromPatch / (M_PI * pow(r, 2))) * zenith_cosine * incident_cosine * cubesat.panels[i].size;
-    }
-
-    return panelIncidentPower;
-}
-
-
-Eigen::Vector3d getLatLonOfSat(Eigen::Vector3d r_ECI, double t, const SimParams_t* simParams)
-{
-    Eigen::Vector3d r_ecef = simParams->ephemeris->eciToEcef(r_ECI, t);
-
-    Eigen::Vector3d LLH = ecef_to_llh(r_ecef);
-    Eigen::Vector3d LLH_0 = LLH;
-    LLH_0[2] = 0;
-
-    return LLH_0;
-}
-
-
-std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
-{
-    int n_panels = cubesat.panels.size();
-    std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero());
-
-    // This is the difference in lat/lon either side of the direct projected LLH
-    double theta_vis = getVisibilityConeAngle(r_ECI.norm(), b_earth);
-    // std::cout << "theta_vis: " << RAD2DEG * theta_vis << std::endl;
-
-    Eigen::Vector3d LLH_sat = getLatLonOfSat(r_ECI, t, simParams);
-
-    int N_lat = theta_vis / (DEG2RAD * d_lat);
-    int N_lon = theta_vis / (DEG2RAD * d_lon);
-
-    // std::cout << "N_lat: " << N_lat << ", N_lon: " << N_lon << std::endl;
-
-    for (int i = 0; i < N_lat; i++)
-    {
-        for (int j = 0; j < N_lon; j++)
-        {
-            // We do + and - visibility
-            Eigen::Vector3d LLH_ij = LLH_sat;
-            LLH_ij[0] = LLH_sat[0] + (i - N_lat) * (DEG2RAD * d_lat);
-            LLH_ij[1] = LLH_sat[1] + (j - N_lon) * (DEG2RAD * d_lon);
-            std::vector<SpectraVector_t> panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectra(LLH_ij, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
-            for (int k = 0; k < n_panels; k++)
-            {
-                panelIncidentPower[k] += panelIncidentPower_ij[k];
-            }
-
-            LLH_ij[0] = LLH_sat[0] - (i - N_lat) * (DEG2RAD * d_lat);
-            LLH_ij[1] = LLH_sat[1] - (j - N_lon) * (DEG2RAD * d_lon);
-            panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectra(LLH_ij, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
-            for (int k = 0; k < n_panels; k++)
-            {
-                panelIncidentPower[k] += panelIncidentPower_ij[k];
-            }
-        }
-    }
-
-    return panelIncidentPower;
-}
-
-
-*/
-
-
 std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vector3d r_ECI, Eigen::Matrix3d R_eci_from_B, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
 {
     int n_panels = cubesat.panels.size();
@@ -1245,19 +1335,16 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
             * d_wavelength_nm;
     }
 
-    // Resolve the NetCDF variable once on the calling thread instead of
-    // repeating group/attribute discovery for every patch.
-    #if useLargeHamster == true
-        netCDF::NcVar albedoData = albedo_file.getVar("Black_Sky_Albedo");
-    #else
-        netCDF::NcGroup maps_group = albedo_file.getGroup("maps");
-        netCDF::NcGroup lambertian_group = maps_group.getGroup("lambertian");
-        netCDF::NcVar albedoData = lambertian_group.getVar("albedo");
-    #endif
+    if (albedo_tile_spectra.empty())
+    {
+        throw std::runtime_error(
+            "HAMSTER albedo data must be loaded before calculating albedo."
+        );
+    }
 
-    // Read only the small raw HAMSTER spectrum for each visible patch. For
-    // 10,000 patches and 211 doubles this is about 16 MiB, rather than roughly
-    // 400 MiB if the 4,999-sample resampled spectra were stored.
+    // Tasks now store only their patch coordinate. Workers copy the required
+    // 211 float values from the immutable RAM cube and convert them to double.
+    // No per-patch NetCDF reads or raw-spectrum preload are required here.
     std::vector<AlbedoPatchTask_t> patch_tasks;
     patch_tasks.reserve(candidate_task_count);
 
@@ -1278,9 +1365,12 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
             (sign_combination % 2 == 0) ? -1.0 : 1.0;
 
         double latitude_offset =
-            (N_lat - i) * (DEG2RAD * d_lat);
+            (static_cast<double>(i) + 0.5)
+            * DEG2RAD * d_lat;
+
         double longitude_offset =
-            (N_lon - j) * (DEG2RAD * d_lon);
+            (static_cast<double>(j) + 0.5)
+            * DEG2RAD * d_lon;
 
         Eigen::Vector3d LLH_ij = LLH_sat;
         LLH_ij[0] = LLH_sat[0]
@@ -1297,10 +1387,6 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
 
         AlbedoPatchTask_t patch_task;
         patch_task.LLH = LLH_ij;
-        patch_task.raw_albedo_spectrum = readRawAlbedoSpectrum(
-            albedoData,
-            LLH_ij
-        );
 
         patch_tasks.push_back(std::move(patch_task));
     }
@@ -1335,7 +1421,7 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
         );
     }
 
-    // Workers dynamically claim the next visible, preloaded patch. This
+    // Workers dynamically claim the next visible, RAM-backed patch. This
     // balances differences in the spectral maths between patches.
     std::atomic<int> next_task(0);
     std::atomic<bool> stop_workers(false);
@@ -1371,10 +1457,15 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
                                 const AlbedoPatchTask_t& patch_task =
                                     patch_tasks[task_index];
 
+                                std::vector<double> raw_albedo_spectrum =
+                                    readRawAlbedoSpectrumFromMemory(
+                                        patch_task.LLH
+                                    );
+
                                 std::vector<double> albedo_spectrum_extended =
                                     resampleAndExtendSpectrum(
                                         wavelengths_file_nm,
-                                        patch_task.raw_albedo_spectrum,
+                                        raw_albedo_spectrum,
                                         min_wavelength_nm,
                                         max_wavelength_nm,
                                         d_wavelength_nm,

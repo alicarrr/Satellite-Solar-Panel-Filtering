@@ -46,7 +46,7 @@ const double dt_data = 1.0;
 const double dt = 1e-1; // Sim Time Step
 const std::string date_0 = "2025-01-09T01:01:10.050000";
 
-const double t_final_sim = 0.5;
+const double t_final_sim = 30;
 
 double t_last_data = -2 * dt_data;
 
@@ -150,7 +150,7 @@ void calculateSpectralPowersOnSatellite()
     std::vector<SpectraVector_t> solarPowersPerPanel = solarPowerPerPanel(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI);
 
     // double totalPower = 0.0;
-    // double totalAlbedoPower = 0.0;
+    double totalAlbedoPower = 0.0;
     double totalSolarPower = 0.0;
 
     for (int i = 0; i < cubesat.panels.size(); i++)
@@ -158,12 +158,12 @@ void calculateSpectralPowersOnSatellite()
         panelPowerState[i] = albedoPowerPerPanel[i] + solarPowersPerPanel[i];
         
         // totalPower += panelPowerState[i].sum();
-        // totalAlbedoPower += albedoPowerPerPanel[i].sum();
+        totalAlbedoPower += albedoPowerPerPanel[i].sum();
         totalSolarPower += solarPowersPerPanel[i].sum();
     }
     
     // std::cout << "Total power on satellite at t=" << t << "s: " << totalPower*1000 << " mW" << std::endl;
-    // std::cout << "Total albedo power: " << totalAlbedoPower*1000 << " mW" << std::endl;
+    std::cout << "Total IR power: " << totalAlbedoPower*1000 << " mW" << std::endl;
     std::cout << "Total solar power: " << totalSolarPower*1000 << " mW" << std::endl;
 }
 

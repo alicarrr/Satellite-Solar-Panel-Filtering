@@ -9,7 +9,7 @@ import pandas as pd
 ####################
 # NOTE: Need to change data save to use time instead of time step index
 ####################
-receive_new_data = True  
+receive_new_data = False  
 # Write all data to a pickle file
 simDataPickleFile = Path(__file__).resolve().parent / "Simulation Data" / "simulation_data.pkl"
 
@@ -156,6 +156,18 @@ else:
     plt.ylabel("Power (W)")
     plt.xscale("log")
     plt.title("Spectrum of Solar Panels at Last Time Step")
+    plt.legend()
+    plt.grid(True, which='both', ls='--', lw=0.5)
+    # plt.show()
+
+
+    plt.figure()
+    
+    plt.plot(wavelengths, np.sum(panelPowers_arr[0, :, :], axis=0))
+    plt.xlabel("Wavelength (nm)")
+    plt.ylabel("Power (W)")
+    # plt.xscale("log")
+    plt.title("Spectrum of All Panels at Last Time Step")
     plt.legend()
     plt.grid(True, which='both', ls='--', lw=0.5)
     plt.show()
