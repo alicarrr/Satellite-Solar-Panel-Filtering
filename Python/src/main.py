@@ -98,11 +98,23 @@ panelPowers_arr = np.array(panelPowers)
 # Plot total power for each panel over time
 for i in range(N_panels):
     plt.plot(panelPowers_arr[:, i, :].sum(axis=1), label=f"Panel {i+1}")
-
 plt.xlabel("Time")
 plt.ylabel("Total Power")
 plt.title("Power Output of Solar Panels Over Time")
 plt.legend()
-plt.show()
+# plt.show()
 
 print(panelPowers_arr.shape)
+
+
+# Plot the spectrum for each panel at the last time step
+plt.figure()
+for i in range(N_panels):
+    plt.plot(wavelengths, panelPowers_arr[0, i, :], label=f"Panel {i+1}")
+plt.xlabel("Wavelength (nm)")
+plt.ylabel("Power (W)")
+# log scale
+plt.xscale("log")
+plt.title("Spectrum of Solar Panels at Last Time Step")
+plt.legend()
+plt.show()

@@ -725,8 +725,21 @@ double patchArea(Eigen::Vector3d LLH)
 
 SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t, const SimParams_t* simParams)
 {
-    /** TODO: Fix with actual IR spectrum */
-    return SpectraVector_t::Zero();
+    SpectraVector_t IRPatchPower = SpectraVector_t::Zero();
+    // Calculate blackbody power at each wavelength in W/m^2/nm
+    for (int i = 0; i < IRPatchPower.size(); i++)
+    {
+        IRPatchPower(i) = blackBodySpectrum(T_earth, spectra_wavelengths_nm(i));
+    }
+
+    // Multiply by d_wavelength_nm to get power in W/m^2
+    IRPatchPower *= d_wavelength_nm;
+
+    // Multiply by patch area to get power in W
+    double patchArea_m2 = patchArea(LLH);
+    IRPatchPower *= patchArea_m2;
+
+    return IRPatchPower;
 }
 
 
@@ -866,11 +879,14 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
 
     // This is the difference in lat/lon either side of the direct projected LLH
     double theta_vis = getVisibilityConeAngle(r_ECI.norm(), b_earth);
+    // std::cout << "theta_vis: " << RAD2DEG * theta_vis << std::endl;
 
     Eigen::Vector3d LLH_sat = getLatLonOfSat(r_ECI, t, simParams);
 
-    int N_lat = theta_vis / d_lat;
-    int N_lon = theta_vis / d_lon;
+    int N_lat = theta_vis / (DEG2RAD * d_lat);
+    int N_lon = theta_vis / (DEG2RAD * d_lon);
+
+    // std::cout << "N_lat: " << N_lat << ", N_lon: " << N_lon << std::endl;
 
     for (int i = 0; i < N_lat; i++)
     {
@@ -878,16 +894,16 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
         {
             // We do + and - visibility
             Eigen::Vector3d LLH_ij = LLH_sat;
-            LLH_ij[0] = LLH_sat[0] + (i - N_lat) * d_lat;
-            LLH_ij[1] = LLH_sat[1] + (j - N_lon) * d_lon;
+            LLH_ij[0] = LLH_sat[0] + (i - N_lat) * (DEG2RAD * d_lat);
+            LLH_ij[1] = LLH_sat[1] + (j - N_lon) * (DEG2RAD * d_lon);
             std::vector<SpectraVector_t> panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectra(LLH_ij, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
             for (int k = 0; k < n_panels; k++)
             {
                 panelIncidentPower[k] += panelIncidentPower_ij[k];
             }
 
-            LLH_ij[0] = LLH_sat[0] - (i - N_lat) * d_lat;
-            LLH_ij[1] = LLH_sat[1] - (j - N_lon) * d_lon;
+            LLH_ij[0] = LLH_sat[0] - (i - N_lat) * (DEG2RAD * d_lat);
+            LLH_ij[1] = LLH_sat[1] - (j - N_lon) * (DEG2RAD * d_lon);
             panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectra(LLH_ij, r_ECI, R_eci_from_B, r_sol_ECI, t, simParams);
             for (int k = 0; k < n_panels; k++)
             {

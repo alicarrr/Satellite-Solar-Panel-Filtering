@@ -497,64 +497,15 @@ Spectrum_t albedoRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const S
 
 /** TODO: make function for Earth IR that has a similar attenuation but upward, and with the original spectrum as a blackbody */
 
-Spectrum_t blackBodySpectrum(double temperature_K, const Spectrum_t& wavelength_spectrum)
+double blackBodySpectrum(double temperature_K, double wavelength_nm)
 {
     // Planck's law for blackbody radiation
-    Spectrum_t blackbody_spectrum;
-    blackbody_spectrum.wavelengths = wavelength_spectrum.wavelengths;
-    blackbody_spectrum.values.resize(wavelength_spectrum.wavelengths.size());
-
-    for (int i = 0; i < wavelength_spectrum.wavelengths.size(); i++)
-    {
-        double wavelength_m = wavelength_spectrum.wavelengths(i) * nm; // Convert nm to m
-        double exponent = (h * c) / (wavelength_m * k * temperature_K);
-        blackbody_spectrum.values(i) = (2.0 * h * c * c) / (std::pow(wavelength_m, 5) * (std::exp(exponent) - 1.0)); 
-    }
+    double blackbody_spectrum;
+    double wavelength_m = wavelength_nm * nm; // Convert nm to m
+    double exponent = (h * c) / (wavelength_m * k * temperature_K);
+    blackbody_spectrum = 1e-9 * (2.0 * M_PI * h * c * c) / (std::pow(wavelength_m, 5) * (std::exp(exponent) - 1.0)); 
 
     return blackbody_spectrum;
-}
-
-
-
-// function to compute Earth IR spectrum at the top of the atmosphere (TOA) based on a blackbody spectrum at 288K, scaled by the cosine of the angle between the sun and the panel normal vector, and attenuated by the atmosphere. This is a simplified model and does not account for all atmospheric effects.
-Spectrum_t EarthIRRadianceTOA(const Spectrum_t& transmission_ratio_AM1_5, const Spectrum_t& AM0, Eigen::Vector3d patch_pos_G, Eigen::Vector3d panel_pos_G)
-{
-    // for earth IR the distance calc for equivalent air mass is just the path travelled from the earth emitting the IR to the satellite panel, which is just the distance from the earth to the satellite panel. The zenith angle is the angle between the panel normal vector and the vector from the panel to the earth center (which is at the origin in ECI). 
-    Spectrum_t earth_ir_toa_spectrum;
-    earth_ir_toa_spectrum.wavelengths = transmission_ratio_AM1_5.wavelengths;
-    earth_ir_toa_spectrum.values = Eigen::VectorXd::Zero(transmission_ratio_AM1_5.values.size());
-
-    Eigen::Vector3d patch_to_panel_G = panel_pos_G - patch_pos_G;
-
-    double patch_normal_magnitude = patch_pos_G.norm();
-    double patch_to_panel_distance = patch_to_panel_G.norm(); // m
-
-    // Use cosineOfAngleBetweenVectors to calculate the needed zenith and exit angles
-    double cos_out = cosineOfAngleBetweenVectors(patch_pos_G, patch_to_panel_G);
-
-    // check if the patch is visible from the satellite panel
-    if (cos_out <= 0.0)
-    {
-        return earth_ir_toa_spectrum;
-    }
-
-    cos_out = std::min(1.0, cos_out);
-    
-    double exit_angle_rad = std::acos(cos_out);
-    double exit_angle_deg = exit_angle_rad * RAD2DEG;
-
-    // Kasten-Young air mass, including the near-horizon curvature correction.
-    double m_z_exit = AMKastenYoung(exit_angle_rad);
-
-    // Scaled AM transmittance
-    Spectrum_t scaled_transmittance = scaledTransmissivityForAM(m_z_exit, transmission_ratio_AM1_5);
-
-    Spectrum_t Earth_blackbody_spectrum = blackBodySpectrum(288.0, transmission_ratio_AM1_5);
-
-    earth_ir_toa_spectrum.values = (scaled_transmittance.values.array() * Earth_blackbody_spectrum.values.array() * cos_out * (AU * AU / patch_to_panel_G.squaredNorm())/M_PI).matrix();
-
-    return earth_ir_toa_spectrum;
-
 }
 
 
