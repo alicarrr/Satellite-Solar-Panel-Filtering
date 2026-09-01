@@ -35,8 +35,8 @@ const unsigned int hamster_max_albedo_memory_mb = 512;
 extern unsigned int n_spectra_albedo; // Number of wavelengths in the albedo data
 
 inline constexpr double d_lambda = 10 * nm; // metres
-inline constexpr double d_lat = 0.25; // degrees
-inline constexpr double d_lon = 0.25; // degrees
+inline constexpr double d_lat = 1; // degrees
+inline constexpr double d_lon = 1; // degrees
 
 extern double d_lat_file;
 extern double d_lon_file;

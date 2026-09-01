@@ -151,19 +151,20 @@ void calculateSpectralPowersOnSatellite()
 
     // double totalPower = 0.0;
     // double totalAlbedoPower = 0.0;
-    // double totalSolarPower = 0.0;
+    double totalSolarPower = 0.0;
 
     for (int i = 0; i < cubesat.panels.size(); i++)
     {
-        panelPowerState[i] = albedoPowerPerPanel[i] + 0 * solarPowersPerPanel[i];
+        panelPowerState[i] = albedoPowerPerPanel[i] + solarPowersPerPanel[i];
+        
         // totalPower += panelPowerState[i].sum();
         // totalAlbedoPower += albedoPowerPerPanel[i].sum();
-        // totalSolarPower += solarPowersPerPanel[i].sum();
+        totalSolarPower += solarPowersPerPanel[i].sum();
     }
     
     // std::cout << "Total power on satellite at t=" << t << "s: " << totalPower*1000 << " mW" << std::endl;
     // std::cout << "Total albedo power: " << totalAlbedoPower*1000 << " mW" << std::endl;
-    // std::cout << "Total solar power: " << totalSolarPower*1000 << " mW" << std::endl;
+    std::cout << "Total solar power: " << totalSolarPower*1000 << " mW" << std::endl;
 }
 
 
