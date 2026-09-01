@@ -17,7 +17,7 @@ setsid ./build/simulation &
 CPP_PID=$! # This starts the executable with ID CPP_PID0
 # If we have multiple executables this allows us to keep track of them all
 cd ./Python
-setsid python3 -m src.main &
+setsid .venv/bin/python3 -m src.main &
 PY_PID=$!
 cd ../
 
