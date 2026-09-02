@@ -163,8 +163,8 @@ void calculateSpectralPowersOnSatellite()
     }
     
     // std::cout << "Total power on satellite at t=" << t << "s: " << totalPower*1000 << " mW" << std::endl;
-    std::cout << "Total IR power: " << totalAlbedoPower*1000 << " mW" << std::endl;
-    std::cout << "Total solar power: " << totalSolarPower*1000 << " mW" << std::endl;
+    // std::cout << "Total IR and albedo power: " << totalAlbedoPower*1000 << " mW" << std::endl;
+    // std::cout << "Total solar power: " << totalSolarPower*1000 << " mW" << std::endl;
 }
 
 
@@ -178,9 +178,7 @@ void setSimParams()
         std::string earthGravPath = "C/lib/geographiclib/share/GeographicLib/gravity";
         std::string earthMagPath = "C/lib/geographiclib/share/GeographicLib/magnetic";
 
-        simParams.ephemeris = new SolarSystemEphemeris(lskPath,
-                                                       spkPath,
-                                                       date_0);
+        simParams.ephemeris = new SolarSystemEphemeris(lskPath, spkPath, date_0);
 
         simParams.ephemeris->loadEarthFieldModels(earthHighPrecPath,
                                                     "egm2008", earthGravPath, 2, 2,//2106 max
@@ -237,7 +235,6 @@ void setInitialOrbitState()
 
     Eigen::Vector3d omega_B_in_G = J_omega * theta_dots;
 
-
     simState.s_COM_in_G = s_com_in_G;
     simState.v_COM_in_G = v_com_in_G;
     simState.R_G_from_B = R_G_from_B;
@@ -283,110 +280,8 @@ void preLoadData()
     std::cout << "Getting sun spectrum" << std::endl;
     getSolarSpectrumFromFile(sun_spectrum_path);
 
-    // printVariableInformation("total_downward_transmissivity", atmosphere_transmissivity_file);
-
     double totalSunPower = sun_spectra.sum();
     std::cout << "Total Solar Power is " << totalSunPower << "W" << std::endl;
-
-
-    // // Testing plotting
-    // FILE* gnuplot = popen("gnuplot -persistent", "w");
-    // if (gnuplot == nullptr)
-    // {
-    //     std::cerr << "Could not open gnuplot." << std::endl;
-    //     return;
-    // }
-    // std::fprintf(gnuplot,
-    //                 "set termoption font ',4'\n"
-    //                 "set title 'Sun Power spectra'\n"
-    //                 "set xlabel 'Wavelength (nm)'\n"
-    //                 "set ylabel 'Spectral value'\n"
-    //                 "set logscale x\n"
-    //                 "set grid\n"
-    //                 "plot '-' using 1:2 with lines title 'Sun Spectra'\n");
-
-    // for (Eigen::Index i = 0; i < sun_spectra.size(); ++i)
-    //     std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), sun_spectra(i));
-    // std::fprintf(gnuplot, "e\n");
-
-    // // for (Eigen::Index i = 0; i < AM1_5.wavelengths.size(); ++i)
-    // //     std::fprintf(gnuplot, "%.17g %.17g\n", AM1_5.wavelengths(i), AM1_5.values(i));
-    // // std::fprintf(gnuplot, "e\n");
-
-    // std::fflush(gnuplot);
-    // pclose(gnuplot);
-
-
-    // // Testing plotting
-    // gnuplot = popen("gnuplot -persistent", "w");
-    // if (gnuplot == nullptr)
-    // {
-    //     std::cerr << "Could not open gnuplot." << std::endl;
-    //     return;
-    // }
-    // std::fprintf(gnuplot,
-    //                 "set termoption font ',4'\n"
-    //                 "set title 'Atmosphere Transmittance'\n"
-    //                 "set xlabel 'Wavelength (nm)'\n"
-    //                 "set ylabel 'Spectral value'\n"
-    //                 "set logscale x\n"
-    //                 "set grid\n"
-    //                 "plot '-' using 1:2 with lines title 'Atmosphere Transmittance'\n");
-
-    // for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
-    //     std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), atmosphere_transmittance(i));
-    // std::fprintf(gnuplot, "e\n");
-
-    // std::fflush(gnuplot);
-    // pclose(gnuplot);
-
-
-    // // Testing Albedo
-
-    // std::vector<SpectraVector_t> albedoPowerPerPanel = getTotalIncidentAlbedoAndIRPowerSpectra(simState.s_COM_in_G, simState.R_G_from_B, s_sol_ECI, 0, simParams);
-
-    // panelPowerState = albedoPowerPerPanel;
-
-    // std::cout << "Total power per panel = " << std::endl;
-    // for (int n = 0; n < cubesat.panels.size(); n++)
-    // {
-    //     std::cout << albedoPowerPerPanel[n].sum() << std::endl;
-    // }
-
-    // gnuplot = popen("gnuplot -persistent", "w");
-    // if (gnuplot == nullptr)
-    // {
-    //     std::cerr << "Could not open gnuplot." << std::endl;
-    //     return;
-    // }
-    // std::fprintf(
-    //     gnuplot,
-    //     "set termoption font ',4'\n"
-    //     "set title 'Albedo incident power spectra'\n"
-    //     "set xlabel 'Wavelength (nm)'\n"
-    //     "set ylabel 'Power (W)'\n"
-    //     "set logscale x\n"
-    //     "set grid\n"
-    //     "plot '-' using 1:2 with lines title 'Panel +x Power', "
-    //         "'-' using 1:2 with lines title 'Panel -x Power', "
-    //         "'-' using 1:2 with lines title 'Panel +y Power', "
-    //         "'-' using 1:2 with lines title 'Panel -y Power', "
-    //         "'-' using 1:2 with lines title 'Panel +z Power', "
-    //         "'-' using 1:2 with lines title 'Panel -z Power'\n"
-    // );
-    
-    // for (int n = 0; n < cubesat.panels.size(); n++)
-    // {
-    //     for (Eigen::Index i = 0; i < spectra_wavelengths_nm.size(); ++i)
-    //     {
-    //         std::fprintf(gnuplot, "%.17g %.17g\n", spectra_wavelengths_nm(i), (albedoPowerPerPanel[n])(i));
-    //     }
-        
-    //     std::fprintf(gnuplot, "e\n");
-    // }
-
-    // std::fflush(gnuplot);
-    // pclose(gnuplot);
 }
 
 
@@ -431,15 +326,11 @@ void doSimLoop(lcm::LCM* lcm)
 
         s_sol_ECI = get_sun_location_eci(t, simParams.ephemeris);
         
-
-        
         // Log time and completion percentage
         auto wall_now = clock::now();
         double wall_elapsed = std::chrono::duration<double>(wall_now - wall_start).count();
 
         double speed_of_sim = simParams.time_step / wall_elapsed;
-
-        
 
         std::cout << '\r' << "Sim percent: " << std::fixed << std::setprecision(2) << (t/simParams.t_final)*100 << "%, Speed of sim: " << std::fixed  << std::setprecision(2) << speed_of_sim << "x real-time     " << std::flush;
 

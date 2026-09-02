@@ -9,7 +9,7 @@ import pandas as pd
 ####################
 # NOTE: Need to change data save to use time instead of time step index
 ####################
-receive_new_data = False  
+receive_new_data = True  
 # Write all data to a pickle file
 simDataPickleFile = Path(__file__).resolve().parent / "Simulation Data" / "simulation_data.pkl"
 
@@ -46,7 +46,6 @@ def spectra_metadata_handler(channel, data):
     global wavelengths, N_spectra
     wavelengths = np.array(msg.wavelengths)
     N_spectra = wavelengths.shape[0]
-    # print(wavelengths.shape)
 
 
 def spectra_data_handler(channel, data):
@@ -136,7 +135,12 @@ else:
     # Load existing data from csv files
     panelPowers_arr, wavelengths, panelLabels, N_panels, N_spectra = load_sim_data_from_pickle()
 
-    print(f'Total solar power: {panelPowers_arr.sum()}')
+    # print(f'Total solar power: {panelPowers_arr.sum()}')
+
+    panel_index = 0  # replace with the Earth-facing panel
+    ir_W_m2 = panelPowers_arr[-1, panel_index, :].sum()
+
+    print(f"Earth-facing panel IR: {ir_W_m2} W/m^2")
 
     print(f"Loaded simulation data from {simDataPickleFile}")
 

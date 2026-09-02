@@ -71,10 +71,7 @@ static void check_nc(int status)
  *
  * @return Index of the closest coordinate value.
  */
-static unsigned int find_closest_index(
-    const Eigen::VectorXd& values,
-    double requested_value
-)
+static unsigned int find_closest_index(const Eigen::VectorXd& values, double requested_value)
 {
     unsigned int closest_index = 0;
     unsigned int n_values = (unsigned int)values.size();
@@ -106,10 +103,7 @@ static unsigned int find_closest_index(
  *
  * @return Index of the closest longitude value.
  */
-static unsigned int find_closest_longitude_index(
-    const Eigen::VectorXd& longitude,
-    double requested_longitude
-)
+static unsigned int find_closest_longitude_index(const Eigen::VectorXd& longitude, double requested_longitude)
 {
     unsigned int closest_index = 0;
     unsigned int n_values = (unsigned int)longitude.size();
@@ -374,7 +368,6 @@ void getAlbedoFileParams()
     lat_max_file = latitudes_file.maxCoeff();
     lon_min_file = longitudes_file.minCoeff();
     lon_max_file = longitudes_file.maxCoeff();
-
 }
 
 
@@ -406,26 +399,53 @@ double wrapValue(double val, double min_val, double max_val)
 }
 
 
+// std::vector<int> getLatLonIndices(Eigen::Vector3d LLH)
+// {   
+//     // in LLH, lat and lon are in radians, so convert to degrees for Hamster
+//     double lat = LLH(0)*RAD2DEG;
+//     double lon = LLH(1)*RAD2DEG;
+
+//     lat = wrapValue(lat, lat_min_file, lat_max_file);
+//     lon = wrapValue(lon, lon_min_file, lon_max_file);
+
+//     std::vector<int> indices(2);
+
+//     // LARGE FILES: The indices in the file are ordered lat then lon
+//     // SMALL FILES: The indices in the file are ordered lon then lat
+
+//     #if useLargeHamster == true
+//         indices[0] = getIndexOfEntry(latitudes_file, lat);
+//         indices[1] = getIndexOfEntry(longitudes_file, lon);
+//     #else
+//         indices[1] = getIndexOfEntry(latitudes_file, lat);
+//         indices[0] = getIndexOfEntry(longitudes_file, lon);
+//     #endif
+
+//     return indices;
+// }
+
 std::vector<int> getLatLonIndices(Eigen::Vector3d LLH)
 {
-    double lat = LLH(0);
-    double lon = LLH(1);
+    // Patch coordinates are radians; HAMSTER coordinates are degrees.
+    double latitude_deg = LLH(0) * RAD2DEG;
+    double longitude_deg = LLH(1) * RAD2DEG;
 
-    lat = wrapValue(lat, lat_min_file, lat_max_file);
-    lon = wrapValue(lon, lon_min_file, lon_max_file);
+    int latitude_index = getIndexOfEntry(latitudes_file, latitude_deg);
+
+    int longitude_index =
+        static_cast<int>(find_closest_longitude_index(longitudes_file, longitude_deg));
 
     std::vector<int> indices(2);
 
-    // LARGE FILES: The indices in the file are ordered lat then lon
-    // SMALL FILES: The indices in the file are ordered lon then lat
-
-    #if useLargeHamster == true
-        indices[0] = getIndexOfEntry(latitudes_file, lat);
-        indices[1] = getIndexOfEntry(longitudes_file, lon);
-    #else
-        indices[1] = getIndexOfEntry(latitudes_file, lat);
-        indices[0] = getIndexOfEntry(longitudes_file, lon);
-    #endif
+#if useLargeHamster == true
+    // Large file ordering: [latitude, longitude, wavelength]
+    indices[0] = latitude_index;
+    indices[1] = longitude_index;
+#else
+    // Small file ordering: [longitude, latitude, wavelength]
+    indices[0] = longitude_index;
+    indices[1] = latitude_index;
+#endif
 
     return indices;
 }
@@ -444,9 +464,7 @@ double fillAlbedoData(double lambda_nm)
  * spectral resampling function. The global cube is read-only after startup,
  * so this function can safely be called concurrently by worker threads.
  */
-static std::vector<double> readRawAlbedoSpectrumFromMemory(
-    const Eigen::Vector3d& LLH
-)
+static std::vector<double> readRawAlbedoSpectrumFromMemory(const Eigen::Vector3d& LLH)
 {
     if (albedo_tile_spectra.empty())
     {
@@ -519,70 +537,6 @@ double patchArea(Eigen::Vector3d LLH)
 }
 
 
-SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t, const SimParams_t* simParams)
-{
-    SpectraVector_t IRPatchPower = SpectraVector_t::Zero();
-    // Calculate blackbody power at each wavelength in W/m^2/nm
-    for (int i = 0; i < IRPatchPower.size(); i++)
-    {
-        IRPatchPower(i) = blackBodySpectrum(T_earth, spectra_wavelengths_nm(i));
-    }
-
-    // Multiply by d_wavelength_nm to get power in W/m^2
-    IRPatchPower *= d_wavelength_nm;
-
-    // Multiply by patch area to get power in W
-    double patchArea_m2 = patchArea(LLH);
-    IRPatchPower *= patchArea_m2;
-
-    return IRPatchPower;
-}
-
-
-
-SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
-{
-    double lat = LLH[0];
-    double lon = LLH[1];
-
-    SpectraVector_t incidentPower = SpectraVector_t::Zero();
-
-    Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH);
-
-    /** Normal vector for oblate sphereoid */
-    Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
-
-    Eigen::Vector3d r_sol_ecef = simParams->ephemeris->eciToEcef(r_sol_ECI, t);
-
-    Eigen::Vector3d r_hat_patch_to_sun = (r_sol_ecef - r_patch_ecef).normalized();
-
-    double r = (r_sol_ecef - r_patch_ecef).norm();
-
-    /** Approximately correct, uses differential area of oblate sphereoid */
-    double A_patch = patchArea(LLH);
-
-    double zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sun);
-    if (zenith_cosine < 0)
-    {
-        zenith_cosine = 0;
-
-        // No need to do the rest of the calculations, this is not in sunlight
-        return incidentPower;
-    }
-    double zenith_theta = acos(zenith_cosine);
-
-    double AM_frac = AMKastenYoung(zenith_theta);
-
-    SpectraVector_t transmission = atmosphere_transmittance;
-    transmission = transmission.array().pow(AM_frac);
-
-    // Flux is (transmittance^AM) * total power / (4pi r^2), power is flux * patch area * cos(zenith) (where negative zenith = 0)
-    incidentPower = transmission.cwiseProduct(sun_spectra / (4.0 * M_PI * pow(r, 2))) * A_patch * zenith_cosine;
-
-    return incidentPower;
-}
-
-
 /**
  * @brief Test the same patch-to-satellite visibility condition used by the
  *        full patch calculation.
@@ -613,29 +567,33 @@ static bool isAlbedoPatchVisible(const Eigen::Vector3d& LLH, const Eigen::Vector
 static std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectraFromPreloadedData(const Eigen::Vector3d& LLH, const Eigen::Vector3d& r_sat_ecef, const Eigen::Vector3d& r_sol_ecef, const Eigen::Matrix3d& R_eci_from_ecef, const Eigen::Matrix3d& R_eci_from_B, const SpectraVector_t& earth_ir_power_per_square_metre, const SpectraVector_t& albedo)
 {
     Eigen::Vector3d LLH_0 = LLH;
-    LLH_0[2] = 0;
+    LLH_0[2] = 0; // height = 0, i.e. at the Earth's surface.
 
+    // patch lat, lon, height
     double lat = LLH_0[0];
     double lon = LLH_0[1];
 
     int n_panels = cubesat.panels.size();
-    std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero()
-    );
+    std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero());
 
+    // use ECEF as the global frame until the patch-to-satellite vector is transformed into the ECI frame for the panel incidence calculation
     Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH_0);
     Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
 
     Eigen::Vector3d r_patch_to_sat_ecef = r_sat_ecef - r_patch_ecef;
+
     double r_patch_to_sat = r_patch_to_sat_ecef.norm();
     Eigen::Vector3d r_hat_patch_to_sat_ecef = r_patch_to_sat_ecef.normalized();
 
     double satellite_zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sat_ecef);
 
+    // Check if the patch is visible to the satellite. If not, return zero power for all panels.
     if (satellite_zenith_cosine < 0.0)
     {
         return panelIncidentPower;
     }
 
+    // area of the patch on Earth surface 
     double A_patch = patchArea(LLH_0);
 
     SpectraVector_t incidentPowerPatch = SpectraVector_t::Zero();
@@ -646,26 +604,32 @@ static std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectraFromP
 
     double solar_zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sun_ecef);
 
+    // check if the patch is illuminated by the sun. If not, incident power from the sun is zero.
     if (solar_zenith_cosine >= 0.0)
     {
-        double solar_zenith_theta = acos(solar_zenith_cosine);
-        double solar_AM_frac = AMKastenYoung(solar_zenith_theta);
+        // if visible
+        double solar_zenith_theta = acos(solar_zenith_cosine);      // angle between the sun and the patch normal (in rads)
+        double solar_AM_frac = AMKastenYoung(solar_zenith_theta);   // air mass fraction for incident solar radiation
 
         SpectraVector_t solar_transmission = atmosphere_transmittance;
+        // scale the transmissivity by the air mass fraction to account for the increased path length through the atmosphere at varied zenith angles
         solar_transmission = solar_transmission.array().pow(solar_AM_frac);
-
+        
+        // incident power on the patch from the sun, accounting for the distance to the sun, the area of the patch, and the angle of incidence of sunlight on the patch
         incidentPowerPatch = solar_transmission.cwiseProduct(sun_spectra / (4.0 * M_PI * pow(r_patch_to_sun, 2))) * A_patch * solar_zenith_cosine;
     }
 
+    // // calculate the emitted IR power from the patch, which is independent of the sun's position and only depends on the patch's temperature and area
     SpectraVector_t emittedIRPower = earth_ir_power_per_square_metre * A_patch;
 
+    // angle between the patch normal and the satellite panel normal.
     double satellite_zenith_theta = acos(satellite_zenith_cosine);
-    double satellite_AM_frac = AMKastenYoung(satellite_zenith_theta);
+    double satellite_AM_frac = AMKastenYoung(satellite_zenith_theta); // air mass fraction for radiation from the patch to the satellite
 
     SpectraVector_t satellite_transmission = atmosphere_transmittance;
     satellite_transmission = satellite_transmission.array().pow(satellite_AM_frac);
 
-    SpectraVector_t powerFromPatch = 0*albedo.cwiseProduct(incidentPowerPatch) + emittedIRPower;
+    SpectraVector_t powerFromPatch = albedo.cwiseProduct(incidentPowerPatch) + emittedIRPower;
 
     Eigen::Vector3d r_hat_patch_to_sat_eci = R_eci_from_ecef * r_hat_patch_to_sat_ecef;
 
@@ -682,6 +646,7 @@ static std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectraFromP
 
         panelIncidentPower[i] = satellite_transmission.cwiseProduct(powerFromPatch / (M_PI * pow(r_patch_to_sat, 2))) * satellite_zenith_cosine * incident_cosine * cubesat.panels[i].size;
     }
+    
 
     return panelIncidentPower;
 }
@@ -852,7 +817,7 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
 
                                 SpectraVector_t albedo = Eigen::Map<SpectraVector_t>(albedo_spectrum_extended.data(), albedo_spectrum_extended.size());
 
-                                std::vector<SpectraVector_t> panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectraFromPreloadedData( patch_task.LLH, r_sat_ecef, r_sol_ecef, R_eci_from_ecef, R_eci_from_B, earth_ir_power_per_square_metre, albedo);
+                                std::vector<SpectraVector_t> panelIncidentPower_ij = getPatchIncidentAlbedoAndIRPowerSpectraFromPreloadedData(patch_task.LLH, r_sat_ecef, r_sol_ecef, R_eci_from_ecef, R_eci_from_B, earth_ir_power_per_square_metre, albedo);
 
                                 for (int k = 0; k < n_panels; k++)
                                 {
@@ -912,6 +877,75 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
 
     return panelIncidentPower;
 }
+
+
+
+// OLD FUNCTIONS -----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+// SpectraVector_t getEarthIRPowerOnAlbedoSurface(Eigen::Vector3d LLH, double t, const SimParams_t* simParams)
+// {
+//     SpectraVector_t IRPatchPower = SpectraVector_t::Zero();
+//     // Calculate blackbody power at each wavelength in W/m^2/nm
+//     for (int i = 0; i < IRPatchPower.size(); i++)
+//     {
+//         IRPatchPower(i) = blackBodySpectrum(T_earth, spectra_wavelengths_nm(i));
+//     }
+
+//     // Multiply by d_wavelength_nm to get power in W/m^2
+//     IRPatchPower *= d_wavelength_nm;
+
+//     // Multiply by patch area to get power in W
+//     double patchArea_m2 = patchArea(LLH);
+//     IRPatchPower *= patchArea_m2;
+
+//     return IRPatchPower;
+// }
+
+
+
+
+// SpectraVector_t getPowerOnAlbedoSurface(Eigen::Vector3d LLH, Eigen::Vector3d r_sol_ECI, double t, const SimParams_t* simParams)
+// {
+//     double lat = LLH[0];
+//     double lon = LLH[1];
+
+//     SpectraVector_t incidentPower = SpectraVector_t::Zero();
+
+//     Eigen::Vector3d r_patch_ecef = llh_to_ecef(LLH);
+
+//     /** Normal vector for oblate sphereoid */
+//     Eigen::Vector3d n_hat_ecef = getNormalToEarthEcef(lat, lon);
+
+//     Eigen::Vector3d r_sol_ecef = simParams->ephemeris->eciToEcef(r_sol_ECI, t);
+
+//     Eigen::Vector3d r_hat_patch_to_sun = (r_sol_ecef - r_patch_ecef).normalized();
+
+//     double r = (r_sol_ecef - r_patch_ecef).norm();
+
+//     /** Approximately correct, uses differential area of oblate sphereoid */
+//     double A_patch = patchArea(LLH);
+
+//     double zenith_cosine = n_hat_ecef.dot(r_hat_patch_to_sun);
+//     if (zenith_cosine < 0)
+//     {
+//         zenith_cosine = 0;
+
+//         // No need to do the rest of the calculations, this is not in sunlight
+//         return incidentPower;
+//     }
+//     double zenith_theta = acos(zenith_cosine);
+
+//     double AM_frac = AMKastenYoung(zenith_theta);
+
+//     SpectraVector_t transmission = atmosphere_transmittance;
+//     transmission = transmission.array().pow(AM_frac);
+
+//     // Flux is (transmittance^AM) * total power / (4pi r^2), power is flux * patch area * cos(zenith) (where negative zenith = 0)
+//     incidentPower = transmission.cwiseProduct(sun_spectra / (4.0 * M_PI * pow(r, 2))) * A_patch * zenith_cosine;
+
+//     return incidentPower;
+// }
 
 
 

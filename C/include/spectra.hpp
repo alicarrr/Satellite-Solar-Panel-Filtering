@@ -95,29 +95,6 @@ Spectrum_t readSpectrumDat(const std::string& file_name);
 Spectrum_t binSpectrum(const Spectrum_t& input, double min_wavelength, double max_wavelength, double wavelength_step_size);
 
 /**
- * @brief rotate a vector from the body frame to the global frame using the rotation matrix.
- * 
- * @param vector_B Vector in body frame.
- * @param R_G_from_B Rotation matrix from body frame to global frame.
- * 
- * @return Vector in global frame.
- */
-Eigen::Vector3d rotateVectorFromBToG(Eigen::Vector3d vector_B, Eigen::Matrix3d R_G_from_B);
-
-
-/**
- * @brief Convert panel position (in body frame relative to GC) to global frame using the rotation matrix.
- * 
- * @param r_panel_B             Panel position in body frame relative to the satellite center of mass.
- * @param R_G_from_B            Rotation matrix from body frame to global frame.
- * @param S_sat_pos_GC_G        Satellite geometric center absolute position in global frame.
- * 
- * @return Panel position in global frame.
- */
-Eigen::Vector3d panelPosInG(Eigen::Vector3d r_panel_B, Eigen::Matrix3d R_G_from_B, Eigen::Vector3d S_sat_pos_GC_G);
-
-
-/**
  * @brief Calculate incident sun spectrum at a surface (in space) given the sun spectrum, and the relative Sun and satellite positions in the global frame. The panel normal vector in the global frame is used.
  * 
  * @param input Input sun spectrum and corresponding wavelengths.

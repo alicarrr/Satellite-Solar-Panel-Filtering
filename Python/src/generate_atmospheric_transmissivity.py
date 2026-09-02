@@ -60,14 +60,7 @@ GENERATE_DATA = False
 
 SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 
-# Expected layout:
-#   parent_directory/
-#     your_project/generate_atmospheric_transmissivity.py
-#     libRadtran-2.0.6/
-# Edit this if your libRadtran directory has a different name or location.
-LIBRADTRAN_DIRECTORY = (
-    SCRIPT_DIRECTORY / "../../C/lib/libRadtran-2.0.6"
-).resolve()
+LIBRADTRAN_DIRECTORY = (SCRIPT_DIRECTORY / "../../C/lib/libRadtran-2.0.6").resolve()
 
 OUTPUT_CSV = SCRIPT_DIRECTORY / "earth_atmosphere_transmissivity.csv"
 OUTPUT_PLOT = SCRIPT_DIRECTORY / "earth_atmosphere_transmissivity.png"
@@ -86,9 +79,7 @@ AIR_MASS = 1.5
 # Other supplied profiles are in libRadtran's data/atmmod directory.
 ATMOSPHERE_FILE = Path("data/atmmod/afglus.dat")
 
-# A simple clear blue-sky model.  If False, only molecular absorption and
-# Rayleigh scattering are included.  If True, the Shettle rural aerosol model
-# is also included.  No cloud is added in either case.
+# A simple clear blue-sky model.  If False, only molecular absorption and Rayleigh scattering are included.  If True, the Shettle rural aerosol model is also included.  No cloud is added in either case.
 INCLUDE_DEFAULT_AEROSOL = True
 AEROSOL_VISIBILITY_KM = 50.0
 
