@@ -73,7 +73,7 @@ MAX_WAVELENGTH_NM = 100000.0 - 1
 WAVELENGTH_INTERVAL_NM = 1.0
 
 # 0.0 means AM0 (no atmosphere).  Common values are 1.0 and 1.5.
-AIR_MASS = 1.5
+AIR_MASS = 1.0
 
 # U.S. Standard atmosphere: representative, cloud-free atmosphere profile.
 # Other supplied profiles are in libRadtran's data/atmmod directory.
@@ -609,13 +609,13 @@ def parse_uvspec_output(
 
         direct = clamp_transmissivity(
             direct, wavelength_nm, "direct_beam_transmissivity"
-        )
+        )**(1/AIR_MASS)  # Convert to AM0 equivalent
         diffuse = clamp_transmissivity(
             diffuse, wavelength_nm, "diffuse_downward_transmissivity"
-        )
+        )**(1/AIR_MASS)
         total = clamp_transmissivity(
             total, wavelength_nm, "total_downward_transmissivity"
-        )
+        )**(1/AIR_MASS)
         rows.append((wavelength_nm, direct, diffuse, total))
 
     if len(rows) != len(wavelengths):
