@@ -92,13 +92,13 @@ inline const Panel_t panel_pz = {
     .size = 10e-2 * 10e-2, // 10 cm x 10 cm
     .normal_vector = Eigen::Vector3d(0.0, 0.0, 1.0),
     .position_rel_GC_in_B = Eigen::Vector3d(0.0, 0.0, 10e-2),
-    .panel_type = METAL
+    .panel_type = SOLAR_PANEL
 };
 inline const Panel_t panel_nz = {
     .size = 10e-2 * 10e-2, // 10 cm x 10 cm
     .normal_vector = Eigen::Vector3d(0.0, 0.0, -1.0),
     .position_rel_GC_in_B = Eigen::Vector3d(0.0, 0.0, -10e-2),
-    .panel_type = METAL
+    .panel_type = SOLAR_PANEL
 };
 
 

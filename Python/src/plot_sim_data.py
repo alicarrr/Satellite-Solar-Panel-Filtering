@@ -16,12 +16,14 @@ def load_sim_data_from_pickle(pickleFile):
     N_panels = savedData["N_panels"]
     N_spectra = savedData["N_spectra"]
     panelPowersArr = np.stack([savedData["panelPowers"][label].to_numpy() for label in panelLabels], axis=1)
+    panelTypes = savedData["panelTypes"]
 
-    return panelPowersArr, wavelengths, panelLabels, N_panels, N_spectra, simulation_times
+    return panelPowersArr, wavelengths, panelLabels, panelTypes, N_panels, N_spectra, simulation_times
 
 
 def plot_data():
-    panelPowersArr, wavelengths, panelLabels, N_panels, N_spectra, simulation_times = load_sim_data_from_pickle(simDataPickleFile)
+    panelPowersArr, wavelengths, panelLabels, panelTypes, N_panels, N_spectra, simulation_times = load_sim_data_from_pickle(simDataPickleFile)
+    print(f"Panel Types: {panelTypes}")
 
     print(f"Loaded simulation data from {simDataPickleFile}")
     print(f"Data shape: {panelPowersArr.shape} = [time, panel, wavelength]")
