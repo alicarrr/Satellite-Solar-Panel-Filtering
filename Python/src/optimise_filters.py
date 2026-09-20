@@ -102,10 +102,9 @@ ALUMINIUM = 1                   # M_i = 1  ->  aluminium
 # Both are listed in the pickle's panelLabels order: ["+x","-x","+y","-y","+z","-z"].
 # Set either to None to fall back (types -> the pickle's panelTypes,
 # areas -> PANEL_AREA_DEFAULT).
-PANEL_TYPES = [SOLAR, SOLAR, SOLAR, SOLAR, ALUMINIUM, ALUMINIUM]     # <<CHECK>>
-PANEL_AREAS = [0.02, 0.02, 0.02, 0.02, 0.01, 0.01]      # A_i  [m^2]  <<CHECK>>
-PANEL_AREA_DEFAULT = 0.01                               #             [m^2]
-
+PANEL_TYPES = None
+PANEL_AREAS = None
+   
 # NOTE ON AREA:  the pickle's panel powers are already absolute powers [W]
 # (i.e. area-integrated), so A_i enters ONLY through the emission term.  If the
 # sim ever sends fluxes [W m^-2] instead, multiply Q_in by A_i in Section 3.
@@ -345,12 +344,15 @@ def load_sim_data(pickle_path: Path = PICKLE_FILE,
 
     # --- panel areas ---------------------------------------------------------
     if PANEL_AREAS is None:
-        area = np.full(n_p, float(PANEL_AREA_DEFAULT))
+        area = np.asarray(raw["panelAreas"], dtype=float)
     else:
         if len(PANEL_AREAS) != n_p:
             raise ValueError(f"PANEL_AREAS has {len(PANEL_AREAS)} entries, "
-                             f"but the pickle has {n_p} panels {labels}")
+                                f"but the pickle has {n_p} panels {labels}")
         area = np.asarray(PANEL_AREAS, dtype=float)
+
+    # print(f"Panel data = {np.asarray(raw["panelPowers"][labels[0]]).sum()*1e6}")
+    # exit()
 
     # Qdot_in(i, t, lambda), W per native bin
     Q_native = np.stack([np.asarray(raw["panelPowers"][lab], dtype=float)
@@ -362,6 +364,7 @@ def load_sim_data(pickle_path: Path = PICKLE_FILE,
     n_lam = len(edges) - 1
     Q_in = np.zeros((*Q_native.shape[:2], n_lam))
     np.add.at(Q_in.transpose(2, 0, 1), idx, Q_native.transpose(2, 0, 1))
+    print(f"Total incident power: {np.sum(Q_native):.3f} W, Aggregated to {np.sum(Q_in):.3f} W")
 
     lam = np.sqrt(edges[:-1] * edges[1:]) if spacing == "log" else 0.5 * (edges[:-1] + edges[1:])
     dlam = np.diff(edges)

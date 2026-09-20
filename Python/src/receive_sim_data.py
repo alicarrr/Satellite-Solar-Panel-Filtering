@@ -43,9 +43,13 @@ def spectra_metadata_handler(channel, data: bytes):
     print("PY: Received Metadata")
 
     # Extract wavelength data and number of spectra
-    global wavelengths, N_spectra
+    global wavelengths, N_spectra, N_panels, panelTypes, panelAreas
     wavelengths = np.asarray(msg.wavelengths)
     N_spectra = wavelengths.shape[0]
+    N_panels = msg.N_panel
+    panelTypes = np.asarray(msg.panelTypes)
+    panelAreas = np.asarray(msg.panelAreas)
+
 
 
 def spectra_data_handler(channel, data: bytes):
@@ -59,11 +63,10 @@ def spectra_data_handler(channel, data: bytes):
     msg = spectrum_data_t.decode(data)
 
 
-    global N_panels, N_spectra, panelTypes
+    global N_panels, N_spectra
     if N_panels is None:
         N_panels = msg.N_panel
         N_spectra = msg.N_spectra
-        panelTypes = np.asarray(msg.panelTypes)
 
 
     panelPower = np.asarray(msg.panelPowers)
@@ -77,7 +80,8 @@ def spectra_data_handler(channel, data: bytes):
     simulation_times.append(msg.t) 
 
 
-def save_sim_data_to_pickle(pickleFile: Path, panelPowers: list, panelTypes: list, simulation_times: list, wavelengths: list, panelLabels: list):
+
+def save_sim_data_to_pickle(pickleFile: Path, panelPowers: list, panelTypes: list, simulation_times: list, wavelengths: list, panelLabels: list, panelAreas: list):
     """Save the simulation data to a pickle file for later analysis.
 
     Args:
@@ -98,6 +102,7 @@ def save_sim_data_to_pickle(pickleFile: Path, panelPowers: list, panelTypes: lis
     simulation_timesArr = np.asarray(simulation_times)
     wavelengthsArr = np.asarray(wavelengths)
     panelTypes = np.asarray(panelTypes)
+    panelAreas = np.asarray(panelAreas)
     
 
     if panelPowersArr.ndim != 3:
@@ -114,8 +119,9 @@ def save_sim_data_to_pickle(pickleFile: Path, panelPowers: list, panelTypes: lis
         panelData[panelLabels[panelIndex]] = pd.DataFrame(panelPowersArr[:, panelIndex, :], columns=wavelengthsArr, index=simulation_timesArr)
         panelData[panelLabels[panelIndex]].index.name = "simulation_time_s"
         panelData[panelLabels[panelIndex]].columns.name = "wavelength_nm"
+        
 
-    savedData = {"panelPowers": panelData, "panelTypes": panelTypes, "simulation_times": simulation_timesArr, "wavelengths": wavelengthsArr, "panelLabels": panelLabels, "N_panels": panelPowersArr.shape[1], "N_spectra": panelPowersArr.shape[2]}
+    savedData = {"panelPowers": panelData, "panelTypes": panelTypes, "simulation_times": simulation_timesArr, "wavelengths": wavelengthsArr, "panelLabels": panelLabels, "N_panels": panelPowersArr.shape[1], "N_spectra": panelPowersArr.shape[2], "panelAreas": panelAreas}
     pickleFile.parent.mkdir(parents=True, exist_ok=True)
     pd.to_pickle(savedData, pickleFile)
     print(f"Saved simulation data to {pickleFile}")
@@ -143,7 +149,9 @@ def main():
         print("No spectrum data was received, so no pickle file was written.")
         return
 
-    save_sim_data_to_pickle(simDataPickleFile, panelPowers, panelTypes, simulation_times, wavelengths, panelLabels)
+    global wavelengths, N_spectra, N_panels, panelTypes, panelAreas
+
+    save_sim_data_to_pickle(simDataPickleFile, panelPowers, panelTypes, simulation_times, wavelengths, panelLabels, panelAreas)
 
 
 if __name__ == "__main__":

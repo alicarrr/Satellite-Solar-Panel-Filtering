@@ -24,11 +24,6 @@ class spectrum_data_t
         int16_t    N_panel;
 
         /**
-         * LCM Type: int16_t[N_panel]
-         */
-        std::vector< int16_t > panelTypes;
-
-        /**
          * LCM Type: double[N_panel][N_spectra]
          */
         std::vector< std::vector< double > > panelPowers;
@@ -138,11 +133,6 @@ int spectrum_data_t::_encodeNoHash(void *buf, int offset, int maxlen) const
     tlen = __int16_t_encode_array(buf, offset + pos, maxlen - pos, &this->N_panel, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    if(this->N_panel > 0) {
-        tlen = __int16_t_encode_array(buf, offset + pos, maxlen - pos, &this->panelTypes[0], this->N_panel);
-        if(tlen < 0) return tlen; else pos += tlen;
-    }
-
     if(this->N_spectra > 0) {
         for (int a0 = 0; a0 < this->N_panel; a0++) {
             tlen = __double_encode_array(buf, offset + pos, maxlen - pos, &this->panelPowers[a0][0], this->N_spectra);
@@ -166,12 +156,6 @@ int spectrum_data_t::_decodeNoHash(const void *buf, int offset, int maxlen)
     tlen = __int16_t_decode_array(buf, offset + pos, maxlen - pos, &this->N_panel, 1);
     if(tlen < 0) return tlen; else pos += tlen;
 
-    if(this->N_panel) {
-        this->panelTypes.resize(this->N_panel);
-        tlen = __int16_t_decode_array(buf, offset + pos, maxlen - pos, &this->panelTypes[0], this->N_panel);
-        if(tlen < 0) return tlen; else pos += tlen;
-    }
-
     try {
         this->panelPowers.resize(this->N_panel);
     } catch (...) {
@@ -194,14 +178,13 @@ int spectrum_data_t::_getEncodedSizeNoHash() const
     enc_size += __double_encoded_array_size(NULL, 1);
     enc_size += __int16_t_encoded_array_size(NULL, 1);
     enc_size += __int16_t_encoded_array_size(NULL, 1);
-    enc_size += __int16_t_encoded_array_size(NULL, this->N_panel);
     enc_size += this->N_panel * __double_encoded_array_size(NULL, this->N_spectra);
     return enc_size;
 }
 
 uint64_t spectrum_data_t::_computeHash(const __lcm_hash_ptr *)
 {
-    uint64_t hash = 0x961e3bc4c1821664LL;
+    uint64_t hash = 0xd81d06a92a90d232LL;
     return (hash<<1) + ((hash>>63)&1);
 }
 

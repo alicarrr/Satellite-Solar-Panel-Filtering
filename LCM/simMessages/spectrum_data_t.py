@@ -9,11 +9,11 @@ import struct
 
 class spectrum_data_t(object):
 
-    __slots__ = ["t", "N_spectra", "N_panel", "panelTypes", "panelPowers"]
+    __slots__ = ["t", "N_spectra", "N_panel", "panelPowers"]
 
-    __typenames__ = ["double", "int16_t", "int16_t", "int16_t", "double"]
+    __typenames__ = ["double", "int16_t", "int16_t", "double"]
 
-    __dimensions__ = [None, None, None, ["N_panel"], ["N_panel", "N_spectra"]]
+    __dimensions__ = [None, None, None, ["N_panel", "N_spectra"]]
 
     def __init__(self):
         self.t = 0.0
@@ -22,8 +22,6 @@ class spectrum_data_t(object):
         """ LCM Type: int16_t """
         self.N_panel = 0
         """ LCM Type: int16_t """
-        self.panelTypes = []
-        """ LCM Type: int16_t[N_panel] """
         self.panelPowers = []
         """ LCM Type: double[N_panel][N_spectra] """
 
@@ -35,7 +33,6 @@ class spectrum_data_t(object):
 
     def _encode_one(self, buf):
         buf.write(struct.pack(">dhh", self.t, self.N_spectra, self.N_panel))
-        buf.write(struct.pack('>%dh' % self.N_panel, *self.panelTypes[:self.N_panel]))
         for i0 in range(self.N_panel):
             buf.write(struct.pack('>%dd' % self.N_spectra, *self.panelPowers[i0][:self.N_spectra]))
 
@@ -53,7 +50,6 @@ class spectrum_data_t(object):
     def _decode_one(buf):
         self = spectrum_data_t()
         self.t, self.N_spectra, self.N_panel = struct.unpack(">dhh", buf.read(12))
-        self.panelTypes = struct.unpack('>%dh' % self.N_panel, buf.read(self.N_panel * 2))
         self.panelPowers = []
         for i0 in range(self.N_panel):
             self.panelPowers.append(struct.unpack('>%dd' % self.N_spectra, buf.read(self.N_spectra * 8)))
@@ -62,7 +58,7 @@ class spectrum_data_t(object):
     @staticmethod
     def _get_hash_recursive(parents):
         if spectrum_data_t in parents: return 0
-        tmphash = (0x961e3bc4c1821664) & 0xffffffffffffffff
+        tmphash = (0xd81d06a92a90d232) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _packed_fingerprint = None

@@ -46,7 +46,7 @@ const double dt_data = 1.0;
 const double dt = 1e-1; // Sim Time Step
 const std::string date_0 = "2025-01-09T01:01:10.050000";
 
-const double t_final_sim = 30;
+const double t_final_sim = 5*60; // seconds
 
 double t_last_data = -2 * dt_data;
 
@@ -104,7 +104,6 @@ void publishSimData(lcm::LCM* lcm)
     simData.N_panel = cubesat.panels.size();
     simData.N_spectra = N_samples_spectra;
 
-    simData.panelTypes.resize(simData.N_panel);
     simData.panelPowers.resize(simData.N_panel);
 
     for (int i = 0; i < simData.N_panel; i++)
@@ -114,8 +113,6 @@ void publishSimData(lcm::LCM* lcm)
 
     for (int i = 0; i < simData.N_panel; i++)
     {
-        simData.panelTypes[i] = cubesat.panels[i].panel_type;
-
         for (int j = 0; j < N_samples_spectra; j++)
         {
             simData.panelPowers[i][j] = panelPowerState[i][j];
@@ -132,14 +129,25 @@ void publishSimMetadata(lcm::LCM* lcm)
     simMessages::spectrum_metadata_t spectraData;
 
     spectraData.N_spectra = N_samples_spectra;
+    spectraData.N_panel = cubesat.panels.size();
     spectraData.wavelengths.resize(N_samples_spectra);
+    spectraData.panelAreas.resize(cubesat.panels.size());
+    spectraData.panelTypes.resize(cubesat.panels.size());
 
     for (int i = 0; i < N_samples_spectra; i++)
     {
         spectraData.wavelengths[i] = spectra_wavelengths_nm(i);
     }
 
+    for (int i = 0; i < spectraData.N_panel; i++)
+    {
+        spectraData.panelTypes[i] = cubesat.panels[i].panel_type;
+        spectraData.panelAreas[i] = cubesat.panels[i].size;
+    }
+
     lcm->publish("SpectraMetaData", &spectraData);
+
+
 }
 
 

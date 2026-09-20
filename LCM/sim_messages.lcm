@@ -18,7 +18,10 @@ struct sim_ready_t
 struct spectrum_metadata_t
 {
     int16_t N_spectra;
+    int16_t N_panel;
     double wavelengths[N_spectra];
+    double panelAreas[N_panel];
+    int16_t panelTypes[N_panel];
 }
 
 struct spectrum_data_t
@@ -26,6 +29,5 @@ struct spectrum_data_t
     double t;
     int16_t N_spectra;
     int16_t N_panel;
-    int16_t panelTypes[N_panel];
     double panelPowers[N_panel][N_spectra];
 }

@@ -12,9 +12,7 @@ For incident power P_i in wavelength bin i, the one-pass coating/panel model is
     A_c,i = 1 - R_c,i - T_c,i
 
 so reflected + absorbed + transmitted equals incident power. Panel reflection
-is assumed to leave after one interaction; repeated coating/panel reflections
-and interference are not modelled. Electrical power is part of panel-absorbed
-power, not a fourth term in the optical energy partition.
+is assumed to leave after one interaction. Repeated coating/panel reflections and interference are not modelled. Electrical power is part of panel-absorbed power, not a fourth term in the optical energy partition.
 
 Optimisation assumptions
 ------------------------
@@ -43,7 +41,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from constants import c, h, nm, q
+from constants import *
 
 # ============================= USER INPUTS =============================
 

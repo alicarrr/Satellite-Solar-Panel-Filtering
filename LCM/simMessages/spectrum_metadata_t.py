@@ -9,17 +9,23 @@ import struct
 
 class spectrum_metadata_t(object):
 
-    __slots__ = ["N_spectra", "wavelengths"]
+    __slots__ = ["N_spectra", "N_panel", "wavelengths", "panelAreas", "panelTypes"]
 
-    __typenames__ = ["int16_t", "double"]
+    __typenames__ = ["int16_t", "int16_t", "double", "double", "int16_t"]
 
-    __dimensions__ = [None, ["N_spectra"]]
+    __dimensions__ = [None, None, ["N_spectra"], ["N_panel"], ["N_panel"]]
 
     def __init__(self):
         self.N_spectra = 0
         """ LCM Type: int16_t """
+        self.N_panel = 0
+        """ LCM Type: int16_t """
         self.wavelengths = []
         """ LCM Type: double[N_spectra] """
+        self.panelAreas = []
+        """ LCM Type: double[N_panel] """
+        self.panelTypes = []
+        """ LCM Type: int16_t[N_panel] """
 
     def encode(self):
         buf = BytesIO()
@@ -28,8 +34,10 @@ class spectrum_metadata_t(object):
         return buf.getvalue()
 
     def _encode_one(self, buf):
-        buf.write(struct.pack(">h", self.N_spectra))
+        buf.write(struct.pack(">hh", self.N_spectra, self.N_panel))
         buf.write(struct.pack('>%dd' % self.N_spectra, *self.wavelengths[:self.N_spectra]))
+        buf.write(struct.pack('>%dd' % self.N_panel, *self.panelAreas[:self.N_panel]))
+        buf.write(struct.pack('>%dh' % self.N_panel, *self.panelTypes[:self.N_panel]))
 
     @staticmethod
     def decode(data: bytes):
@@ -44,14 +52,16 @@ class spectrum_metadata_t(object):
     @staticmethod
     def _decode_one(buf):
         self = spectrum_metadata_t()
-        self.N_spectra = struct.unpack(">h", buf.read(2))[0]
+        self.N_spectra, self.N_panel = struct.unpack(">hh", buf.read(4))
         self.wavelengths = struct.unpack('>%dd' % self.N_spectra, buf.read(self.N_spectra * 8))
+        self.panelAreas = struct.unpack('>%dd' % self.N_panel, buf.read(self.N_panel * 8))
+        self.panelTypes = struct.unpack('>%dh' % self.N_panel, buf.read(self.N_panel * 2))
         return self
 
     @staticmethod
     def _get_hash_recursive(parents):
         if spectrum_metadata_t in parents: return 0
-        tmphash = (0x9ff05bef4e2f2235) & 0xffffffffffffffff
+        tmphash = (0xbf918ace6249463b) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff) + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _packed_fingerprint = None
