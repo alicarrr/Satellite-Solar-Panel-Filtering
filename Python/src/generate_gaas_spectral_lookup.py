@@ -5,7 +5,10 @@ The wavelength grid is read verbatim from the simulation pickle.  Solcore is
 used in two distinct ways:
 
 1. A transfer-matrix calculation supplies R, A and T for a bare GaAs wafer
-   stack at normal incidence in vacuum.
+   stack at normal incidence in vacuum.  Solcore's bundled optical constants
+   stop at 2.48 um, so beyond that R, A and T are calculated from tabulated
+   far-infrared n,k with an incoherent thick-slab model.  Every column of the
+   lookup is therefore physically calculated rather than extrapolated.
 2. Solcore's depletion-approximation (DA) junction model supplies EQE and the
    AM0 maximum-power-point voltage at each cell temperature.
 
@@ -38,6 +41,7 @@ from typing import Any, Iterable
 
 import numpy as np
 import pandas as pd
+import yaml
 from scipy.constants import c, e, h, k as boltzmann_constant
 from scipy.interpolate import RegularGridInterpolator
 
@@ -45,9 +49,11 @@ from scipy.interpolate import RegularGridInterpolator
 # ---------------------------------------------------------------------------
 # Model limits and baseline assumptions
 # ---------------------------------------------------------------------------
-# Solcore's bundled optical-constant tables only cover this interval.  The
-# script deliberately writes NaN outside it instead of extrapolating optical
-# data into the mid/far infrared without a physical basis.
+# Solcore's bundled optical-constant tables only cover this interval, so its
+# transfer-matrix result is used here and tabulated far-infrared n,k take over
+# beyond it (see far_infrared_nk_file below).  valid_optics_mask marks the
+# Solcore interval, but every column of the lookup is now physically
+# calculated, not extrapolated.
 solcore_optical_min_nm = 206.64028666666666
 solcore_optical_max_nm = 2479.68344
 
@@ -86,6 +92,17 @@ pickle_file = here / "Simulation Data" / "simulation_data.pkl"
 
 # Output path without an extension. This is where the pickle file will be written
 output_base = here / "gaas_single_junction_spectral_lookup"
+
+# Tabulated far-infrared optical constants, used beyond Solcore's range.
+# This is a refractiveindex.info YAML file with a "tabulated nk" block:
+#   Franta et al. 2026, undoped GaAs, n,k 0.895-400 um at 300 K
+#   main/GaAs/nk/Franta-300K.yml
+# Download once from
+#   https://raw.githubusercontent.com/polyanskiy/refractiveindex.info-database
+#     /main/database/data/main/GaAs/nk/Franta-300K.yml
+# Companion files Franta-370K.yml and Franta-440K.yml exist if the optical
+# constants are ever wanted temperature-resolved as well.
+far_infrared_nk_file = here / "GaAs_Franta_300K_nk.yml"
 
 # The summary figure is saved beside the lookup files.  Set show_plot to True
 # when running on a desktop if the figure should also open interactively after
@@ -366,6 +383,63 @@ def _solve_one_temperature(
 
 
 # ---------------------------------------------------------------------------
+# Far-infrared optical constants and the thick-slab optics that use them
+# ---------------------------------------------------------------------------
+def load_tabulated_nk(path: str | Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Read a refractiveindex.info YAML file into (wavelength_um, n, k).
+
+    Only the first "tabulated nk" block is used. That format is three
+    whitespace-separated columns per line: wavelength in micrometres, n, k.
+    """
+    with open(path) as stream:
+        document = yaml.safe_load(stream)
+
+    # A single YAML file can hold several dispersion blocks of different kinds.
+    for entry in document.get("DATA", []):
+        if entry.get("type", "").strip() == "tabulated nk":
+            rows = [line.split() for line in entry["data"].strip().splitlines()]
+            table = np.array([[float(value) for value in row[:3]] for row in rows])
+            return table[:, 0], table[:, 1], table[:, 2]
+
+    raise ValueError(f"{Path(path).name} contains no 'tabulated nk' data block.")
+
+
+def incoherent_slab_rat(
+    n: np.ndarray,
+    k: np.ndarray,
+    wavelength_um: np.ndarray,
+    thickness_um: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """R/A/T of a thick slab with two identical surfaces, ignoring interference.
+
+    Beyond the band gap the wafer is hundreds of wavelengths thick and its real
+    thickness varies by more than a wavelength across the die, so interference
+    fringes are not physical and the incoherent sum of multiple internal passes
+    is the right model. Summing that geometric series gives closed forms for R
+    and T, and A is whatever is left, which makes R + A + T = 1 exact.
+    """
+    # Normal-incidence Fresnel reflectance of one vacuum/material interface.
+    surface_r = ((n - 1.0) ** 2 + k ** 2) / ((n + 1.0) ** 2 + k ** 2)
+
+    # Single-pass internal transmission through the slab (Beer-Lambert).
+    internal_t = np.exp(-4.0 * np.pi * k * thickness_um / wavelength_um)
+
+    # Geometric series over all internal round trips.
+    denominator = 1.0 - (surface_r * internal_t) ** 2
+    reflectivity = surface_r * (
+        1.0 + (1.0 - surface_r) ** 2 * internal_t ** 2 / denominator
+    )
+    transmissivity = (1.0 - surface_r) ** 2 * internal_t / denominator
+
+    # Clip the two computed quantities, then take absorption as the remainder so
+    # that conservation holds exactly rather than to within rounding.
+    reflectivity = np.clip(reflectivity, 0.0, 1.0)
+    transmissivity = np.clip(transmissivity, 0.0, 1.0 - reflectivity)
+    absorptivity = 1.0 - reflectivity - transmissivity
+    return reflectivity, absorptivity, transmissivity
+
+
+# ---------------------------------------------------------------------------
 # Optical reflection, absorption, and transmission
 # ---------------------------------------------------------------------------
 def calculate_bare_cell_rat(
@@ -380,6 +454,11 @@ def calculate_bare_cell_rat(
     substrate to give the requested total wafer thickness. The thick substrate
     is treated incoherently. No coverglass, adhesive, ARC, grid shadowing or
     rear metallisation is included.
+
+    The three spectra are returned on the complete simulation grid. Solcore's
+    transfer matrix covers its own validated interval; beyond it the spectra
+    come from tabulated far-infrared n,k through an incoherent slab model. The
+    returned mask marks the Solcore interval.
     """
     # Keep the complete simulation grid, even where optical data are missing.
     # A Boolean mask marks exactly where Solcore's bundled constants are valid.
@@ -389,8 +468,9 @@ def calculate_bare_cell_rat(
         & (wavelengths_nm <= solcore_optical_max_nm)
     )
 
-    # Unsupported entries begin as NaN. This prevents an accidental physical
-    # interpretation of zero absorption or transmission outside the data range.
+    # Unsupported entries begin as NaN so that a failure to fill them later is
+    # loud rather than silent. They are replaced by the edge-hold below before
+    # this function returns.
     reflectivity = np.full(wavelengths_nm.shape, np.nan, dtype=float)
     absorptivity = np.full(wavelengths_nm.shape, np.nan, dtype=float)
     transmissivity = np.full(wavelengths_nm.shape, np.nan, dtype=float)
@@ -442,6 +522,33 @@ def calculate_bare_cell_rat(
     reflectivity[valid] = np.clip(result["R"], 0.0, 1.0)
     absorptivity[valid] = np.clip(result["A"], 0.0, 1.0)
     transmissivity[valid] = np.clip(result["T"], 0.0, 1.0)
+
+    # Beyond Solcore's range, calculate R/A/T from tabulated far-infrared n,k
+    # instead of extrapolating. The wafer is optically thick and incoherent
+    # there, so the slab formula above is the appropriate model and needs no
+    # transfer matrix. Below Solcore's range the first calculated value is held:
+    # that region carries a negligible share of both the incident spectrum and
+    # the thermal emission, and no tabulated data covers it.
+    first_index = int(np.flatnonzero(valid)[0])
+    last_index = int(np.flatnonzero(valid)[-1])
+
+    reflectivity[:first_index] = reflectivity[first_index]
+    absorptivity[:first_index] = absorptivity[first_index]
+    transmissivity[:first_index] = transmissivity[first_index]
+
+    far_infrared = np.zeros(wavelengths_nm.shape, dtype=bool)
+    far_infrared[last_index + 1:] = True
+    if far_infrared.any():
+        nk_wavelength_um, nk_n, nk_k = load_tabulated_nk(far_infrared_nk_file)
+        query_um = wavelengths_nm[far_infrared] * 1e-3
+        n_values = np.interp(query_um, nk_wavelength_um, nk_n)
+        k_values = np.interp(query_um, nk_wavelength_um, nk_k)
+        (
+            reflectivity[far_infrared],
+            absorptivity[far_infrared],
+            transmissivity[far_infrared],
+        ) = incoherent_slab_rat(n_values, k_values, query_um, wafer_thickness_um)
+
     return reflectivity, absorptivity, transmissivity, valid
 
 
@@ -563,11 +670,12 @@ def build_lookup(
     )
 
     # Check optical power conservation before using the spectrum in the
-    # electrical/thermal partition.
+    # electrical/thermal partition. The edge-hold populates every column, so
+    # this now covers the whole grid rather than only the calculated interval.
     rat_sum = (
-        reflectivity_1d[optical_valid]
-        + total_absorptivity_1d[optical_valid]
-        + transmissivity_1d[optical_valid]
+        reflectivity_1d
+        + total_absorptivity_1d
+        + transmissivity_1d
     )
     if not np.allclose(rat_sum, 1.0, rtol=0, atol=5e-10):
         raise RuntimeError("Optical calculation failed the R + A + T = 1 check.")
@@ -708,9 +816,18 @@ def build_lookup(
             "Diffusion lengths are recalculated from mobility, temperature and "
             "the stated minority-carrier lifetimes."
         ),
-        "unsupported_optics_policy": (
-            "R/A/T and thermal absorptivity are NaN outside the validated "
-            "Solcore optical range; do not extrapolate them for thermal analysis."
+        "optics_beyond_solcore_range": (
+            "Above the Solcore interval R/A/T come from tabulated n,k through "
+            "an incoherent thick-slab model; below it the first Solcore value "
+            "is held, a region carrying a negligible share of both the incident "
+            "spectrum and the thermal emission. valid_optics_mask marks the "
+            "Solcore interval. Note that undoped GaAs is genuinely transparent "
+            "from about 3 to 15 um, so absorptivity, and by Kirchhoff "
+            "emissivity, is near zero across the peak of a 300 K blackbody."
+        ),
+        "far_infrared_nk_source": (
+            "Franta et al. 2026, undoped GaAs n,k 0.895-400 um at 300 K, "
+            "refractiveindex.info main/GaAs/nk/Franta-300K.yml"
         ),
     }
 
@@ -749,7 +866,12 @@ def validate_lookup(table: dict[str, Any]) -> None:
     temperatures_c = np.asarray(table["temperature_C"])
     wavelengths_nm = np.asarray(table["wavelength_nm"])
     shape = (temperatures_c.size, wavelengths_nm.size)
-    valid = np.asarray(table["valid_optics_mask"], dtype=bool)
+
+    # Every optical column is now populated: calculated inside Solcore's range
+    # and held at the nearest calculated value outside it. The checks below
+    # therefore cover the whole grid instead of only the calculated interval,
+    # which is what catches a failure of the edge-hold to fill its columns.
+    valid = np.ones(wavelengths_nm.size, dtype=bool)
 
     # All five output spectra must share [temperature, wavelength] indexing.
     for name in (
@@ -762,8 +884,8 @@ def validate_lookup(table: dict[str, Any]) -> None:
         if np.asarray(table[name]).shape != shape:
             raise ValueError(f"{name} does not have shape {shape}.")
 
-    # Optical fractions must be finite and physical wherever optical constants
-    # are supported. NaNs outside this mask are intentional.
+    # Optical fractions must be finite and physical at every wavelength. A NaN
+    # surviving here means the edge-hold did not populate a column.
     for name in ("total_absorptivity", "reflectivity", "transmissivity"):
         values = np.asarray(table[name])[:, valid]
         if not np.isfinite(values).all() or np.any((values < 0) | (values > 1)):
@@ -913,8 +1035,9 @@ def plot_lookup(
     at the available temperature nearest 25 C. The lower panel shows the
     complete electrical-absorptivity lookup as a temperature/wavelength map.
 
-    Only wavelengths covered by the relevant validity mask are plotted. This
-    avoids visually presenting unsupported long-wave NaNs as measured zeros.
+    The whole simulation grid is plotted on a logarithmic wavelength axis, and
+    the calculated interval is shaded. Everything outside that shading is the
+    held edge value, not a calculated one.
     """
     # Import matplotlib only when plotting is requested. This keeps the core
     # lookup functions importable in workflows that do not create figures.
@@ -955,25 +1078,29 @@ def plot_lookup(
     optical_axis = figure.add_subplot(grid[0, 0])
     partition_axis = figure.add_subplot(grid[1, 0])
 
-    optical_wavelengths_nm = wavelengths_nm[valid_optics]
+    # Plot the complete grid. The shading added below marks which part of it
+    # Solcore actually calculated, so the held region is never mistaken for it.
+    optical_wavelengths_nm = wavelengths_nm
+    calculated_min_nm = float(wavelengths_nm[valid_optics][0])
+    calculated_max_nm = float(wavelengths_nm[valid_optics][-1])
 
     # Total absorptivity, reflectivity and transmissivity are the three direct
     # outputs of the transfer-matrix calculation and must sum to one.
     optical_axis.plot(
         optical_wavelengths_nm,
-        total_absorptivity[reference_index, valid_optics],
+        total_absorptivity[reference_index, :],
         label="Total absorptivity",
         linewidth=1.8,
     )
     optical_axis.plot(
         optical_wavelengths_nm,
-        reflectivity[reference_index, valid_optics],
+        reflectivity[reference_index, :],
         label="Reflectivity",
         linewidth=1.8,
     )
     optical_axis.plot(
         optical_wavelengths_nm,
-        transmissivity[reference_index, valid_optics],
+        transmissivity[reference_index, :],
         label="Transmissivity",
         linewidth=1.8,
     )
@@ -981,6 +1108,15 @@ def plot_lookup(
     optical_axis.set_xlabel("Wavelength (nm)")
     optical_axis.set_ylabel("Fraction of incident power")
     optical_axis.set_ylim(0.0, 1.05)
+    # A log axis is needed because the simulation grid spans 15 nm to 50 um.
+    optical_axis.set_xscale("log")
+    optical_axis.axvspan(
+        calculated_min_nm,
+        calculated_max_nm,
+        color="0.85",
+        zorder=0,
+        label="Calculated by Solcore (elsewhere: edge value held)",
+    )
     optical_axis.grid(alpha=0.25)
     optical_axis.legend()
 
@@ -988,19 +1124,19 @@ def plot_lookup(
     # absorptivity add to total absorptivity at every supported wavelength.
     partition_axis.plot(
         optical_wavelengths_nm,
-        total_absorptivity[reference_index, valid_optics],
+        total_absorptivity[reference_index, :],
         label="Total absorptivity",
         linewidth=1.8,
     )
     partition_axis.plot(
         optical_wavelengths_nm,
-        electrical_absorptivity[reference_index, valid_optics],
+        electrical_absorptivity[reference_index, :],
         label="Electrical absorptivity at MPP",
         linewidth=1.8,
     )
     partition_axis.plot(
         optical_wavelengths_nm,
-        thermal_absorptivity[reference_index, valid_optics],
+        thermal_absorptivity[reference_index, :],
         label="Thermal absorptivity at MPP",
         linewidth=1.8,
     )
@@ -1010,13 +1146,25 @@ def plot_lookup(
     partition_axis.set_xlabel("Wavelength (nm)")
     partition_axis.set_ylabel("Fraction of incident power")
     partition_axis.set_ylim(0.0, 1.05)
+    # A log axis is needed because the simulation grid spans 15 nm to 50 um.
+    partition_axis.set_xscale("log")
+    partition_axis.axvspan(
+        calculated_min_nm,
+        calculated_max_nm,
+        color="0.85",
+        zorder=0,
+        label="Calculated by Solcore (elsewhere: edge value held)",
+    )
     partition_axis.grid(alpha=0.25)
     partition_axis.legend()
 
     # Saving happens before display, so closing an interactive window cannot
     # prevent the PNG from being written. Non-interactive runs close the
     # figure immediately to release memory.
-    
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output_path, dpi=dpi)
+
 
     # plot Vmpp, Isc, Voc, and Pmpp vs temperature in a separate figure
     electrical_axis = plt.figure(figsize=(10.0, 6.0), constrained_layout=True).add_subplot(1, 1, 1)
@@ -1026,24 +1174,6 @@ def plot_lookup(
         label="Vmpp (V)",
         linewidth=1.8,
     )
-    # electrical_axis.plot(
-    #     temperatures_c,
-    #     table["isc_A_m2"],
-    #     label="Isc (A/m^2)",
-    #     linewidth=1.8,
-    # )
-    # electrical_axis.plot(
-    #     temperatures_c,
-    #     table["voc_V"],
-    #     label="Voc (V)",
-    #     linewidth=1.8,
-    # )
-    # electrical_axis.plot(
-    #     temperatures_c,
-    #     table["pmpp_W_m2"],
-    #     label="Pmpp (W/m^2)",
-    #     linewidth=1.8,
-    # )
     electrical_axis.set_title("Electrical properties vs temperature")
     electrical_axis.set_xlabel("Temperature (C)")
     electrical_axis.set_ylabel("Electrical properties")

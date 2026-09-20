@@ -18,6 +18,7 @@ xarray = "^2026.7.0"
 pvlib = "^0.15.2"
 solcore = "^5.10.1"
 casadi = "^3.8.0"
+pyyaml = "^6.0.3"
 
 
 [build-system]
