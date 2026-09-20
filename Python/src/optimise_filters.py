@@ -11,7 +11,7 @@ explicit ``for`` loops so the code can be read side-by-side with the LaTeX and
 edited in the same places.
 
     Section 1   run configuration and constants NOT in the pickle  (edit these)
-    Section 2   material shape functions (numbers live in 1.5 and 1.6)
+    Section 2   panel spectral properties (lookup table + parametric model)
     Section 3   data loading + wavelength-grid reduction
     Section 4   blackbody spectral emissive power  M_lambda(lambda, T)
     Section 5   the NLP, equation by equation
@@ -59,6 +59,7 @@ optimal set; see Sections 1.8 and 5.6.
 
 from __future__ import annotations
 
+import pickle
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -79,7 +80,9 @@ _HERE = Path(__file__).resolve().parent
 # =============================================================================
 
 # ---- 1.0  Run configuration --------------------------------------------------
+# All paths are relative to this script.
 PICKLE_FILE = _HERE / "Simulation Data" / "simulation_data.pkl"
+LOOKUP_FILE = _HERE / "gaas_single_junction_spectral_lookup.pkl"
 OUTPUT_FILE = _HERE / "filter_solution.pkl"
 PLOT_FILE = _HERE / "filter_solution.png"
 
@@ -102,9 +105,10 @@ ALUMINIUM = 1                   # M_i = 1  ->  aluminium
 # Both are listed in the pickle's panelLabels order: ["+x","-x","+y","-y","+z","-z"].
 # Set either to None to fall back (types -> the pickle's panelTypes,
 # areas -> PANEL_AREA_DEFAULT).
-PANEL_TYPES = None
-PANEL_AREAS = None
-   
+PANEL_TYPES = [SOLAR, SOLAR, SOLAR, SOLAR, ALUMINIUM, ALUMINIUM]     # <<CHECK>>
+PANEL_AREAS = [0.02, 0.02, 0.02, 0.02, 0.01, 0.01]      # A_i  [m^2]  <<CHECK>>
+PANEL_AREA_DEFAULT = 0.01                               #             [m^2]
+
 # NOTE ON AREA:  the pickle's panel powers are already absolute powers [W]
 # (i.e. area-integrated), so A_i enters ONLY through the emission term.  If the
 # sim ever sends fluxes [W m^-2] instead, multiply Q_in by A_i in Section 3.
@@ -119,54 +123,64 @@ PANEL_OVERRIDES: dict[str, dict[str, float]] = {
     # "+x": {"mass": 0.15, "T0": 300.0},
 }
 
-# ---- 1.5  Per-material PANEL spectral properties -----------------------------
+# ---- 1.5  Where each material's PANEL spectral properties come from ----------
 # The material UNDER the filter.  Fixed data, not decision variables.
-# Kirchhoff on the panel as well, so eps_{lambda,i} = alpha_{lambda,i} and one
-# curve serves both.  Each is a smooth two-plateau blend in log(lambda):
-#
+#   "lookup"     -> the temperature/wavelength table in LOOKUP_FILE (1.6)
+#   "parametric" -> the two-plateau model in PANEL_SPECTRAL below
+PANEL_SPECTRAL_SOURCE = {SOLAR: "lookup", ALUMINIUM: "parametric"}
+LOOKUP_MATERIAL = SOLAR            # which material type the lookup describes
+
+# Used only where the source is "parametric".  Kirchhoff on the panel as well,
+# so eps_{lambda,i} = alpha_{lambda,i} and one curve serves both.  It is a
+# smooth two-plateau blend in log(lambda):
 #     alpha(lambda) = alpha_solar  ->  alpha_IR,  crossing over at lam_c_nm
-#
-# Swap in a measured (lambda, alpha) table by editing panel_absorptivity() in
-# Section 2; it is a two-line change and everything downstream is unaffected.
 PANEL_SPECTRAL = {
-    SOLAR: {                       # solar cell + coverglass            <<CHECK>>
-        "alpha_solar": 0.92,       # absorptivity shortward of the crossover
-        "alpha_IR": 0.85,          # absorptivity longward of the crossover
+    SOLAR: {                       # only used if the source is switched back
+        "alpha_solar": 0.92, "alpha_IR": 0.85,
+        "lam_c_nm": 3000.0, "blend_decades": 0.25,
+    },
+    ALUMINIUM: {                   # polished / anodised aluminium      <<CHECK>>
+        "alpha_solar": 0.15,       # absorptivity shortward of the crossover
+        "alpha_IR": 0.05,          # absorptivity longward of the crossover
         "lam_c_nm": 3000.0,        # crossover wavelength                   [nm]
         "blend_decades": 0.25,     # crossover width, in decades of lambda
     },
-    ALUMINIUM: {                   # polished / anodised aluminium      <<CHECK>>
-        "alpha_solar": 0.15,
-        "alpha_IR": 0.05,
-        "lam_c_nm": 3000.0,
-        "blend_decades": 0.25,
-    },
 }
 
-# ---- 1.6  Electrical absorptivity,  alpha_elec(lambda, T) --------------------
-#     alpha_elec(lambda, T) = alpha_elec_ref(lambda) * g(T)
-#     alpha_therm(lambda, T) = alpha(lambda) - alpha_elec(lambda, T)
+# ---- 1.6  Spectral lookup table ----------------------------------------------
+# LOOKUP_FILE supplies, on the simulation's own wavelength grid:
+#     total_absorptivity(lambda)           -> alpha_{lambda,i}, and eps by Kirchhoff
+#     electrical_absorptivity_mpp(T,lambda)-> alpha_{lambda,elec,i}(T)
+#     thermal  = total - electrical        -> alpha_{lambda,therm,i}(T)
+# Only the electrical part is temperature dependent; the generator holds R/A/T
+# fixed at 25 C because its n,k tables are not temperature resolved.
 #
-# alpha_elec_ref is a silicon-like EQE shape: zero in the UV, a plateau through
-# the visible/NIR, cut off at the band gap.  Set a material to None for no PV.
-ALPHA_ELEC_SHAPE = {
-    SOLAR: {                       # silicon-like                       <<CHECK>>
-        "peak": 0.45,              # peak fraction of incident power -> electricity
-        "lam_rise_nm": 340.0,      # UV roll-on centre                      [nm]
-        "rise_width_nm": 40.0,     # UV roll-on width                       [nm]
-        "lam_cut_nm": 1110.0,      # band-gap cut-off centre                [nm]
-        "cut_width_nm": 25.0,      # band-gap cut-off width                 [nm]
-    },
-    ALUMINIUM: None,               # no PV conversion
-}
+# T interpolation: "bspline" is C2-continuous and passes through every knot,
+# which suits an interior-point solver; "linear" reproduces the generator's own
+# RegularGridInterpolator exactly but kinks at each knot.
+T_INTERP_METHOD = "bspline"        # "bspline" or "linear"
+CLAMP_T_TO_LOOKUP = True           # override T_MIN/T_MAX with the lookup's range
 
-# g(T) is the "polynomial-type function that is pre-calculated" in the spec.
-# Coefficients are on (T - T_ELEC_REF); c1 is the usual silicon power
-# temperature coefficient of about -0.45 %/K.
-T_ELEC_REF = 298.15                                    # [K]
-ALPHA_ELEC_TEMP_POLY = {                               # [c0, c1, c2, ...]
-    SOLAR:     [1.0, -4.5e-3, 0.0],
-    ALUMINIUM: [0.0, 0.0, 0.0],                        # no PV conversion
+# >>> FALLBACK OUTSIDE THE LOOKUP'S VALIDATED OPTICAL RANGE (215 - 2475 nm) <<<
+#
+# alpha_IR IS THE DOMINANT UNMEASURED PARAMETER IN THIS WHOLE MODEL.
+#   * 100.00 % of the thermal emission at 250-350 K lies beyond 2475 nm, so the
+#     lookup says nothing at all about the emissivity that sets the cooling.
+#   * 10.6 % of the incident energy (Earth IR) also lands beyond 2475 nm.
+#   * The lookup's bare GaAs wafer has alpha = 0 past its ~900 nm band edge
+#     (R = 0.45, T = 0.55): taken literally it cannot radiate at all and the
+#     panel temperature would run away.  A real coverglass / adhesive /
+#     backsheet stack has eps_IR of roughly 0.8 - 0.9; bare, polished GaAs with
+#     a metallised rear is far lower.  Set this from your actual panel stack.
+#
+# Below the lookup's short-wavelength edge the last valid value is held; only
+# 0.006 % of the incident energy lies there, so that choice is immaterial.
+PANEL_LOOKUP_FALLBACK = {
+    LOOKUP_MATERIAL: {
+        "alpha_IR": 0.85,          # eps = alpha beyond the blend  <<CHECK - DOMINANT>>
+        "lam_blend_nm": 3500.0,    # centre of the blend out of the lookup range [nm]
+        "blend_decades": 0.12,     # blend width, in decades of lambda
+    },
 }
 
 # ---- 1.7  Design targets and cost weights ------------------------------------
@@ -227,8 +241,18 @@ IPOPT_OPTIONS_QUIET = {**IPOPT_OPTIONS, "ipopt.print_level": 0, "ipopt.sb": "yes
 # =============================================================================
 # 2.  MATERIAL MODELS
 #     -------------------------------------------------------------------
-#     Shape functions only.  Every number lives in Sections 1.5 and 1.6; these
-#     just evaluate the tables onto the working wavelength grid, in nm.
+#     Turns Sections 1.5/1.6 into three arrays per material, on the WORKING
+#     wavelength grid:
+#
+#       alpha_abs[j][k]       alpha_{lambda,i}, for the two absorption terms
+#       eps_emit[j][k]        eps_{lambda,i},   for the emission term
+#       alpha_elec[j](T)[k]   alpha_{lambda,elec,i}(T), a CasADi function of T
+#
+#     alpha_abs and eps_emit come from the SAME underlying curve (Kirchhoff),
+#     but are band-averaged with different weights -- incident power for what
+#     is absorbed, the Planck spectrum for what is emitted.  That is the usual
+#     reason a material's solar absorptance differs from its IR emittance, and
+#     with these weights the band sums reproduce the native-grid totals exactly.
 # =============================================================================
 
 def _logistic(z: np.ndarray) -> np.ndarray:
@@ -236,13 +260,8 @@ def _logistic(z: np.ndarray) -> np.ndarray:
     return 0.5 * (1.0 + np.tanh(0.5 * np.clip(z, -60.0, 60.0)))
 
 
-def panel_absorptivity(lam_nm: np.ndarray, material: int) -> np.ndarray:
-    """alpha_{lambda, i}: total (thermal + electrical) absorptivity of the panel.
-
-    Two plateaus blended in log(lambda), per the PANEL_SPECTRAL entry.  To use
-    measured data instead, replace the body with an interpolation, e.g.
-        return np.interp(lam_nm, MEASURED_LAM_NM[material], MEASURED_ALPHA[material])
-    """
+def parametric_absorptivity(lam_nm: np.ndarray, material: int) -> np.ndarray:
+    """alpha_{lambda,i} from the two-plateau PANEL_SPECTRAL entry."""
     try:
         p = PANEL_SPECTRAL[material]
     except KeyError:
@@ -251,33 +270,171 @@ def panel_absorptivity(lam_nm: np.ndarray, material: int) -> np.ndarray:
     return p["alpha_solar"] + (p["alpha_IR"] - p["alpha_solar"]) * s
 
 
-def panel_emissivity(lam_nm: np.ndarray, material: int) -> np.ndarray:
-    """eps_{lambda, i}.  Kirchhoff on the panel as well: eps = alpha."""
-    return panel_absorptivity(lam_nm, material)
+@dataclass
+class PanelProperties:
+    """Panel (not filter) spectral data on the working grid."""
+    alpha_abs: dict[int, np.ndarray]            # [n_lam], incident-power weighted
+    eps_emit: dict[int, np.ndarray]             # [n_lam], Planck weighted
+    alpha_elec: dict[int, ca.Function | None]   # T [K] -> [n_lam]; None if no PV
+    source: dict[int, str]
+    T_bounds: tuple[float, float]               # (T_MIN, T_MAX) actually used
+    lookup_info: dict
 
 
-def alpha_elec_reference(lam_nm: np.ndarray, material: int) -> np.ndarray:
-    """alpha_elec_ref(lambda): spectral conversion efficiency at T = T_ELEC_REF.
+def load_spectral_lookup(path: Path = LOOKUP_FILE) -> dict:
+    """Read the generator's pickle and check it against the simulation grid."""
+    with open(path, "rb") as fh:
+        table = pickle.load(fh)
+    for key in ("temperature_C", "wavelength_nm", "total_absorptivity",
+                "electrical_absorptivity_mpp", "valid_optics_mask"):
+        if key not in table:
+            raise ValueError(f"{path.name} is missing '{key}'")
+    return table
 
-    UV roll-on times a band-gap cut-off, per the ALPHA_ELEC_SHAPE entry.  To
-    use a measured EQE curve, replace the body with an interpolation.
+
+def _band_average(native: np.ndarray, idx: np.ndarray, weight: np.ndarray,
+                  n_lam: int, lam_native: np.ndarray | None = None,
+                  lam_band: np.ndarray | None = None) -> np.ndarray:
+    """Weighted mean of a native-grid curve within each working band.
+
+    Three cases, in order of preference:
+      1. weight sums to > 0 in the band  -> the weighted mean.  With the
+         incident spectrum as the weight this makes the band sums reproduce
+         the native-grid totals exactly.
+      2. the band holds native bins but zero weight  -> the plain mean (e.g.
+         the Planck weight underflows in the visible, where emission is nil).
+      3. the band holds no native bins at all  -> interpolate at the band
+         centre.  Happens at the short-wavelength end, where a log-spaced
+         working grid is finer than the simulation's own 10 nm bins.
     """
-    p = ALPHA_ELEC_SHAPE.get(material)
-    if p is None:                                      # not a PV material
-        return np.zeros_like(lam_nm)
-    rise = _logistic((lam_nm - p["lam_rise_nm"]) / p["rise_width_nm"])
-    fall = _logistic(-(lam_nm - p["lam_cut_nm"]) / p["cut_width_nm"])
-    return p["peak"] * rise * fall
+    num = np.zeros(n_lam)
+    den = np.zeros(n_lam)
+    cnt = np.zeros(n_lam)
+    flat = np.zeros(n_lam)
+    np.add.at(num, idx, native * weight)
+    np.add.at(den, idx, weight)
+    np.add.at(flat, idx, native)
+    np.add.at(cnt, idx, 1.0)
 
-
-def g_elec(T, material: int):
-    """Temperature factor of the electrical absorptivity (CasADi-safe)."""
-    coeffs = ALPHA_ELEC_TEMP_POLY[material]
-    dT = T - T_ELEC_REF
-    out = 0.0
-    for power, c in enumerate(coeffs):
-        out = out + c * dT ** power
+    out = np.zeros(n_lam)
+    weighted = den > 0.0
+    out[weighted] = num[weighted] / den[weighted]
+    plain = (~weighted) & (cnt > 0)
+    out[plain] = flat[plain] / cnt[plain]
+    empty = cnt == 0
+    if empty.any():
+        if lam_native is None or lam_band is None:
+            out[empty] = 0.0
+        else:
+            out[empty] = np.interp(lam_band[empty], lam_native, native)
     return out
+
+
+def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProperties:
+    """Assemble alpha_abs, eps_emit and alpha_elec(T) for every material present."""
+    lam_native, idx, n_lam = data.native_lam_nm, data.native_idx, data.n_lam
+    materials = sorted(set(int(m) for m in data.material))
+
+    # --- band-averaging weights, on the native grid --------------------------
+    # Absorption: the incident spectrum summed over panels and time steps.
+    w_abs = data.native_Q_spectrum.copy()
+    # Emission: the Planck spectrum at the set-point.
+    lam_um = lam_native * 1e-3
+    dlam_um = np.gradient(lam_native) * 1e-3
+    x = np.clip(C2_UM_K / (lam_um * T_SET), 0.0, 700.0)
+    w_emit = C1_UM4 / lam_um ** 5 * np.exp(-x) / (1.0 - np.exp(-x)) * dlam_um
+
+    alpha_abs, eps_emit, alpha_elec, source = {}, {}, {}, {}
+    T_lo, T_hi = T_MIN, T_MAX
+    info: dict = {}
+
+    table = None
+    if any(PANEL_SPECTRAL_SOURCE.get(m) == "lookup" for m in materials):
+        table = load_spectral_lookup()
+        if not np.allclose(np.asarray(table["wavelength_nm"]), lam_native):
+            raise ValueError("The lookup's wavelength grid does not match the "
+                             "simulation's; regenerate it from this pickle.")
+
+    for j in materials:
+        src = PANEL_SPECTRAL_SOURCE.get(j, "parametric")
+        source[j] = src
+
+        if src == "parametric":
+            a_native = parametric_absorptivity(lam_native, j)
+            alpha_elec[j] = None
+
+        elif src == "lookup":
+            if j != LOOKUP_MATERIAL:
+                raise ValueError(f"material {j} is set to 'lookup' but the lookup "
+                                 f"describes material {LOOKUP_MATERIAL}")
+            valid = np.asarray(table["valid_optics_mask"], dtype=bool)
+            a_lut = np.asarray(table["total_absorptivity"])[0].copy()   # T-independent
+
+            # ---- extend alpha over the bins the lookup does not cover --------
+            fb = PANEL_LOOKUP_FALLBACK[j]
+            first, last = np.flatnonzero(valid)[[0, -1]]
+            a_native = a_lut.copy()
+            a_native[:first] = a_lut[first]             # hold the short-lambda value
+            blend = _logistic((np.log10(np.maximum(lam_native, 1e-9))
+                               - np.log10(fb["lam_blend_nm"])) / fb["blend_decades"])
+            a_native[last + 1:] = (a_lut[last] + (fb["alpha_IR"] - a_lut[last])
+                                   * blend[last + 1:])
+
+            # ---- alpha_elec(T, lambda) -> a CasADi function of T ------------
+            T_grid_K = np.asarray(table["temperature_C"], dtype=float) + 273.15
+            e_native = np.asarray(table["electrical_absorptivity_mpp"], dtype=float)
+            e_native = np.nan_to_num(e_native, nan=0.0)      # zero outside its range
+            # Band-average each temperature row, then build one interpolant that
+            # maps T -> the whole n_lam vector.  CasADi wants output-fastest order.
+            e_bands = np.stack([_band_average(row, idx, w_abs, n_lam,
+                                              lam_native, data.lam_nm)
+                                for row in e_native])        # [n_T, n_lam]
+            alpha_elec[j] = ca.interpolant(f"alpha_elec_{j}", T_INTERP_METHOD,
+                                           [T_grid_K], e_bands.ravel(order="C"))
+            if CLAMP_T_TO_LOOKUP:
+                T_lo, T_hi = max(T_lo, T_grid_K[0]), min(T_hi, T_grid_K[-1])
+
+            info = {
+                "valid_optics_nm": (float(lam_native[first]), float(lam_native[last])),
+                "T_range_K": (float(T_grid_K[0]), float(T_grid_K[-1])),
+                "incident_outside_optics": float(
+                    w_abs[~valid].sum() / max(w_abs.sum(), 1e-300)),
+                "emission_outside_optics": float(
+                    w_emit[~valid].sum() / max(w_emit.sum(), 1e-300)),
+                "alpha_IR_fallback": fb["alpha_IR"],
+            }
+        else:
+            raise ValueError(f"PANEL_SPECTRAL_SOURCE[{j}] must be 'lookup' or "
+                             f"'parametric', got {src!r}")
+
+        alpha_abs[j] = _band_average(a_native, idx, w_abs, n_lam,
+                                     lam_native, data.lam_nm)
+        eps_emit[j] = _band_average(a_native, idx, w_emit, n_lam,
+                                    lam_native, data.lam_nm)
+
+    if verbose:
+        print("  panel properties :")
+        for j in materials:
+            print(f"      M = {j}: {source[j]}"
+                  + ("  (no PV conversion)" if alpha_elec[j] is None else
+                     f"  alpha_elec(T) via {T_INTERP_METHOD}"))
+        if info:
+            lo, hi = info["valid_optics_nm"]
+            print(f"      lookup valid over {lo:.0f} - {hi:.0f} nm; beyond it "
+                  f"alpha -> {info['alpha_IR_fallback']:.2f} (Section 1.6)")
+            print(f"      relying on that fallback: "
+                  f"{100 * info['incident_outside_optics']:.1f} % of incident energy, "
+                  f"{100 * info['emission_outside_optics']:.2f} % of the emission")
+        n_empty = int(np.sum(np.bincount(idx, minlength=n_lam) == 0))
+        if n_empty:
+            print(f"      note: {n_empty} of {n_lam} bands hold no simulation bin "
+                  f"(below ~{data.lam_nm[n_empty]:.0f} nm the log grid out-resolves "
+                  f"the sim's 10 nm bins); those are interpolated and carry no energy")
+        print(f"      T bounds used    : {T_lo:.2f} .. {T_hi:.2f} K")
+
+    return PanelProperties(alpha_abs=alpha_abs, eps_emit=eps_emit,
+                           alpha_elec=alpha_elec, source=source,
+                           T_bounds=(T_lo, T_hi), lookup_info=info)
 
 
 # =============================================================================
@@ -299,6 +456,10 @@ class SimData:
     heat_cap: np.ndarray        # c_i     [J/kg/K]                     [n_p]
     area: np.ndarray            # A_i     [m^2]                        [n_p]
     T0: np.ndarray              # T_i(0)  [K]                          [n_p]
+    # --- the native (simulation) grid, kept so Section 2 can band-average ----
+    native_lam_nm: np.ndarray       # the sim's own wavelengths     [n_native]
+    native_idx: np.ndarray          # native bin -> working band    [n_native]
+    native_Q_spectrum: np.ndarray   # Q_in summed over i and t      [n_native]
 
     @property
     def n_p(self) -> int: return len(self.labels)
@@ -344,15 +505,12 @@ def load_sim_data(pickle_path: Path = PICKLE_FILE,
 
     # --- panel areas ---------------------------------------------------------
     if PANEL_AREAS is None:
-        area = np.asarray(raw["panelAreas"], dtype=float)
+        area = np.full(n_p, float(PANEL_AREA_DEFAULT))
     else:
         if len(PANEL_AREAS) != n_p:
             raise ValueError(f"PANEL_AREAS has {len(PANEL_AREAS)} entries, "
-                                f"but the pickle has {n_p} panels {labels}")
+                             f"but the pickle has {n_p} panels {labels}")
         area = np.asarray(PANEL_AREAS, dtype=float)
-
-    # print(f"Panel data = {np.asarray(raw["panelPowers"][labels[0]]).sum()*1e6}")
-    # exit()
 
     # Qdot_in(i, t, lambda), W per native bin
     Q_native = np.stack([np.asarray(raw["panelPowers"][lab], dtype=float)
@@ -364,7 +522,6 @@ def load_sim_data(pickle_path: Path = PICKLE_FILE,
     n_lam = len(edges) - 1
     Q_in = np.zeros((*Q_native.shape[:2], n_lam))
     np.add.at(Q_in.transpose(2, 0, 1), idx, Q_native.transpose(2, 0, 1))
-    print(f"Total incident power: {np.sum(Q_native):.3f} W, Aggregated to {np.sum(Q_in):.3f} W")
 
     lam = np.sqrt(edges[:-1] * edges[1:]) if spacing == "log" else 0.5 * (edges[:-1] + edges[1:])
     dlam = np.diff(edges)
@@ -387,6 +544,8 @@ def load_sim_data(pickle_path: Path = PICKLE_FILE,
         mass=per_panel(PANEL_MASS, "mass"),
         heat_cap=per_panel(PANEL_HEAT_CAPACITY, "heat_capacity"),
         T0=per_panel(PANEL_T0, "T0"),
+        native_lam_nm=lam_native, native_idx=idx,
+        native_Q_spectrum=Q_native.sum(axis=(0, 1)),
     )
 
 
@@ -448,7 +607,7 @@ class FilterProblem:
     T_track: ca.MX
 
 
-def build_problem(data: SimData, verbose: bool = True,
+def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
                   ipopt_options: dict | None = None) -> FilterProblem:
     """Assemble the NLP.
 
@@ -465,10 +624,11 @@ def build_problem(data: SimData, verbose: bool = True,
     lam_um = ca.DM(data.lam_nm * 1e-3)
     dlam_um = ca.DM(data.dlam_nm * 1e-3)
 
-    # --- fixed material data on the working grid -----------------------------
-    alpha_p = {j: panel_absorptivity(data.lam_nm, j) for j in filter_types}
-    eps_p = {j: panel_emissivity(data.lam_nm, j) for j in filter_types}
-    alpha_el = {j: alpha_elec_reference(data.lam_nm, j) for j in filter_types}
+    # --- fixed material data on the working grid (Section 2) -----------------
+    alpha_p = props.alpha_abs          # alpha_{lambda,i}   [n_lam] per material
+    eps_p = props.eps_emit             # eps_{lambda,i}     [n_lam] per material
+    alpha_elec_fn = props.alpha_elec   # T -> alpha_{lambda,elec,i}(T), or None
+    T_lo, T_hi = props.T_bounds
 
     # -------------------------------------------------------------------------
     # 5.1  Decision variables
@@ -500,7 +660,7 @@ def build_problem(data: SimData, verbose: bool = True,
         opti.subject_to(opti.bounded(0.0, rho_f_vec[j], 1.0))
         opti.subject_to(opti.bounded(0.0, tau_f_vec[j], 1.0))
     for i in range(n_p):
-        opti.subject_to(opti.bounded(T_MIN, T_vec[i], T_MAX))
+        opti.subject_to(opti.bounded(T_lo, T_vec[i], T_hi))
 
     # -------------------------------------------------------------------------
     # 5.2  Conservation of energy, eq. (6)
@@ -552,13 +712,15 @@ def build_problem(data: SimData, verbose: bool = True,
         for n in range(n_t):
             Ti = T[i][n]
             M_dlam = ca.vertsplit(planck_band_power(Ti, lam_um, dlam_um))  # [W m^-2]
-            g = g_elec(Ti, M)                                   # alpha_elec temp. factor
+            # alpha_{lambda,elec,i}(T): the whole spectrum from one lookup call
+            a_elec_k = (ca.vertsplit(alpha_elec_fn[M](Ti))
+                        if alpha_elec_fn[M] is not None else None)
 
             Q_terms, P_terms = [], []
             for k in range(n_lam):
                 Q_in_k = data.Q_in[i, n, k]
 
-                a_elec = alpha_el[M][k] * g                 # alpha_{lam, elec}(T)
+                a_elec = a_elec_k[k] if a_elec_k is not None else 0.0
                 a_therm = alpha_p[M][k] - a_elec            # alpha_{lam, therm}(T)
 
                 Q_f_in = alpha_f[M][k] * Q_in_k
@@ -808,7 +970,8 @@ def report(best: Solution, prob: FilterProblem) -> None:
                   f"tau {f['tau'][m].mean():.3f}")
 
 
-def save(best: Solution, results: list[Solution], prob: FilterProblem, path: Path) -> None:
+def save(best: Solution, results: list[Solution], prob: FilterProblem,
+         props: PanelProperties, path: Path) -> None:
     payload = {
         "lam_nm": prob.data.lam_nm,
         "dlam_nm": prob.data.dlam_nm,
@@ -817,6 +980,11 @@ def save(best: Solution, results: list[Solution], prob: FilterProblem, path: Pat
         "material": prob.data.material,
         "area": prob.data.area,
         "filters": best.filters,
+        "panel_alpha_abs": props.alpha_abs,
+        "panel_eps_emit": props.eps_emit,
+        "panel_source": props.source,
+        "T_bounds": props.T_bounds,
+        "lookup_info": props.lookup_info,
         "T": best.T,
         "J": best.J,
         "E_elec": best.E_elec,
@@ -832,14 +1000,14 @@ def save(best: Solution, results: list[Solution], prob: FilterProblem, path: Pat
     print(f"\n  saved -> {path}")
 
 
-def plot(best: Solution, prob: FilterProblem, path: Path) -> None:
+def plot(best: Solution, prob: FilterProblem, props: PanelProperties, path: Path) -> None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     data = prob.data
     n = len(best.filters)
-    fig, axes = plt.subplots(1, n + 1, figsize=(5.8 * (n + 1), 4.2))
+    fig, axes = plt.subplots(1, n + 2, figsize=(5.8 * (n + 2), 4.2))
     axes = np.atleast_1d(axes)
 
     for ax, (j, f) in zip(axes, best.filters.items()):
@@ -852,6 +1020,25 @@ def plot(best: Solution, prob: FilterProblem, path: Path) -> None:
         ax.set_ylim(-0.05, 1.05)
         ax.grid(alpha=0.3)
         ax.legend()
+
+    # --- the panel properties the filters are designed against ---------------
+    ax = axes[-2]
+    for j in sorted(props.alpha_abs):
+        tag = f"M={j} ({props.source[j]})"
+        ax.plot(data.lam_nm, props.alpha_abs[j], "-", label=rf"$\alpha_{{p,{j}}}$ {tag}")
+        ax.plot(data.lam_nm, props.eps_emit[j], ":", label=rf"$\epsilon_{{p,{j}}}$ {tag}")
+        if props.alpha_elec[j] is not None:
+            lo, hi = props.T_bounds
+            for Tq, style in ((lo, "--"), (hi, "-.")):
+                ax.plot(data.lam_nm, np.asarray(props.alpha_elec[j](Tq)).ravel(), style,
+                        label=rf"$\alpha_{{elec,{j}}}$ @ {Tq:.0f} K")
+    ax.set_xscale("log")
+    ax.set_xlabel("wavelength [nm]")
+    ax.set_ylabel("property")
+    ax.set_title("Panel properties (under the filter)")
+    ax.set_ylim(-0.05, 1.05)
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=7)
 
     ax = axes[-1]
     for i, (lab, traj) in enumerate(best.T.items()):
@@ -874,12 +1061,13 @@ def plot(best: Solution, prob: FilterProblem, path: Path) -> None:
 # =============================================================================
 
 def main() -> None:
-    print(f"Loading {PICKLE_FILE} ...")
+    print(f"Loading {PICKLE_FILE.name} and {LOOKUP_FILE.name} ...")
     data = load_sim_data()
+    props = build_panel_properties(data)
 
     print("Building NLP ...")
     t0 = time.perf_counter()
-    prob = build_problem(data, ipopt_options=IPOPT_OPTIONS if VERBOSE_IPOPT
+    prob = build_problem(data, props, ipopt_options=IPOPT_OPTIONS if VERBOSE_IPOPT
                          else IPOPT_OPTIONS_QUIET)
     print(f"  built in {time.perf_counter() - t0:.1f} s")
 
@@ -889,9 +1077,9 @@ def main() -> None:
 
     report(best, prob)
     if SAVE_SOLUTION:
-        save(best, results, prob, OUTPUT_FILE)
+        save(best, results, prob, props, OUTPUT_FILE)
     if MAKE_PLOT:
-        plot(best, prob, PLOT_FILE)
+        plot(best, prob, props, PLOT_FILE)
 
 
 if __name__ == "__main__":

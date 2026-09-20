@@ -337,10 +337,12 @@ void doSimLoop(lcm::LCM* lcm)
         // Log time and completion percentage
         auto wall_now = clock::now();
         double wall_elapsed = std::chrono::duration<double>(wall_now - wall_start).count();
+        double wall_elapsed_sim = std::chrono::duration<double>(wall_now - wall_start_sim).count();
 
         double speed_of_sim = simParams.time_step / wall_elapsed;
+        double total_speed_of_sim = t / wall_elapsed_sim;
 
-        std::cout << '\r' << "Sim percent: " << std::fixed << std::setprecision(2) << (t/simParams.t_final)*100 << "%, Speed of sim: " << std::fixed  << std::setprecision(2) << speed_of_sim << "x real-time     " << std::flush;
+        std::cout << '\r' << "Sim percent: " << std::fixed << std::setprecision(2) << (t/simParams.t_final)*100 << "%, Current speed of sim: " << std::fixed  << std::setprecision(2) << speed_of_sim << "x real-time     " << "Total speed of sim: " << std::fixed  << std::setprecision(2) << total_speed_of_sim << "x real-time     " << std::flush;
 
         t += dt;
     }
