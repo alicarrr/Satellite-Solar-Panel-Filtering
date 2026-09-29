@@ -12,6 +12,7 @@ def load_sim_data_from_pickle(pickleFile):
 
     simulation_times = np.asarray(savedData["simulation_times"])
     wavelengths = np.asarray(savedData["wavelengths"])
+    print(f'Max wavelength: {wavelengths.max()} nm, Min wavelength: {wavelengths.min()} nm')
     panelLabels = savedData["panelLabels"]
     N_panels = savedData["N_panels"]
     N_spectra = savedData["N_spectra"]

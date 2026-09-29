@@ -2,28 +2,23 @@
 optimise_filters.py
 ===================
 
-Spectral-filter design for the rotating-satellite simulation, solved with
-CasADi + IPOPT.
+Spectral-filter design for the rotating-satellite simulation, solved with CasADi + IPOPT.
 
-The script is laid out so that every block maps one-to-one onto a numbered
-equation in ``Solar Panel Math``.  Summations in the maths are written as
-explicit ``for`` loops so the code can be read side-by-side with the LaTeX and
-edited in the same places.
+The script is laid out so that every block maps one-to-one onto a numbered equation in ``Solar Panel Math''.  Summations in the maths are written as explicit ``for'' loops so the code can be read side-by-side with the LaTeX and edited in the same places.
 
-    Section 1   run configuration and constants NOT in the pickle  (edit these)
+    Section 1   run configuration and model inputs  (edit these)
     Section 2   panel spectral properties (lookup table + parametric model)
     Section 3   data loading + wavelength-grid reduction
-    Section 4   blackbody spectral emissive power  M_lambda(lambda, T)
+    Section 4   blackbody spectral emissive power M_lambda(lambda, T)
     Section 5   the NLP, equation by equation
     Section 6   initial guesses (nominal + randomised, for multi-start)
     Section 7   solve / multi-start driver
     Section 8   results
 
-There are no command-line arguments: everything is set in Section 1.0 and the
-script is run as-is.
+There are no command-line arguments: everything is set in Section 1.0 and the script is run as-is.
 
 Decision variables (per filter type j, per wavelength bin k):
-    alpha_j(lambda),  rho_j(lambda),  tau_j(lambda)
+    alpha_j(lambda), rho_j(lambda), tau_j(lambda)
     eps_j(lambda) = alpha_j(lambda)                       (Kirchhoff, eliminated)
 Auxiliary variables:
     T_i(t)                                                (panel temperatures)
@@ -38,23 +33,17 @@ Equation map
     eq (6)  alpha + rho + tau = 1              ->  Section 5.2
     Kirchhoff  eps_j = alpha_j                 ->  Section 5.1 (by elimination)
 
-Emission (Section 4).  The panel emits the blackbody spectral emissive power
-scaled by its own emissivity and the filter transmissivity:
+Emission (Section 4). The panel emits the blackbody spectral emissive power scaled by its own emissivity and the filter transmissivity:
 
     Qdot_out(t, lambda) = -eps_{lambda,i} tau_{lambda,f_i} M_lambda(lambda, T_i) dlambda A_i
 
-with M_lambda the hemispherical spectral emissive power [W m^-2 um^-1], so
-direction and intensity do not enter and
+with M_lambda the hemispherical spectral emissive power [W m^-2 um^-1], so direction and intensity do not enter and
 
     sum_{all lambda} M_lambda dlambda  ->  sigma T^4
 
-over a complete spectrum.  The simulation's band (15 nm - 50 um) holds about
-96.6 % of that at 293 K; the report prints the exact figure.
+over a complete spectrum. The simulation's band (15 nm - 50 um) holds about 96.6 % of that at 293 K; the report prints the exact figure.
 
-One departure from the literal spec remains, flagged where it occurs: a
-companion smoothness limit in ln(lambda), eq (5'), and a small roughness
-tie-breaker in J.  Both exist only to pick a sensible member of a degenerate
-optimal set; see Sections 1.8 and 5.6.
+One departure from the literal spec remains, flagged where it occurs: a companion smoothness limit in ln(lambda), eq (5'), and a small roughness tie-breaker in J.  Both exist only to pick a sensible member of a degenerate optimal set; see Sections 1.8 and 5.6.
 """
 
 from __future__ import annotations
@@ -69,22 +58,26 @@ import casadi as ca
 import numpy as np
 import pandas as pd
 
+from constants import *
+
 _here = Path(__file__).resolve().parent
 
 # =============================================================================
-# 1.  RUN CONFIGURATION AND CONSTANTS NOT PRESENT IN THE PICKLE
+# 1.  RUN CONFIGURATION AND MODEL INPUTS
 #     -------------------------------------------------------------------
 #     The pickle supplies:  Qdot_in(t, lambda) per panel [W per bin], the
-#     wavelength grid and the time grid.  Everything else is set here.
+#     wavelength and time grids, and each panel's material type and area.
+#     Shared physical constants are read from constants.py.  The remaining
+#     values in this section are configuration choices or model inputs.
 #     Values flagged  <<CHECK>>  are estimates, not measured data.
 # =============================================================================
 
 # ---- 1.0  Run configuration --------------------------------------------------
 # All paths are relative to this script.
-pickle_file = _here / "Simulation Data" / "simulation_data.pkl"
-lookup_file = _here / "gaas_single_junction_spectral_lookup.pkl"
+simulation_pickle_file = _here / "Simulation Data" / "simulation_data.pkl"
+lookup_file = _here / "Solar Panel Properties" / "silicon_single_junction_spectral_lookup.pkl"
 output_file = _here / "filter_solution.pkl"
-plot_file = _here / "filter_solution.png"
+plot_file = _here / "Optimisation Results" / "filter_solution.png"
 
 n_starts = 5                    # multi-start points; 1 = single solve
 random_seed = 0                 # seed for the randomised starts
@@ -92,22 +85,9 @@ save_solution = True            # write output_file
 make_plot = True                # write plot_file (needs matplotlib)
 verbose_ipopt = False           # True prints the full IPOPT iteration log
 
-# ---- 1.1  Physical constants -------------------------------------------------
-sigma = 5.670374419e-8          # Stefan-Boltzmann constant            [W m^-2 K^-4]
-c1_um4 = 3.741771852e8          # 1st radiation const, 2 pi h c^2  [W um^4 m^-2]
-c2_um_k = 1.4387769e4           # 2nd radiation constant               [um K]
-
 # ---- 1.2  Material type labels (as used by the C++ sim) ----------------------
 solar = 0                       # M_i = 0  ->  solar panel
 aluminium = 1                   # M_i = 1  ->  aluminium
-
-# ---- 1.3  Per-panel data missing from the pickle -----------------------------
-# Both are listed in the pickle's panelLabels order: ["+x","-x","+y","-y","+z","-z"].
-# Set either to None to fall back (types -> the pickle's panelTypes,
-# areas -> panel_area_default).
-panel_types = [solar, solar, solar, solar, aluminium, aluminium]     # <<CHECK>>
-panel_areas = [0.02, 0.02, 0.02, 0.02, 0.01, 0.01]      # A_i  [m^2]  <<CHECK>>
-panel_area_default = 0.01                               #             [m^2]
 
 # NOTE ON AREA:  the pickle's panel powers are already absolute powers [W]
 # (i.e. area-integrated), so A_i enters ONLY through the emission term.  If the
@@ -115,7 +95,7 @@ panel_area_default = 0.01                               #             [m^2]
 
 # ---- 1.4  Per-material thermal constants -------------------------------------
 panel_mass = {solar: 0.120, aluminium: 0.090}            # m  [kg]        <<CHECK>>
-panel_heat_capacity = {solar: 700.0, aluminium: 900.0}   # c  [J/kg/K]    <<CHECK>>
+panel_heat_capacity = {solar: 350.0, aluminium: 900.0}   # c  [J/kg/K]    <<CHECK>>
 panel_t0 = {solar: 293.15, aluminium: 293.15}            # T_i(0)  [K]    <<CHECK>>
 
 # Per-panel overrides, keyed by panel label; keys: mass, heat_capacity, T0.
@@ -317,11 +297,14 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
     # --- band-averaging weights, on the native grid --------------------------
     # Absorption: the incident spectrum summed over panels and time steps.
     w_abs = data.native_q_spectrum.copy()
-    # Emission: the Planck spectrum at the set-point.
-    lam_um = lam_native * 1e-3
-    dlam_um = np.gradient(lam_native) * 1e-3
-    x = np.clip(c2_um_k / (lam_um * t_set), 0.0, 700.0)
-    w_emit = c1_um4 / lam_um ** 5 * np.exp(-x) / (1.0 - np.exp(-x)) * dlam_um
+    # Emission: the Planck spectrum at the set-point.  Work in metres so the
+    # coefficients follow directly from h, c and k_B in constants.py.
+    lam_m = lam_native * nm
+    dlam_m = np.gradient(lam_native) * nm
+    x = np.clip(h * c / (lam_m * k * t_set), 0.0, 700.0)
+    e = np.exp(-x)
+    w_emit = (2.0 * np.pi * h * c ** 2 / lam_m ** 5
+              * e / (1.0 - e) * dlam_m)
 
     alpha_abs, eps_emit, alpha_elec, source = {}, {}, {}, {}
     t_lo, t_hi = t_min, t_max
@@ -358,6 +341,8 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
                 )
 
             # ---- alpha_elec(T, lambda) -> a CasADi function of T ------------
+            # The Celsius-to-kelvin zero-point offset is definition-based and
+            # is not currently provided by constants.py.
             t_grid_k = np.asarray(table["temperature_C"], dtype=float) + 273.15
             e_native = np.asarray(table["electrical_absorptivity_mpp"], dtype=float)
             e_native = np.nan_to_num(e_native, nan=0.0)      # zero outside its range
@@ -457,7 +442,7 @@ def _band_edges(lam_native: np.ndarray, n_bands: int | None, spacing: str) -> np
     return np.linspace(lo, hi, n_bands + 1)
 
 
-def load_sim_data(pickle_path: Path = pickle_file,
+def load_sim_data(pickle_path: Path = simulation_pickle_file,
                   n_bands: int | None = n_filter_bands,
                   spacing: str = band_spacing) -> SimData:
     """Read the pickle and aggregate the incident power onto the working grid."""
@@ -468,23 +453,10 @@ def load_sim_data(pickle_path: Path = pickle_file,
     t = np.asarray(raw["simulation_times"], dtype=float)
     lam_native = np.asarray(raw["wavelengths"], dtype=float)
 
-    # --- panel types: Section 1.3 wins over the pickle -----------------------
-    if panel_types is None:
-        material = np.asarray(raw["panelTypes"], dtype=int)
-    else:
-        if len(panel_types) != n_p:
-            raise ValueError(f"panel_types has {len(panel_types)} entries, "
-                             f"but the pickle has {n_p} panels {labels}")
-        material = np.asarray(panel_types, dtype=int)
-
-    # --- panel areas ---------------------------------------------------------
-    if panel_areas is None:
-        area = np.full(n_p, float(panel_area_default))
-    else:
-        if len(panel_areas) != n_p:
-            raise ValueError(f"panel_areas has {len(panel_areas)} entries, "
-                             f"but the pickle has {n_p} panels {labels}")
-        area = np.asarray(panel_areas, dtype=float)
+    # --- panel types and areas, in the same order as panelLabels ------------
+    material = np.asarray(raw["panelTypes"], dtype=int)
+    area = np.asarray(raw["panelAreas"], dtype=float)
+    print(f"  panel types : {material.tolist()} (from pickle)")
 
     # Qdot_in(i, t, lambda), W per native bin
     Q_native = np.stack([np.asarray(raw["panelPowers"][lab], dtype=float)
@@ -529,36 +501,41 @@ def load_sim_data(pickle_path: Path = pickle_file,
 #     Planck's law as hemispherical spectral emissive power, so the emitted
 #     power is a total over all directions and no intensity enters:
 #
-#         M_lambda(lambda, T) = C1 / ( lambda^5 ( exp(C2 / (lambda T)) - 1 ) )
+#         M_lambda(lambda, T)
+#             = 2 pi h c^2 / ( lambda^5 ( exp(h c / (lambda k_B T)) - 1 ) )
 #
-#     in [W m^-2 um^-1] with lambda in um.  The band power is M_lambda dlambda,
+#     in [W m^-3] with lambda in metres.  The band power is M_lambda dlambda,
 #     and summing over a complete spectrum recovers sigma T^4.  The function
-#     below returns the whole vector  M_lambda(lambda_k, T) dlambda_k  [W m^-2].
+#     below accepts wavelengths in nm, converts them using nm, and returns
+#     the vector M_lambda(lambda_k, T) dlambda_k [W m^-2].
 #
-#     Written in the form  exp(-x) / (1 - exp(-x)),  x = C2 / (lambda T), which
-#     underflows harmlessly to zero in the far UV instead of overflowing.
+#     Written in the form exp(-x) / (1 - exp(-x)),
+#     x = h c / (lambda k_B T), which underflows harmlessly to zero in the far
+#     UV instead of overflowing.  No separate radiation constants are stored.
 #     T is kept strictly positive by the t_min bound in Section 5.1.
 # =============================================================================
 
-def planck_band_power(T, lam_um: ca.DM, dlam_um: ca.DM):
+def planck_band_power(T, lam_nm: ca.DM, dlam_nm: ca.DM):
     """M_lambda(lambda_k, T) * dlambda_k  [W m^-2], one entry per band.
 
     Vectorised: this is the emission spectrum itself, evaluated once per
     (panel, time), and then indexed bin-by-bin in the sum of eq. (1).
     """
-    x = c2_um_k / (lam_um * T)
+    lam_m = lam_nm * nm
+    dlam_m = dlam_nm * nm
+    x = h * c / (lam_m * k * T)
     e = ca.exp(-x)
-    M = c1_um4 / (lam_um ** 5) * e / (1.0 - e)
-    return M * dlam_um
+    M = 2.0 * np.pi * h * c ** 2 / (lam_m ** 5) * e / (1.0 - e)
+    return M * dlam_m
 
 
 def in_band_emission_fraction(T: float, lam_nm: np.ndarray, dlam_nm: np.ndarray) -> float:
     """Share of sigma T^4 that falls inside the modelled band, for reporting."""
-    lam_um, dlam_um = lam_nm * 1e-3, dlam_nm * 1e-3
-    x = c2_um_k / (lam_um * T)
+    lam_m, dlam_m = lam_nm * nm, dlam_nm * nm
+    x = h * c / (lam_m * k * T)
     e = np.exp(-np.clip(x, 0.0, 700.0))
-    M = c1_um4 / lam_um ** 5 * e / (1.0 - e)
-    return float(np.sum(M * dlam_um) / (sigma * T ** 4))
+    M = 2.0 * np.pi * h * c ** 2 / lam_m ** 5 * e / (1.0 - e)
+    return float(np.sum(M * dlam_m) / (sigma_sb * T ** 4))
 
 
 # =============================================================================
@@ -595,8 +572,8 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
     n_p, n_t, n_lam = data.n_p, data.n_t, data.n_lam
     filter_types = sorted(set(int(m) for m in data.material))
 
-    lam_um = ca.DM(data.lam_nm * 1e-3)
-    dlam_um = ca.DM(data.dlam_nm * 1e-3)
+    lam_nm = ca.DM(data.lam_nm)
+    dlam_nm = ca.DM(data.dlam_nm)
 
     # --- fixed material data on the working grid (Section 2) -----------------
     alpha_p = props.alpha_abs          # alpha_{lambda,i}   [n_lam] per material
@@ -696,7 +673,7 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
             # end.  Writing the spectral sum as a vector operation rather than
             # a Python loop over k keeps the expression graph about 16 times
             # smaller, which is what keeps the solver inside a few hundred MB.
-            m_dlam = planck_band_power(ti, lam_um, dlam_um)      # [W m^-2]
+            m_dlam = planck_band_power(ti, lam_nm, dlam_nm)      # [W m^-2]
             a_elec = (alpha_elec_fn[m](ti) if alpha_elec_fn[m] is not None
                       else ca.DM.zeros(n_lam))                   # alpha_{lam,elec}(T)
             a_therm = alpha_p_col - a_elec                       # alpha_{lam,therm}(T)
@@ -1037,7 +1014,7 @@ def plot(best: Solution, prob: FilterProblem, props: PanelProperties, path: Path
 # =============================================================================
 
 def main() -> None:
-    print(f"Loading {pickle_file.name} and {lookup_file.name} ...")
+    print(f"Loading {simulation_pickle_file.name} and {lookup_file.name} ...")
     data = load_sim_data()
     props = build_panel_properties(data)
 
@@ -1045,7 +1022,7 @@ def main() -> None:
     t0 = time.perf_counter()
     prob = build_problem(data, props, solver_options=ipopt_options if verbose_ipopt
                          else ipopt_options_quiet)
-    print(f"  built in {time.perf_counter() - t0:.1f} s")
+    print(f"built in {time.perf_counter() - t0:.1f} s")
 
     print(f"Solving ({n_starts} start{'s' if n_starts > 1 else ''}) ... "
           f"the first solve also builds the derivative functions")
