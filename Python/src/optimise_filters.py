@@ -4,6 +4,13 @@ optimise_filters.py
 
 Spectral-filter design for the rotating-satellite simulation, solved with CasADi + IPOPT.
 
+The total filtered electrical power must be at least the unfiltered power at
+every time sample. The unfiltered case has its own temperature trajectory,
+calculated once with the same incident power, initial temperatures and thermal
+model. Temperature affects electrical conversion through the lookup. There is
+no temperature-tracking penalty. The lookup and operating temperature bounds
+still apply.
+
 The script is laid out so that every block maps one-to-one onto a numbered equation in ``Solar Panel Math''.  Summations in the maths are written as explicit ``for'' loops so the code can be read side-by-side with the LaTeX and edited in the same places.
 
     Section 1   run configuration and model inputs  (edit these)
@@ -28,22 +35,37 @@ Equation map
     eq (1)  heat flows / spectral sum          ->  Section 5.4
     eq (2)  dQ_i = Qdot_i dt                   ->  Section 5.5
     eq (3)  T_i(t+dt) = T_i(t) + dQ_i/(mc)     ->  Section 5.5
-    eq (4)  cost J                             ->  Section 5.6
+    eq (4)  cost J and power constraint        ->  Section 5.6
     eq (5)  smoothness  |dp/dlambda| <= D      ->  Section 5.3
     eq (6)  alpha + rho + tau = 1              ->  Section 5.2
     Kirchhoff  eps_j = alpha_j                 ->  Section 5.1 (by elimination)
 
-Emission (Section 4). The panel emits the blackbody spectral emissive power scaled by its own emissivity and the filter transmissivity:
+The filter and panel share one temperature. The filter has the same optical
+properties on both sides. Incoherent reflections between them are summed.
+External thermal emission uses the total absorptivity of this combined stack,
+including absorption in the filter. Internal radiation does not remove energy
+from the combined thermal node, but emission to space does.
+Radiation transmitted through the silicon wafer is absorbed by an opaque
+backing at the same temperature. It cannot escape through the rear of the panel.
 
-    Qdot_out(t, lambda) = -eps_{lambda,i} tau_{lambda,f_i} M_lambda(lambda, T_i) dlambda A_i
+Remaining approximations
+    - Normal-incidence optical properties stand in for angular averages.
+    - Only the outward face radiates. The rear of the panel is closed.
+    - The backing absorbs all wafer transmission without returning light to the
+      wafer. Its heat capacity is included in the chosen panel mass and heat capacity.
+    - The bare-wafer lookup does not include coverglass or contacts.
+    - Electrical conversion is the supplied one-sun AM0 MPP allocation. A new
+      MPP is not calculated for the filtered illumination or illumination level.
+    - Panels have no thermal coupling, internal heat source or filter heat capacity.
+    - Radiation outside the simulation wavelength range is omitted.
+    - The result covers the supplied transient, not a periodic orbital equilibrium.
+    - Free spectral coefficients and smoothness bounds do not specify a
+      manufacturable coating. This is an idealised spectral design problem.
 
-with M_lambda the hemispherical spectral emissive power [W m^-2 um^-1], so direction and intensity do not enter and
-
-    sum_{all lambda} M_lambda dlambda  ->  sigma T^4
-
-over a complete spectrum. The simulation's band (15 nm - 50 um) holds about 96.6 % of that at 293 K; the report prints the exact figure.
-
-One departure from the literal spec remains, flagged where it occurs: a companion smoothness limit in ln(lambda), eq (5'), and a small roughness tie-breaker in J.  Both exist only to pick a sensible member of a degenerate optimal set; see Sections 1.8 and 5.6.
+The comments in Section 5.4 give the stack equations. The physical basis is
+Kirchhoff's law for reciprocal isothermal structures and an incoherent sum of
+repeated reflections. See https://arxiv.org/abs/2306.06151 and
+https://docs.solcore.solar/en/latest/Optics/tmm.html .
 """
 
 from __future__ import annotations
@@ -76,10 +98,10 @@ _here = Path(__file__).resolve().parent
 # All paths are relative to this script.
 simulation_pickle_file = _here / "Simulation Data" / "simulation_data.pkl"
 lookup_file = _here / "Solar Panel Properties" / "silicon_single_junction_spectral_lookup.pkl"
-output_file = _here / "filter_solution.pkl"
+output_file = _here / "Optimisation Results" / "filter_solution.pkl"
 plot_file = _here / "Optimisation Results" / "filter_solution.png"
 
-n_starts = 5                    # multi-start points; 1 = single solve
+n_starts = 1                    # multi-start points; 1 = single solve
 random_seed = 0                 # seed for the randomised starts
 save_solution = True            # write output_file
 make_plot = True                # write plot_file (needs matplotlib)
@@ -129,9 +151,12 @@ panel_spectral = {
 
 # ---- 1.6  Spectral lookup table ----------------------------------------------
 # lookup_file supplies, on the simulation's own wavelength grid:
-#     total_absorptivity(lambda)           -> alpha_{lambda,i}, and eps by Kirchhoff
+#     total_absorptivity(lambda)           -> absorption in the wafer
+#     transmissivity(lambda)              -> absorption in the opaque backing
 #     electrical_absorptivity_mpp(T,lambda)-> alpha_{lambda,elec,i}(T)
-#     thermal  = total - electrical        -> alpha_{lambda,therm,i}(T)
+# The backed panel has alpha_panel = alpha_wafer + tau_wafer = 1 - rho_wafer.
+# Its emissivity follows this combined absorption by Kirchhoff. Electrical
+# conversion still comes only from the wafer, so backing absorption becomes heat.
 # Only the electrical part is temperature dependent; the generator holds R/A/T
 # fixed at 25 C because its n,k tables are not temperature resolved.
 #
@@ -141,14 +166,13 @@ panel_spectral = {
 t_interp_method = "bspline"        # "bspline" or "linear"
 clamp_t_to_lookup = True           # override t_min/t_max with the lookup's range
 
-# ---- 1.7  Design targets and cost weights ------------------------------------
-t_set = 293.15                  # T_set, temperature set-point         [K]
-t_ref_scale = 10.0              # dT_ref, normalises the tracking term [K]
+# ---- 1.7  Reference temperature and cost weights -----------------------------
+t_set = 293.15                  # reference for emission band averaging [K]
 w_elec = 1.0                    # weight on electrical energy (maximised)
-w_temp = 1.0                    # weight on temperature tracking (minimised)
 w_smooth = 1.0e-3               # tie-breaker on filter roughness (see 5.6)
+power_check_tolerance_w = 1e-6   # numerical check after solving, not an allowed power loss
 
-t_min, t_max = 150.0, 450.0     # hard bounds on T_i(t)                [K]
+t_min, t_max = 0.0, 450.0     # hard bounds on T_i(t)                [K]
 
 # ---- 1.8  Smoothness limits --------------------------------------------------
 # eq. (5):   |dp_j / dlambda|      <= D_{j,p}     units: property per nm.
@@ -161,8 +185,7 @@ d_smooth = {
 # eq. (5'):  |dp_j / dln(lambda)|  <= D'_{j,p}    dimensionless.
 # A per-nm limit is ~1e5 times looser at 50 um than at 500 nm, so on its own
 # eq. (5) leaves the thermal IR unconstrained and the solution chatters
-# bin-to-bin there (the emission depends only on the band-average eps*tau, so
-# that part of the problem is degenerate).  A real interference filter
+# bin-to-bin there. A real interference filter
 # transitions over a fixed *fraction* of lambda, which is what this limits.
 # D' = 5 allows a 0 -> 1 swing over roughly a factor of 1.2 in wavelength.
 # Set the whole dict, or any single property, to None to use eq. (5) alone.
@@ -184,6 +207,8 @@ ipopt_options = {
     "ipopt.max_iter": 3000,
     "ipopt.tol": 1e-8,
     "ipopt.acceptable_tol": 1e-6,
+    "ipopt.constr_viol_tol": 1e-8,
+    "ipopt.acceptable_constr_viol_tol": 1e-8,
     "ipopt.mu_strategy": "adaptive",
     "ipopt.hessian_approximation": "exact",
     "ipopt.bound_relax_factor": 0.0,   # keep 0 <= alpha, rho, tau <= 1 exactly
@@ -234,6 +259,8 @@ class PanelProperties:
     """Panel (not filter) spectral data on the working grid."""
     alpha_abs: dict[int, np.ndarray]            # [n_lam], incident-power weighted
     eps_emit: dict[int, np.ndarray]             # [n_lam], Planck weighted
+    rho_abs: dict[int, np.ndarray]              # panel reflectivity, incident-power weighted
+    rho_emit: dict[int, np.ndarray]             # panel reflectivity, Planck weighted
     alpha_elec: dict[int, ca.Function | None]   # T [K] -> [n_lam]; None if no PV
     source: dict[int, str]
     t_bounds: tuple[float, float]               # (t_min, t_max) actually used
@@ -244,7 +271,7 @@ def load_spectral_lookup(path: Path = lookup_file) -> dict:
     """Read the generator's pickle and check it against the simulation grid."""
     with open(path, "rb") as fh:
         table = pickle.load(fh)
-    for key in ("temperature_C", "wavelength_nm", "total_absorptivity",
+    for key in ("temperature_C", "wavelength_nm", "total_absorptivity", "reflectivity", "transmissivity",
                 "electrical_absorptivity_mpp", "valid_optics_mask"):
         if key not in table:
             raise ValueError(f"{path.name} is missing '{key}'")
@@ -295,9 +322,9 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
     materials = sorted(set(int(m) for m in data.material))
 
     # --- band-averaging weights, on the native grid --------------------------
-    # Absorption: the incident spectrum summed over panels and time steps.
+    # Absorption: incident energy summed over panels and time intervals.
     w_abs = data.native_q_spectrum.copy()
-    # Emission: the Planck spectrum at the set-point.  Work in metres so the
+    # Emission: the Planck spectrum at the reference temperature. Work in metres so the
     # coefficients follow directly from h, c and k_B in constants.py.
     lam_m = lam_native * nm
     dlam_m = np.gradient(lam_native) * nm
@@ -306,14 +333,14 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
     w_emit = (2.0 * np.pi * h * c ** 2 / lam_m ** 5
               * e / (1.0 - e) * dlam_m)
 
-    alpha_abs, eps_emit, alpha_elec, source = {}, {}, {}, {}
+    alpha_abs, eps_emit, rho_abs, rho_emit, alpha_elec, source = {}, {}, {}, {}, {}, {}
     t_lo, t_hi = t_min, t_max
     info: dict = {}
 
     table = None
     if any(panel_spectral_source.get(m) == "lookup" for m in materials):
         table = load_spectral_lookup()
-        if not np.allclose(np.asarray(table["wavelength_nm"]), lam_native):
+        if not np.array_equal(np.asarray(table["wavelength_nm"]), lam_native):
             raise ValueError("The lookup's wavelength grid does not match the "
                              "simulation's; regenerate it from this pickle.")
 
@@ -323,29 +350,36 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
 
         if src == "parametric":
             a_native = parametric_absorptivity(lam_native, j)
+            r_native = 1.0 - a_native  # The parametric aluminium surface is opaque.
             alpha_elec[j] = None
 
         elif src == "lookup":
             if j != lookup_material:
                 raise ValueError(f"material {j} is set to 'lookup' but the lookup "
                                  f"describes material {lookup_material}")
-            # alpha_{lambda,i} straight from the table, with no extension of
-            # any kind.  The generator now calculates every column, so anything
-            # added here would overwrite real data with an assumption.
-            a_native = np.asarray(table["total_absorptivity"])[0].copy()
-            if not np.isfinite(a_native).all():
-                raise ValueError(
-                    "total_absorptivity contains non-finite values.  Regenerate "
-                    "the lookup with a generator that covers the whole "
-                    "wavelength grid; this script does not extrapolate."
-                )
+            # The lookup describes the wafer, not the backing behind it.
+            a_wafer = np.asarray(table["total_absorptivity"])[0].copy()
+            r_native = np.asarray(table["reflectivity"])[0].copy()
+            t_native = np.asarray(table["transmissivity"])[0]
+            if not np.isfinite([a_wafer, r_native, t_native]).all() or not np.allclose(a_wafer + r_native + t_native, 1.0, atol=1e-8, rtol=0):
+                raise ValueError("Lookup optical fractions must be finite and satisfy A + R + T = 1.")
+            if min(a_wafer.min(), r_native.min(), t_native.min()) < -1e-8:
+                raise ValueError("Lookup optical fractions cannot be negative.")
+
+            # All light leaving the rear of the wafer is absorbed in the backing.
+            # Both are in one thermal node. The panel has no rear transmission.
+            # Keep the wafer's reflection and electrical response, since the
+            # ideal absorbing backing returns no light to the wafer.
+            a_native = a_wafer + t_native
+            source[j] = "lookup + absorbing backing"
 
             # ---- alpha_elec(T, lambda) -> a CasADi function of T ------------
             # The Celsius-to-kelvin zero-point offset is definition-based and
             # is not currently provided by constants.py.
             t_grid_k = np.asarray(table["temperature_C"], dtype=float) + 273.15
             e_native = np.asarray(table["electrical_absorptivity_mpp"], dtype=float)
-            e_native = np.nan_to_num(e_native, nan=0.0)      # zero outside its range
+            if not np.isfinite(e_native).all() or e_native.min() < -1e-8 or np.any(e_native > a_wafer[None, :] + 1e-8):
+                raise ValueError("Electrical absorption must be finite and lie between zero and wafer absorption.")
             # Band-average each temperature row, then build one interpolant that
             # maps T -> the whole n_lam vector.  CasADi wants output-fastest order.
             e_bands = np.stack([_band_average(row, idx, w_abs, n_lam,
@@ -371,6 +405,10 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
                                      lam_native, data.lam_nm)
         eps_emit[j] = _band_average(a_native, idx, w_emit, n_lam,
                                     lam_native, data.lam_nm)
+        rho_abs[j] = _band_average(r_native, idx, w_abs, n_lam, lam_native, data.lam_nm)
+        rho_emit[j] = _band_average(r_native, idx, w_emit, n_lam, lam_native, data.lam_nm)
+        if min(r_native.min(), a_native.min()) < -1e-8 or r_native.max() >= 1.0:
+            raise ValueError("This stack model requires non-negative panel absorption and 0 <= panel reflectivity < 1.")
 
     if verbose:
         print("  panel properties :")
@@ -380,8 +418,8 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
                      f"  alpha_elec(T) via {t_interp_method}"))
         if info:
             lo, hi = info["solcore_nm"]
-            print(f"      alpha read from the table across the whole grid "
-                  f"(Solcore covered {lo:.0f} - {hi:.0f} nm of it)")
+            print(f"      wafer optics from lookup, with an opaque absorbing backing "
+                  f"(Solcore covered {lo:.0f} - {hi:.0f} nm)")
             print(f"      Planck-weighted eps at t_set : "
                   f"{info['eps_planck_weighted']:.4f}")
         n_empty = int(np.sum(np.bincount(idx, minlength=n_lam) == 0))
@@ -391,7 +429,7 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
                   f"the sim's 10 nm bins); those are interpolated and carry no energy")
         print(f"      T bounds used    : {t_lo:.2f} .. {t_hi:.2f} K")
 
-    return PanelProperties(alpha_abs=alpha_abs, eps_emit=eps_emit,
+    return PanelProperties(alpha_abs=alpha_abs, eps_emit=eps_emit, rho_abs=rho_abs, rho_emit=rho_emit,
                            alpha_elec=alpha_elec, source=source,
                            t_bounds=(t_lo, t_hi), lookup_info=info)
 
@@ -418,7 +456,7 @@ class SimData:
     # --- the native (simulation) grid, kept so Section 2 can band-average ----
     native_lam_nm: np.ndarray       # the sim's own wavelengths     [n_native]
     native_idx: np.ndarray          # native bin -> working band    [n_native]
-    native_q_spectrum: np.ndarray   # q_in summed over i and t      [n_native]
+    native_q_spectrum: np.ndarray   # incident energy summed over i and t [n_native]
 
     @property
     def n_p(self) -> int: return len(self.labels)
@@ -452,6 +490,8 @@ def load_sim_data(pickle_path: Path = simulation_pickle_file,
     n_p = len(labels)
     t = np.asarray(raw["simulation_times"], dtype=float)
     lam_native = np.asarray(raw["wavelengths"], dtype=float)
+    if t.ndim != 1 or t.size < 2 or not np.isfinite(t).all() or np.any(np.diff(t) <= 0):
+        raise ValueError("Simulation times must be finite and strictly increasing.")
 
     # --- panel types and areas, in the same order as panelLabels ------------
     material = np.asarray(raw["panelTypes"], dtype=int)
@@ -474,7 +514,7 @@ def load_sim_data(pickle_path: Path = simulation_pickle_file,
 
     # --- per-sample time weights: dt_n for the forward-Euler step n -> n+1 ----
     dt = np.diff(t)
-    dt = np.concatenate((dt, [dt[-1]]))     # hold the last step for the energy sum
+    dt = np.concatenate((dt, [0.0]))        # The final sample has no following interval.
 
     # --- expand per-material constants to per-panel --------------------------
     def per_panel(table: dict[int, float], key: str) -> np.ndarray:
@@ -491,7 +531,7 @@ def load_sim_data(pickle_path: Path = simulation_pickle_file,
         heat_cap=per_panel(panel_heat_capacity, "heat_capacity"),
         T0=per_panel(panel_t0, "T0"),
         native_lam_nm=lam_native, native_idx=idx,
-        native_q_spectrum=Q_native.sum(axis=(0, 1)),
+        native_q_spectrum=np.sum(Q_native * dt[None, :, None], axis=(0, 1)),
     )
 
 
@@ -538,6 +578,46 @@ def in_band_emission_fraction(T: float, lam_nm: np.ndarray, dlam_nm: np.ndarray)
     return float(np.sum(M * dlam_m) / (sigma_sb * T ** 4))
 
 
+def simulate_unfiltered(data: SimData, props: PanelProperties) -> tuple[np.ndarray, np.ndarray]:
+    """Calculate baseline temperatures [K] and electrical powers [W], shaped [panel, time]."""
+    temperature = np.zeros((data.n_p, data.n_t))
+    power = np.zeros_like(temperature)
+    temperature[:, 0] = data.T0
+    lam_nm, dlam_nm = ca.DM(data.lam_nm), ca.DM(data.dlam_nm)
+    t_lo, t_hi = props.t_bounds
+
+    for i, material in enumerate(data.material):
+        mc = data.mass[i] * data.heat_cap[i]
+        electrical = props.alpha_elec[material]
+        for n in range(data.n_t):
+            ti = temperature[i, n]
+            if not np.isfinite(ti) or not t_lo <= ti <= t_hi:
+                raise ValueError(f"Unfiltered panel {data.labels[i]} reaches {ti:.3f} K at {data.t[n]:.3f} s, outside the model bounds {t_lo:.2f} .. {t_hi:.2f} K.")
+            a_elec = np.asarray(electrical(ti)).ravel() if electrical is not None else np.zeros(data.n_lam)
+            power[i, n] = np.dot(a_elec, data.q_in[i, n])
+            # A clear filter has alpha = rho = 0 and tau = 1.
+            q_absorbed = np.dot(props.alpha_abs[material] - a_elec, data.q_in[i, n])
+            m_dlam = np.asarray(planck_band_power(ti, lam_nm, dlam_nm)).ravel()
+            q_emitted = data.area[i] * np.dot(props.eps_emit[material], m_dlam)
+            if n < data.n_t - 1:
+                temperature[i, n + 1] = ti + (q_absorbed - q_emitted) * data.dt[n] / mc
+
+    return temperature, power
+
+
+def stack_optics(alpha_f, rho_f, tau_f, alpha_p, rho_p):
+    """Return panel illumination and total absorption for a symmetric filter over a panel.
+
+    Reflections are incoherent. The filter and panel have a common temperature.
+    alpha_p includes absorption in the opaque backing, so no rear power escapes.
+    For thermal emission, Kirchhoff gives epsilon_stack = alpha_stack.
+    """
+    panel_illumination = tau_f / (1.0 - rho_f * rho_p)
+    filter_absorption = alpha_f * (1.0 + rho_p * panel_illumination)
+    stack_absorption = filter_absorption + alpha_p * panel_illumination
+    return panel_illumination, stack_absorption
+
+
 # =============================================================================
 # 5.  THE NLP
 # =============================================================================
@@ -555,7 +635,10 @@ class FilterProblem:
     J: ca.MX
     e_elec: ca.MX
     e_ref: float
-    t_track: ca.MX
+    p_elec: ca.MX                    # filtered electrical power [panel, time]
+    unfiltered_temperature: np.ndarray
+    unfiltered_power: np.ndarray
+    e_unfiltered: float
 
 
 def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
@@ -576,10 +659,10 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
     dlam_nm = ca.DM(data.dlam_nm)
 
     # --- fixed material data on the working grid (Section 2) -----------------
-    alpha_p = props.alpha_abs          # alpha_{lambda,i}   [n_lam] per material
-    eps_p = props.eps_emit             # eps_{lambda,i}     [n_lam] per material
     alpha_elec_fn = props.alpha_elec   # T -> alpha_{lambda,elec,i}(T), or None
     t_lo, t_hi = props.t_bounds
+    unfiltered_temperature, unfiltered_power = simulate_unfiltered(data, props)
+    e_unfiltered = float(np.sum(unfiltered_power * data.dt[None, :]))
 
     # -------------------------------------------------------------------------
     # 5.1  Decision variables
@@ -601,10 +684,8 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
     temperature = {i: ca.vertsplit(v)                    # temperature[i][n]
                    for i, v in temperature_vec.items()}
 
-    # Kirchhoff on the filter, eps_j(lambda) = alpha_j(lambda), is imposed by
-    # elimination: there is no separate eps variable.  It does not appear in
-    # the heat balance because the filter's own emission cancels (spec rule 3);
-    # it is reported in Section 8 as eps = alpha.
+    # Filter emission is included through the combined stack absorptivity below.
+    # Kirchhoff gives eps_f = alpha_f for the symmetric reciprocal filter.
     eps_f = alpha_f  # noqa: F841
 
     for j in filter_types:
@@ -646,13 +727,15 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
     # -------------------------------------------------------------------------
     # 5.4  Heat flows, eq. (1), and the electrical power
     #
-    #      Qdot_f_in (t, lam) =  alpha_{lam, f_i} Qdot_in(t, lam)
-    #      Qdot_p_in (t, lam) =  tau_{lam, f_i} alpha_{lam, therm, i}(T) Qdot_in(t, lam)
-    #      Qdot_out  (t, lam) = -eps_{lam, i} tau_{lam, f_i} M_lam(lam, T_i) dlam A_i
-    #      Qdot_i(t)          =  sum_lam ( Qdot_f_in + Qdot_p_in + Qdot_out )
+    #      g = tau_f / (1 - rho_f rho_p), summing repeated reflections.
+    #      alpha_stack = alpha_f (1 + rho_p g) + alpha_p g
+    #      P_elec = sum_lambda g alpha_elec(T) Q_in
+    #      Q_heat = sum_lambda alpha_stack Q_in - P_elec
+    #      Q_emit = area * sum_lambda epsilon_stack M_lambda(T) dlambda
+    #      Q_dot = Q_heat - Q_emit
     #
-    #      with  alpha_{lam, therm, i}(T) = alpha_{lam, i} - alpha_{lam, elec, i}(T)
-    #      and   p_elec_i(t)   =  sum_lam tau_{lam, f_i} alpha_{lam, elec, i}(T) Qdot_in
+    #      epsilon_stack follows TOTAL absorption, not thermal absorption.
+    #      Incident and emission band averages use their respective weights.
     # -------------------------------------------------------------------------
     q_dot = {}      # q_dot[i][n]   net thermal power into panel i at time n  [W]
     p_elec = {}     # p_elec[i][n]  electrical power off panel i at time n    [W]
@@ -660,32 +743,21 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
     for i in range(n_p):
         m = int(data.material[i])
         q_dot[i], p_elec[i] = [], []
-
-        # The panel's own spectra, as constant column vectors over lambda.
-        alpha_p_col = ca.DM(alpha_p[m])
-        eps_p_col = ca.DM(eps_p[m])
+        alpha_p_col = ca.DM(props.alpha_abs[m])
+        eps_p_col = ca.DM(props.eps_emit[m])
+        illumination, stack_absorption = stack_optics(alpha_f_vec[m], rho_f_vec[m], tau_f_vec[m], alpha_p_col, ca.DM(props.rho_abs[m]))
+        _, stack_emissivity = stack_optics(alpha_f_vec[m], rho_f_vec[m], tau_f_vec[m], eps_p_col, ca.DM(props.rho_emit[m]))
 
         for n in range(n_t):
             ti = temperature[i][n]
-
-            # Each line below is one line of eq. (1), evaluated at every
-            # wavelength at once.  The sum over lambda is the ca.sum1 at the
-            # end.  Writing the spectral sum as a vector operation rather than
-            # a Python loop over k keeps the expression graph about 16 times
-            # smaller, which is what keeps the solver inside a few hundred MB.
-            m_dlam = planck_band_power(ti, lam_nm, dlam_nm)      # [W m^-2]
-            a_elec = (alpha_elec_fn[m](ti) if alpha_elec_fn[m] is not None
-                      else ca.DM.zeros(n_lam))                   # alpha_{lam,elec}(T)
-            a_therm = alpha_p_col - a_elec                       # alpha_{lam,therm}(T)
-            q_in_col = ca.DM(data.q_in[i, n])                    # Qdot_in(t, lam)
-
-            q_f_in = alpha_f_vec[m] * q_in_col
-            q_p_in = tau_f_vec[m] * a_therm * q_in_col
-            q_out = -eps_p_col * tau_f_vec[m] * m_dlam * data.area[i]
-
-            # sum over all lambda
-            q_dot[i].append(ca.sum1(q_f_in + q_p_in + q_out))
-            p_elec[i].append(ca.sum1(tau_f_vec[m] * a_elec * q_in_col))
+            m_dlam = planck_band_power(ti, lam_nm, dlam_nm)
+            a_elec = alpha_elec_fn[m](ti) if alpha_elec_fn[m] is not None else ca.DM.zeros(n_lam)
+            q_in_col = ca.DM(data.q_in[i, n])
+            electrical_power = ca.sum1(illumination * a_elec * q_in_col)
+            absorbed_heat = ca.sum1(stack_absorption * q_in_col) - electrical_power
+            emitted_power = ca.sum1(stack_emissivity * m_dlam) * data.area[i]
+            q_dot[i].append(absorbed_heat - emitted_power)
+            p_elec[i].append(electrical_power)
 
     # -------------------------------------------------------------------------
     # 5.5  Temperature dynamics, eqs. (2) and (3)
@@ -701,30 +773,30 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
             opti.subject_to(temperature[i][n + 1] == temperature[i][n] + dQ / mc)
 
     # -------------------------------------------------------------------------
-    # 5.6  Cost function, eq. (4)
+    # 5.6  Electrical power constraint and cost function
     #
-    #          J = -W_elec * e_elec / e_ref
-    #              + W_temp   / (n_p n_t) * sum_i sum_t ( (T_i(t) - T_set) / dT_ref )^2
-    #              + W_smooth / (n_j n_lam) * sum_j sum_lam sum_p ( p_j(l+dl) - p_j(l) )^2
+    #      sum_i P_filtered_i(t) >= sum_i P_unfiltered_i(t), at every sample.
+    #      The baseline uses its own temperatures, not the filtered temperatures.
+    #      This preserves total instantaneous power, not just integrated energy.
     #
-    #      Term 1 maximises the electrical energy harvested over the dataset,
-    #      term 2 holds the panels at the set-point.  Both are O(1), so the
-    #      weights trade off directly.  e_ref is the total incident energy, so
-    #      term 1 is minus the overall conversion efficiency.
+    #      J = -W_elec * e_elec / e_ref + W_smooth * roughness
     #
-    #      Term 3 is a tie-breaker, not physics.  In the thermal IR the cost
-    #      depends only on the Planck-weighted average of eps*tau, so a whole
-    #      family of filters is exactly optimal and IPOPT returns an arbitrary
-    #      (ragged) member of it.  A small roughness penalty selects the
-    #      smoothest member.  Keep w_smooth small enough that it does not move
-    #      e_elec (check: it should change the efficiency in the 4th decimal);
-    #      set w_smooth = 0 for the pure two-term cost.
+    #      Heating already reduces electrical conversion through alpha_elec(T).
+    #      No separate penalty pulls the temperature towards a set-point.
+    #      Roughness only favours smoother filters. Set w_smooth = 0 to omit it.
     # -------------------------------------------------------------------------
-    e_terms, t_terms = [], []
+    power_matrix = ca.vertcat(*[ca.horzcat(*p_elec[i]) for i in range(n_p)])
+    total_power = ca.sum1(power_matrix)
+    unfiltered_total_power = unfiltered_power.sum(axis=0)
+    for n in range(n_t):
+        # A zero baseline needs no extra constraint because generated power is non-negative.
+        if unfiltered_total_power[n] > 0.0:
+            opti.subject_to(total_power[n] >= unfiltered_total_power[n])
+
+    e_terms = []
     for i in range(n_p):
         for n in range(n_t):
             e_terms.append(p_elec[i][n] * data.dt[n])
-            t_terms.append(((temperature[i][n] - t_set) / t_ref_scale) ** 2)
 
     s_terms = []
     for j in filter_types:
@@ -733,11 +805,12 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
                 s_terms.append((p[k + 1] - p[k]) ** 2)
 
     e_elec = ca.sum1(ca.vertcat(*e_terms))
-    t_track = ca.sum1(ca.vertcat(*t_terms)) / (n_p * n_t)
     roughness = ca.sum1(ca.vertcat(*s_terms)) / (len(filter_types) * n_lam)
 
     e_ref = float(np.sum(data.q_in * data.dt[None, :, None]))
-    J = -w_elec * e_elec / e_ref + w_temp * t_track + w_smooth * roughness
+    if e_ref <= 0.0:
+        raise ValueError("The incident energy must be positive to normalise the objective.")
+    J = -w_elec * e_elec / e_ref + w_smooth * roughness
 
     opti.minimize(J)
     opti.solver("ipopt", solver_options if solver_options is not None else ipopt_options_quiet)
@@ -751,12 +824,21 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
         print(f"  time samples     : {n_t}   span {data.t[0]:.2f} .. {data.t[-1]:.2f} s")
         print(f"  wavelength bands : {n_lam}  ({data.lam_nm[0]:.1f} .. {data.lam_nm[-1]:.0f} nm)")
         print(f"  incident energy  : e_ref = {e_ref:.4f} J")
-        print(f"  in-band emission : {100 * frac:.2f} % of sigma T^4 at T_set "
+        print(f"  unfiltered energy: {e_unfiltered:.4f} J")
+        print("  power constraint : total filtered power >= unfiltered power at every sample")
+        print("  radiation model  : isothermal filter and panel, with repeated reflections")
+        print("  electrical model : AM0-calibrated conversion fractions, not a new MPP solve")
+        no_pv = [j for j in filter_types if alpha_elec_fn[j] is None]
+        if no_pv:
+            print(f"  note             : filters {no_pv} have no electrical objective or thermal link to PV panels")
+        print(f"  in-band emission : {100 * frac:.2f} % of sigma T^4 at {t_set:.2f} K "
               f"(the rest lies beyond {data.lam_edges_nm[-1] / 1000:.0f} um)")
 
     return FilterProblem(opti=opti, data=data, filter_types=filter_types,
                          alpha_f=alpha_f_vec, rho_f=rho_f_vec, tau_f=tau_f_vec,
-                         temperature=temperature_vec, J=J, e_elec=e_elec, e_ref=e_ref, t_track=t_track)
+                         temperature=temperature_vec, J=J, e_elec=e_elec, e_ref=e_ref,
+                         p_elec=power_matrix, unfiltered_temperature=unfiltered_temperature,
+                         unfiltered_power=unfiltered_power, e_unfiltered=e_unfiltered)
 
 
 # =============================================================================
@@ -774,9 +856,9 @@ def make_initial_guess(prob: FilterProblem, rng: np.random.Generator | None = No
     guess = {"filters": {}, "T": {}}
     for j in prob.filter_types:
         if rng is None:
-            # Nominal: a clear filter (tau = 1) -- neutral, feasible, unbiased.
-            alpha = np.full(n_lam, 0.02)
-            tau = np.full(n_lam, 0.96)
+            # The unfiltered baseline is a feasible starting point.
+            alpha = np.zeros(n_lam)
+            tau = np.ones(n_lam)
         else:
             # Random but smooth: a few low-frequency modes in log(lambda),
             # squashed into the simplex.  Respects eq. (5) far better than
@@ -798,7 +880,7 @@ def make_initial_guess(prob: FilterProblem, rng: np.random.Generator | None = No
 
     for i in range(data.n_p):
         spread = 0.0 if rng is None else rng.normal(scale=5.0)
-        guess["T"][i] = np.full(n_t, data.T0[i] + spread)
+        guess["T"][i] = prob.unfiltered_temperature[i].copy() + spread
         guess["T"][i][0] = data.T0[i]
     return guess
 
@@ -823,7 +905,8 @@ class Solution:
     J: float
     e_elec: float
     efficiency: float                  # e_elec / e_ref
-    t_track: float
+    power: np.ndarray                  # filtered electrical power [panel, time]
+    min_power_margin_w: float          # min_t (total filtered - total unfiltered)
     filters: dict[int, dict[str, np.ndarray]]
     temperature: dict[str, np.ndarray]
     start: int = 0
@@ -839,8 +922,12 @@ def _extract(prob: FilterProblem, val: Callable, ok: bool, start: int, msg: str)
     temperature = {lab: np.asarray(val(prob.temperature[i])).ravel()
          for i, lab in enumerate(prob.data.labels)}
     E = float(val(prob.e_elec))
+    power = np.asarray(val(prob.p_elec)).reshape(prob.data.n_p, prob.data.n_t)
+    min_margin = float(np.min(power.sum(axis=0) - prob.unfiltered_power.sum(axis=0)))
+    if ok and (not np.isfinite(min_margin) or min_margin < -power_check_tolerance_w):
+        ok, msg = False, "Electrical power falls below the unfiltered baseline."
     return Solution(success=ok, J=float(val(prob.J)), e_elec=E,
-                    efficiency=E / prob.e_ref, t_track=float(val(prob.t_track)),
+                    efficiency=E / prob.e_ref, power=power, min_power_margin_w=min_margin,
                     filters=filters, temperature=temperature, start=start, message=msg)
 
 
@@ -876,10 +963,12 @@ def multi_start(prob: FilterProblem, starts: int = n_starts, seed: int = random_
         results.append(res)
         print(f"  start {s:>3d}: {'ok ' if res.success else 'FAIL'}  "
               f"J = {res.J: .6f}   eta = {100 * res.efficiency:6.3f} %   "
-              f"T-track = {res.t_track:.4f}   [{time.perf_counter() - t0:5.1f} s]",
+              f"min power margin = {res.min_power_margin_w:.3e} W   [{time.perf_counter() - t0:5.1f} s]",
               flush=True)
 
-    feasible = [r for r in results if r.success] or results
+    feasible = [r for r in results if r.success]
+    if not feasible:
+        raise RuntimeError("No solve satisfied the constraints. No filter solution has been saved.")
     best = min(feasible, key=lambda r: r.J)
     return best, results
 
@@ -900,13 +989,15 @@ def report(best: Solution, prob: FilterProblem) -> None:
     print(f"  electrical energy      {best.e_elec:.4f} J  "
           f"over {data.t[-1] - data.t[0]:.1f} s")
     print(f"  conversion efficiency  {100 * best.efficiency:.3f} %  of incident energy")
-    print(f"  mean (dT/dT_ref)^2     {best.t_track:.5f}")
+    print(f"  unfiltered energy      {prob.e_unfiltered:.4f} J")
+    print(f"  electrical gain        {best.e_elec - prob.e_unfiltered:.6f} J")
+    print(f"  minimum power margin   {best.min_power_margin_w:.3e} W  (filtered - unfiltered)")
 
-    print("\n  panel   type   A [m^2]   T start -> end [K]    max |T - T_set|")
+    print("\n  panel   type   A [m^2]   T start -> end [K]    unfiltered end [K]")
     for i, (lab, traj) in enumerate(best.temperature.items()):
         m = int(data.material[i])
         print(f"    {lab:>3s}      {m}     {data.area[i]:.4f}   "
-              f"{traj[0]:8.3f} -> {traj[-1]:8.3f}      {np.max(np.abs(traj - t_set)):8.3f}")
+              f"{traj[0]:8.3f} -> {traj[-1]:8.3f}      {prob.unfiltered_temperature[i, -1]:8.3f}")
 
     print("\n  filter band averages")
     for j, f in best.filters.items():
@@ -931,19 +1022,38 @@ def save(best: Solution, results: list[Solution], prob: FilterProblem,
         "lam_edges_nm": prob.data.lam_edges_nm,
         "t": prob.data.t,
         "material": prob.data.material,
+        "panel_labels": prob.data.labels,
         "area": prob.data.area,
         "filters": best.filters,
         "panel_alpha_abs": props.alpha_abs,
         "panel_eps_emit": props.eps_emit,
+        "panel_rho_abs": props.rho_abs,
+        "panel_rho_emit": props.rho_emit,
         "panel_source": props.source,
         "t_bounds": props.t_bounds,
         "lookup_info": props.lookup_info,
+        "model_assumptions": {
+            "stack": "Symmetric reciprocal filter and panel at one temperature, incoherent reflections",
+            "emission": "Combined stack absorptivity, normal-incidence approximation, outward face only",
+            "electrical": "Supplied one-sun AM0 MPP allocation, temperature dependent",
+            "thermal_coupling": "No conduction between panels or to a spacecraft body",
+            "transmission": "All wafer transmission is absorbed in an opaque backing at the panel temperature",
+            "backing": "Perfect absorber, no return reflection, included in the panel thermal mass",
+            "spectral_extent": "No thermal radiation outside the simulation wavelength range",
+            "time_integration": "Forward Euler intervals with zero weight on the final sample",
+        },
         "T": best.temperature,
         "J": best.J,
         "e_elec": best.e_elec,
+        "electrical_power_W": best.power,
+        "unfiltered_electrical_power_W": prob.unfiltered_power,
+        "unfiltered_temperature_K": prob.unfiltered_temperature,
+        "unfiltered_electrical_energy_J": prob.e_unfiltered,
+        "min_power_margin_W": best.min_power_margin_w,
         "efficiency": best.efficiency,
         "all_starts": [(r.start, r.success, r.J, r.efficiency) for r in results],
-        "settings": {"t_set": t_set, "w_elec": w_elec, "w_temp": w_temp,
+        "settings": {"t_set": t_set, "w_elec": w_elec,
+                     "power_constraint": "total_at_each_time_sample", "power_check_tolerance_W": power_check_tolerance_w,
                      "w_smooth": w_smooth, "d_smooth": d_smooth,
                      "d_smooth_log": d_smooth_log,
                      "n_filter_bands": n_filter_bands, "band_spacing": band_spacing},
@@ -960,7 +1070,7 @@ def plot(best: Solution, prob: FilterProblem, props: PanelProperties, path: Path
 
     data = prob.data
     n = len(best.filters)
-    fig, axes = plt.subplots(1, n + 2, figsize=(5.8 * (n + 2), 4.2))
+    fig, axes = plt.subplots(1, n + 3, figsize=(5.8 * (n + 3), 4.2))
     axes = np.atleast_1d(axes)
 
     for ax, (j, f) in zip(axes, best.filters.items()):
@@ -975,7 +1085,7 @@ def plot(best: Solution, prob: FilterProblem, props: PanelProperties, path: Path
         ax.legend()
 
     # --- the panel properties the filters are designed against ---------------
-    ax = axes[-2]
+    ax = axes[-3]
     for j in sorted(props.alpha_abs):
         tag = f"M={j} ({props.source[j]})"
         ax.plot(data.lam_nm, props.alpha_abs[j], "-", label=rf"$\alpha_{{p,{j}}}$ {tag}")
@@ -993,18 +1103,27 @@ def plot(best: Solution, prob: FilterProblem, props: PanelProperties, path: Path
     ax.grid(alpha=0.3)
     ax.legend(fontsize=7)
 
-    ax = axes[-1]
+    ax = axes[-2]
     for i, (lab, traj) in enumerate(best.temperature.items()):
-        ax.plot(data.t, traj, ls="-" if data.material[i] == solar else "--",
-                label=f"{lab} (M={int(data.material[i])})")
-    ax.axhline(t_set, color="k", ls=":", label=r"$T_\mathrm{set}$")
+        line, = ax.plot(data.t, traj, label=f"{lab} filtered")
+        ax.plot(data.t, prob.unfiltered_temperature[i], "--", color=line.get_color(), alpha=0.7, label=f"{lab} unfiltered")
     ax.set_xlabel("time [s]")
     ax.set_ylabel("panel temperature [K]")
     ax.set_title("Temperature trajectories")
     ax.grid(alpha=0.3)
-    ax.legend(ncol=2, fontsize=8)
+    ax.legend(ncol=2, fontsize=7)
+
+    ax = axes[-1]
+    ax.plot(data.t, best.power.sum(axis=0), label="Filtered")
+    ax.plot(data.t, prob.unfiltered_power.sum(axis=0), "--", label="Unfiltered")
+    ax.set_xlabel("time [s]")
+    ax.set_ylabel("total electrical power [W]")
+    ax.set_title("Electrical power comparison")
+    ax.grid(alpha=0.3)
+    ax.legend()
 
     fig.tight_layout()
+    path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=130)
     print(f"  saved -> {path}")
 
