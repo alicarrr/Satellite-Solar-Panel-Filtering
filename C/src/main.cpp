@@ -46,7 +46,7 @@ const double dt_data = 10.0;
 const double dt = 1e-1; // Sim Time Step
 const std::string date_0 = "2025-01-09T01:01:10.050000";
 
-const double t_final_sim = 96*60*60; // seconds
+const double t_final_sim = 96*60; // seconds
 
 double t_last_data = -2 * dt_data;
 

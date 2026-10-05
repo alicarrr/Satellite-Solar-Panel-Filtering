@@ -52,7 +52,7 @@ plot_file = here / "Solar Panel Properties" / "silicon_spectral_properties.png"
 make_plot = True
 
 material_name = "Si"          # MUST match the material in nk_file.
-temperature_c = np.arange(-250.0, 100.0 + 0.1, 5.0)
+temperature_c = np.arange(-100.0, 300.0 + 0.1, 5.0)
 wafer_thickness_m = 175e-6
 emitter_thickness_m = 0.3e-6
 emitter_acceptors_m3 = 1e24   # 1e18 cm^-3; p-type front emitter.
