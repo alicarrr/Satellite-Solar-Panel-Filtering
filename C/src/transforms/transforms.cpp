@@ -58,7 +58,7 @@ Eigen::Vector3d ecef_to_llh(const Eigen::Vector3d& r_ecef)
     double e_E_prime = sqrt((a*a - b*b) / (b*b)); // Second eccentricity of the Earth
 
     double p = sqrt(x*x + y*y);
-    double F = 54*b*b + z*z;
+    double F = 54*b*b * z*z;
     double G = p*p + (1 - e_E*e_E)*z*z - e_E*e_E*(a*a - b*b);
     double c = e_E*e_E*e_E*e_E * F * p*p / (G*G*G);
     double s = cbrt(1 + c + sqrt(c*c + 2*c));
@@ -72,7 +72,7 @@ Eigen::Vector3d ecef_to_llh(const Eigen::Vector3d& r_ecef)
 
     double latitude = atan((z + e_E_prime*e_E_prime * z0) / p);
     double longitude = atan2(y, x);
-    double h = U * (1 - z0/z);
+    double h = U * (1 - b*b/(a*V));
 
     return Eigen::Vector3d(latitude, longitude, h);
 }
