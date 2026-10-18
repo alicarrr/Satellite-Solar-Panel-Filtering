@@ -679,26 +679,31 @@ std::vector<SpectraVector_t> solarPowerPerPanel(Eigen::Vector3d r_ECI, Eigen::Ma
 
     SpectraVector_t sunFlux = sun_spectra/(4.0 * M_PI * pow(r, 2));
 
-
     // Calculate eclipse fraction (approximate but accounts for size of sun percent)
-    double theta = acos(r_sol_ECI.normalized().dot(r_ECI.normalized()));
-    double phi_S = acos(R_sol / r_sol_ECI.norm());
-    double phi_E = acos(R_earth / r_ECI.norm());
+    double theta = acos(r_sol_ECI.normalized().dot(r_ECI.normalized())); // Angle between Sun to Earth vector and Sun to Satellite vector
+    double psi_S = asin(R_sol / r_sol_ECI.norm()); // Angle between Sun to Earth vector and Sun to edge of Earth vector
+    double phi_S = acos(R_earth / r_sol_ECI.norm()); // Angle between Sun to Earth vector and Earth to edge of Sun vector
+    double phi_E = acos(R_earth / r_ECI.norm()); // Angle between Earth to Satellite vector and Earth to edge of Sun vector
 
-    double d_theta = phi_E - theta;
+    // for inequality
+    double delta = theta - phi_S - phi_E;
 
     double in_view_factor;
-    if (d_theta > phi_S)
-    {
-        in_view_factor = 0.0;
+
+    if (delta <= -psi_S)
+    {   
+        // Sun is fully visible
+        in_view_factor = 1.0;
     }
-    else if (d_theta < 0)
+    else if (delta >= psi_S)
     {
-        in_view_factor = 1;
+        // Sun is fully eclipsed
+        in_view_factor = 0.0;
     }
     else
     {
-        in_view_factor = 1 - d_theta / phi_S;
+        // Partial eclipse, calculate the fraction of the sun that is visible
+        in_view_factor = 0.5*(1.0 - delta/psi_S);
     }
 
     int N_panel = cubesat.panels.size();
@@ -708,7 +713,7 @@ std::vector<SpectraVector_t> solarPowerPerPanel(Eigen::Vector3d r_ECI, Eigen::Ma
         powerPerPanel[i] = SpectraVector_t::Zero();
     }
 
-    if (in_view_factor == 0)
+    if (in_view_factor == 0.0)
     {
         // Sun not visible, no need to do more maths
         return powerPerPanel;
@@ -718,7 +723,7 @@ std::vector<SpectraVector_t> solarPowerPerPanel(Eigen::Vector3d r_ECI, Eigen::Ma
     {
         Eigen::Vector3d n_hat_panel_eci = R_eci_from_B * cubesat.panels[i].normal_vector;
 
-        double flux_cosine = -r_hat_flux.dot(n_hat_panel_eci);
+        double flux_cosine = -in_view_factor * r_hat_flux.dot(n_hat_panel_eci);
         if (flux_cosine <= 0)
         {
             // If this panel has no flux then just skip the loop
