@@ -142,7 +142,7 @@ std::tuple<Eigen::Vector3d, Eigen::Vector3d> ecef_to_eci(const Eigen::Vector3d& 
     Eigen::Matrix3d R_dot = cross_product_matrix(omega_earth) * R;
 
     Eigen::Vector3d r_eci = R.transpose() * r_ecef;
-    Eigen::Vector3d v_eci = R.transpose() * (v_ecef - R_dot * r_ecef);
+    Eigen::Vector3d v_eci = R.transpose() * (v_ecef - R_dot * r_eci);
 
     return std::make_tuple(r_eci, v_eci);
 }

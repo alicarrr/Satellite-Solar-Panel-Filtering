@@ -520,7 +520,8 @@ Eigen::Vector3d getNormalToEarthEcef(double lat, double lon)
 {
     double e_earth = sqrt(1 - pow((b_earth/a_earth), 2));
     double b_over_a_earth = b_earth/a_earth;
-    Eigen::Vector3d n_hat_ecef = Eigen::Vector3d({b_over_a_earth * cos(lat)*cos(lon), b_over_a_earth * cos(lat)*sin(lon), sin(lat)})/sqrt(1 - pow(e_earth * cos(lat), 2));
+    // Eigen::Vector3d n_hat_ecef = Eigen::Vector3d({b_over_a_earth * cos(lat)*cos(lon), b_over_a_earth * cos(lat)*sin(lon), sin(lat)})/sqrt(1 - pow(e_earth * cos(lat), 2));
+    Eigen::Vector3d n_hat_ecef = Eigen::Vector3d({cos(lat)*cos(lon), cos(lat)*sin(lon), sin(lat)});
 
     return n_hat_ecef;
 }
@@ -531,7 +532,14 @@ double patchArea(Eigen::Vector3d LLH)
     double lat = LLH[0];
     double lon = LLH[1];
 
-    double A_patch = a_earth * cos(lat) * sqrt(pow(a_earth * sin(lat), 2) + pow(b_earth * cos(lat), 2)) * (DEG2RAD * d_lat) * (DEG2RAD * d_lon);
+    // double A_patch = a_earth * cos(lat) * sqrt(pow(a_earth * sin(lat), 2) + pow(b_earth * cos(lat), 2)) * (DEG2RAD * d_lat) * (DEG2RAD * d_lon);
+    double e2 = 1.0 - pow(b_earth / a_earth, 2);
+    double q = 1.0 - e2 * pow(sin(lat), 2);
+
+    double N = a_earth / sqrt(q);
+    double M = a_earth * (1.0 - e2) / pow(q, 1.5);
+
+    double A_patch = M * N * cos(lat) * (DEG2RAD * d_lat) * (DEG2RAD * d_lon);
 
     return A_patch;
 }
@@ -670,20 +678,22 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
     std::vector<SpectraVector_t> panelIncidentPower(n_panels, SpectraVector_t::Zero());
 
     // This is the difference in lat/lon either side of the direct projected LLH
-    double theta_vis = getVisibilityConeAngle(r_ECI.norm(), b_earth);
+    double theta_vis = getVisibilityConeAngle(r_ECI.norm(), b_earth); // Angle formed on Earth by cone
     // std::cout << "theta_vis: " << RAD2DEG * theta_vis << std::endl;
 
     // This refreshes the ephemeris frame cache for t. All remaining ephemeris
     // conversions are also completed before any worker is started.
     Eigen::Vector3d LLH_sat = getLatLonOfSat(r_ECI, t, simParams);
 
-    int N_lat = theta_vis / (DEG2RAD * d_lat);
-    int N_lon = theta_vis / (DEG2RAD * d_lon);
+    int N_lat = 180.0 / d_lat;//theta_vis / (DEG2RAD * d_lat);
+    int N_lon = 360.0 / d_lon;//theta_vis / (DEG2RAD * d_lon);
 
     // std::cout << "N_lat: " << N_lat << ", N_lon: " << N_lon << std::endl;
 
-    int patch_offset_count = N_lat * N_lon;
-    int candidate_task_count = 4 * patch_offset_count;
+    // int patch_offset_count = N_lat * N_lon;
+    // int candidate_task_count = 4 * patch_offset_count;
+
+    int candidate_task_count = N_lat * N_lon;
 
     if (candidate_task_count <= 0)
     {
@@ -719,30 +729,17 @@ std::vector<SpectraVector_t> getTotalIncidentAlbedoAndIRPowerSpectra(Eigen::Vect
     std::vector<AlbedoPatchTask_t> patch_tasks;
     patch_tasks.reserve(candidate_task_count);
 
-    for (int candidate_task_index = 0;
-         candidate_task_index < candidate_task_count;
-         candidate_task_index++)
+    for (int candidate_task_index = 0; candidate_task_index < candidate_task_count; candidate_task_index++)
     {
-        int patch_offset_index = candidate_task_index / 4;
-        int sign_combination = candidate_task_index % 4;
-        int i = patch_offset_index / N_lon;
-        int j = patch_offset_index % N_lon;
+        int i = candidate_task_index / N_lon;
+        int j = candidate_task_index % N_lon;
 
-        // Enumerate the four independent latitude/longitude signs:
-        // (-,-), (-,+), (+,-), (+,+).
-        double latitude_direction = (sign_combination < 2) ? -1.0 : 1.0;
-        double longitude_direction = (sign_combination % 2 == 0) ? -1.0 : 1.0;
+        Eigen::Vector3d LLH_ij(
+            (-90.0 + (i + 0.5) * d_lat) * DEG2RAD,
+            (-180.0 + (j + 0.5) * d_lon) * DEG2RAD,
+            0.0
+        );
 
-        double latitude_offset = (static_cast<double>(i) + 0.5)* DEG2RAD * d_lat;
-
-        double longitude_offset = (static_cast<double>(j) + 0.5) * DEG2RAD * d_lon;
-
-        Eigen::Vector3d LLH_ij = LLH_sat;
-        LLH_ij[0] = LLH_sat[0] + latitude_direction * latitude_offset;
-        LLH_ij[1] = LLH_sat[1] + longitude_direction * longitude_offset;
-
-        // The original patch function returns zero before reading albedo for
-        // these patches, so they do not need to become worker tasks.
         if (!isAlbedoPatchVisible(LLH_ij, r_sat_ecef))
         {
             continue;
