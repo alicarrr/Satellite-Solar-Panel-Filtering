@@ -78,7 +78,7 @@ SimState_t StateVector_to_SimState(StateVector simState)
     state.s_COM_in_G = simState.segment(0, 3);
     state.R_G_from_B.col(0) = x_hat_B_in_G;
     state.R_G_from_B.col(1) = y_hat_B_in_G;
-    state.R_G_from_B.col(0) = x_hat_B_in_G.cross(y_hat_B_in_G);
+    state.R_G_from_B.col(2) = x_hat_B_in_G.cross(y_hat_B_in_G);
     state.v_COM_in_G = simState.segment(9, 3);
     state.omega_B_in_G = simState.segment(12, 3);
 
@@ -236,8 +236,6 @@ void getRotationSimDerivatives(double t, double* x, double* x_dot, void* params)
 }
 
 
-
-
 double rk_error_estimate(Eigen::VectorXd atol, double rtol, Eigen::VectorXd x, Eigen::VectorXd error, double h)
 {
     Eigen::VectorXd scale = atol + rtol * x.cwiseAbs();
@@ -249,6 +247,7 @@ double rk_error_estimate(Eigen::VectorXd atol, double rtol, Eigen::VectorXd x, E
 SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, ControlInput_t u, const SimParams_t& simParams)
 {
     double t0 = t;
+    double t0_rot = t;
     double tf = t + dt;
 
     OrbitStateVector orbitStateVector = SimState_to_OrbitStateVector(state);
@@ -277,9 +276,7 @@ SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, Contr
     // Do Rotation Step with LSODA stiff integrator
     int is_valid = 1;
 
-    
-
-    solver->lsoda_update(getRotationSimDerivatives, n_rotate_state, x_rotation, y_rotation_next, &t0, tf, &is_valid, &rotationSimParams, rtol_lsoda, atol_lsoda);
+    solver->lsoda_update(getRotationSimDerivatives, n_rotate_state, x_rotation, y_rotation_next, &t0_rot, tf, &is_valid, &rotationSimParams, rtol_lsoda, atol_lsoda);
 
     if (is_valid <= 0)
     {
@@ -289,23 +286,25 @@ SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, Contr
         throw std::runtime_error("LSODA failed");
     }
 
-    std::vector<double> x_rotation_next(y_rotation_next.size());
-    for (size_t i = 0; i < y_rotation_next.size(); i++)
+    std::vector<double> x_rotation_next(n_rotate_state);
+    // for (size_t i = 0; i < y_rotation_next.size(); i++)
+    for (size_t i = 0; i < n_rotate_state; i++)
     {
         x_rotation_next[i] = y_rotation_next[i+1];
     }
 
     RigidBodyStateVector rotationStateVectorNext = RigidBodyStateVector(x_rotation_next.data());
 
-
-
-
     // Now do orbit sim step with RK78, loop to reduce error
-    bool repeat = true;
+    // Advance the orbit to tf using accepted RK78 substeps.
     double dt_current = dt;
-    while (repeat)
+    while (t0 < tf)
     {
-        
+        // Limit the final substep to the remaining interval.
+        if (dt_current > tf - t0)
+        {
+            dt_current = tf - t0;
+        }
 
         double x_orbit_err[n_orbit_state];
 
@@ -321,20 +320,25 @@ SimState_t doSimStep(LSODA* solver, double t, double dt, SimState_t state, Contr
         double err = rk_error_estimate(atol_rk_vec, rtol_rk, orbitStateVector, orbitStateErr, dt_current);
         if (err < 1.0)
         {
-            repeat = false;
+            // Continue from the accepted state and time.
+            for (int i = 0; i < n_orbit_state; i++)
+            {
+                x_orbit_0[i] = x_orbit_next[i];
+                orbitStateVector(i) = x_orbit_next[i];
+            }
+            t0 += dt_current;
         }
         else
         {
             dt_current = dt_current * 0.8 * pow(1.0 / err, 1.0 / 8.0);
             if (dt_current < 1e-6)
             {
-                repeat = false;
+                throw std::runtime_error("RK78 failed to converge, dt_current is too small.");
             }
         }
     }
 
     OrbitStateVector orbitStateVectorNext = OrbitStateVector(x_orbit_next);
-
 
     RigidBodySimState_t rotationStateNext = StateVector_to_SimState(rotationStateVectorNext);
     OrbitSimState_t orbitStateNext = StateVector_to_SimState(orbitStateVectorNext);

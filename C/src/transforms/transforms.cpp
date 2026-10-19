@@ -45,7 +45,6 @@ std::tuple<Eigen::Vector3d, Eigen::Vector3d> ecliptic_to_eci(const Eigen::Vector
 }
 
 
-
 Eigen::Vector3d ecef_to_llh(const Eigen::Vector3d& r_ecef)
 {
     double x = r_ecef(0);
@@ -76,6 +75,7 @@ Eigen::Vector3d ecef_to_llh(const Eigen::Vector3d& r_ecef)
 
     return Eigen::Vector3d(latitude, longitude, h);
 }
+
 
 Eigen::Vector3d llh_to_ecef(const Eigen::Vector3d& llh)
 {
@@ -131,6 +131,7 @@ Eigen::Vector3d ecef_to_eci(const Eigen::Vector3d& r_ecef, std::string date_utc)
     return R.transpose() * r_ecef;
 }
 
+
 std::tuple<Eigen::Vector3d, Eigen::Vector3d> ecef_to_eci(const Eigen::Vector3d& r_ecef, const Eigen::Vector3d& v_ecef, std::string date_utc)
 {
     double GMST = epoch_to_GMST(date_utc);
@@ -147,11 +148,11 @@ std::tuple<Eigen::Vector3d, Eigen::Vector3d> ecef_to_eci(const Eigen::Vector3d& 
 }
 
 
-
 double kepler_equation_ellipse(double E, double e)
 {
     return E - e * sin(E);
 }
+
 
 double kepler_rate_ellipse(double E, double e)
 {
@@ -163,6 +164,7 @@ double kepler_equation_hyperbola(double H, double e)
 {
     return e * sinh(H) - H;
 }
+
 
 double kepler_rate_hyperbola(double H, double e)
 {
@@ -263,7 +265,6 @@ double compute_true_anomaly(double t, double M_0, double e, double n)
 }
 
 
-
 double r_from_true_anomaly(double theta, double e, double h, double mu)
 {
     return (h*h/mu) / (1.0 + e*cos(theta));
@@ -286,13 +287,13 @@ std::tuple<Eigen::Vector3d, Eigen::Vector3d>  angular_parameters_to_perifocal(do
 }
 
 
-
 Eigen::Matrix3d R_perifocal_to_eci(double i, double Omega, double omega)
 {
     Eigen::Matrix3d R;
     R = Rz(Omega) * Rx(i) * Rz(omega);
     return R;
 }
+
 
 std::tuple<Eigen::Vector3d, Eigen::Vector3d> angular_parameters_to_eci(double theta, double e, double n, double i, double Omega, double omega, double mu)
 {
