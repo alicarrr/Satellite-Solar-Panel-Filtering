@@ -616,7 +616,7 @@ static std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectraFromP
     if (solar_zenith_cosine >= 0.0)
     {
         // if visible
-        double solar_zenith_theta = acos(solar_zenith_cosine);      // angle between the sun and the patch normal (in rads)
+        double solar_zenith_theta = acos(std::clamp(solar_zenith_cosine, -1.0, 1.0));     // angle between the sun and the patch normal (in rads)
         double solar_AM_frac = AMKastenYoung(solar_zenith_theta);   // air mass fraction for incident solar radiation
 
         SpectraVector_t solar_transmission = atmosphere_transmittance;
@@ -631,7 +631,7 @@ static std::vector<SpectraVector_t> getPatchIncidentAlbedoAndIRPowerSpectraFromP
     SpectraVector_t emittedIRPower = earth_ir_power_per_square_metre * A_patch;
 
     // angle between the patch normal and the satellite panel normal.
-    double satellite_zenith_theta = acos(satellite_zenith_cosine);
+    double satellite_zenith_theta = acos(std::clamp(satellite_zenith_cosine, -1.0, 1.0));
     double satellite_AM_frac = AMKastenYoung(satellite_zenith_theta); // air mass fraction for radiation from the patch to the satellite
 
     SpectraVector_t satellite_transmission = atmosphere_transmittance;

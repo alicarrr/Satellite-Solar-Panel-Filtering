@@ -222,12 +222,15 @@ void setInitialOrbitState()
     double e = 0.002; // Eccentricity
     double M = -0.5 * M_PI; // Mean anomaly at epoch
 
+    // Calculate true anomaly from mean anomaly at start of sim
+    double theta = compute_true_anomaly(0.0, M, e, mean_motion);
+
     double argp = 30 * DEG2RAD;
     double raan = -90 * DEG2RAD;
     double inc = 10 * DEG2RAD;
 
 
-    tuple<Eigen::Vector3d, Eigen::Vector3d> r_v_eci = angular_parameters_to_eci(M, e, mean_motion, inc, raan, argp, mu_earth);
+    tuple<Eigen::Vector3d, Eigen::Vector3d> r_v_eci = angular_parameters_to_eci(theta, e, mean_motion, inc, raan, argp, mu_earth);
 
     Eigen::Vector3d s_com_in_G = std::get<0>(r_v_eci); // m
     Eigen::Vector3d v_com_in_G = std::get<1>(r_v_eci); // m/s
@@ -332,7 +335,7 @@ void doSimLoop(lcm::LCM* lcm)
         simState = doSimStep(&solver, t, dt, simState, u, simParams);
         cubesatState = getSatState(simState);
 
-        s_sol_ECI = get_sun_location_eci(t, simParams.ephemeris);
+        s_sol_ECI = get_sun_location_eci(t+dt, simParams.ephemeris);
         
         // Log time and completion percentage
         auto wall_now = clock::now();

@@ -28,7 +28,7 @@ double decimalYearFromEtUtc(const std::string& date_0, double t)
     const double daysInYear   = isLeapYear(time.year) ? 366.0 : 365.0;
 
     return static_cast<double>(time.year)
-         + (static_cast<double>(time.day - 1) + secondsOfDay / 86400.0) / daysInYear;
+         + (static_cast<double>(dayOfYear(time) - 1) + secondsOfDay / 86400.0) / daysInYear;
 }
 
 namespace {

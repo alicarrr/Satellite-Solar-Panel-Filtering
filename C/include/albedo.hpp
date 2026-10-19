@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <algorithm>
 
 #define useLargeHamster false
 

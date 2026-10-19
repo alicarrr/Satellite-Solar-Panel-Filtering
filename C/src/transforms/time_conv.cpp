@@ -48,6 +48,7 @@ Time timeFromDateUTC(const std::string& date_utc)
     if (std::sscanf(date_utc.c_str(), "%d-%d-%d %d:%d:%lf", &year, &day, &month, &hour, &minute, &second) != 6) {
         throw std::runtime_error("Failed to parse UTC time from SPICE for decimal-year conversion");
     }
+    
 
     time.year = year;
     time.day = day;

@@ -680,7 +680,7 @@ std::vector<SpectraVector_t> solarPowerPerPanel(Eigen::Vector3d r_ECI, Eigen::Ma
     SpectraVector_t sunFlux = sun_spectra/(4.0 * M_PI * pow(r, 2));
 
     // Calculate eclipse fraction (approximate but accounts for size of sun percent)
-    double theta = acos(r_sol_ECI.normalized().dot(r_ECI.normalized())); // Angle between Sun to Earth vector and Sun to Satellite vector
+    double theta = acos(std::clamp(r_sol_ECI.normalized().dot(r_ECI.normalized()), -1.0, 1.0)); // Angle between Sun to Earth vector and Sun to Satellite vector
     double psi_S = asin(R_sol / r_sol_ECI.norm()); // Angle between Sun to Earth vector and Sun to edge of Earth vector
     double phi_S = acos(R_earth / r_sol_ECI.norm()); // Angle between Sun to Earth vector and Earth to edge of Sun vector
     double phi_E = acos(R_earth / r_ECI.norm()); // Angle between Earth to Satellite vector and Earth to edge of Sun vector
