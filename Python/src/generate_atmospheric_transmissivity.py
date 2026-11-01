@@ -47,6 +47,21 @@ import tempfile
 import time
 from decimal import Decimal
 from pathlib import Path
+import matplotlib.pyplot as plt
+
+# Latex format in plots
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Computer Modern Roman"],
+    "font.size": 12,
+    "axes.labelsize": 12,
+    "axes.titlesize": 12,
+    "legend.fontsize": 10,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+})
+
 
 
 # ---------------------------------------------------------------------------
@@ -56,14 +71,14 @@ from pathlib import Path
 # True  -> run libRadtran and write OUTPUT_CSV.
 # False -> read OUTPUT_CSV and draw OUTPUT_PLOT with matplotlib.  No libRadtran
 #          call is made, so the plot reflects whatever produced the CSV.
-GENERATE_DATA = False
+GENERATE_DATA = False 
 
 SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 
 LIBRADTRAN_DIRECTORY = (SCRIPT_DIRECTORY / "../../C/lib/libRadtran-2.0.6").resolve()
 
 OUTPUT_CSV = SCRIPT_DIRECTORY / "earth_atmosphere_transmissivity.csv"
-OUTPUT_PLOT = SCRIPT_DIRECTORY / "earth_atmosphere_transmissivity.png"
+OUTPUT_PLOT = SCRIPT_DIRECTORY / "earth_atmosphere_transmissivity.pdf"
 
 # LOWTRAN supports roughly 250 nm to just below 100000 nm (100 micrometres).
 # The hybrid mode reaches down to 120 nm through the REPTRAN solar table.
@@ -723,48 +738,32 @@ def plot_transmissivity() -> None:
         ) from error
 
     columns = read_transmissivity_csv()
-    wavelengths_um = [value / 1000.0 for value in columns["wavelength_nm"]]
+    # wavelengths_um = [value / 1000.0 for value in columns["wavelength_nm"]]
 
-    figure, axes = plt.subplots(figsize=(11.0, 6.0))
-    axes.plot(
-        wavelengths_um,
-        columns["total_downward_transmissivity"],
-        linewidth=0.7,
-        label="total downward",
-    )
-    axes.plot(
-        wavelengths_um,
-        columns["direct_beam_transmissivity"],
-        linewidth=0.7,
-        label="direct beam",
-    )
-    axes.plot(
-        wavelengths_um,
-        columns["diffuse_downward_transmissivity"],
-        linewidth=0.7,
-        label="diffuse downward",
-    )
+    plt.figure(figsize=(7, 4))
 
-    axes.set_xscale("log")
-    axes.set_xlim(min(wavelengths_um), max(wavelengths_um))
-    axes.set_ylim(0.0, 1.02)
-    axes.xaxis.set_major_formatter(ScalarFormatter())
-    axes.xaxis.set_minor_formatter(ScalarFormatter())
-    axes.set_xlabel("Wavelength (\u00b5m)")
-    axes.set_ylabel("Transmissivity")
-    axes.set_title(
-        f"Clear-sky atmospheric transmissivity, AM={AIR_MASS:g}, "
-        f"{MOLECULAR_ABSORPTION}"
-    )
-    axes.grid(True, which="major", linewidth=0.4, alpha=0.5)
-    axes.grid(True, which="minor", linewidth=0.2, alpha=0.3)
-    axes.legend(loc="upper right")
-    figure.tight_layout()
+    plt.plot(columns["wavelength_nm"], columns["total_downward_transmissivity"], linewidth=0.7, label="Total downward")
+    plt.plot(columns["wavelength_nm"], columns["direct_beam_transmissivity"], linewidth=0.7, label="Direct beam")
+    plt.plot(columns["wavelength_nm"], columns["diffuse_downward_transmissivity"], linewidth=0.7, label="Diffuse downward")
+
+    plt.xscale("log")
+    plt.xlim(min(columns["wavelength_nm"]), max(columns["wavelength_nm"]))
+    plt.ylim(0.0, 1.02)
+    plt.xlabel(r"Wavelength, $\lambda$ (nm)")
+    plt.ylabel(r"$\mathcal{T}(\lambda_k)$")
+    plt.title(f"Generated Clear-sky Atmospheric Transmissivity Spectrum, AM={AIR_MASS:g}"
+        # f"{MOLECULAR_ABSORPTION}"
+        )
+    plt.grid(True, which="major", linewidth=0.4, alpha=0.5)
+    plt.grid(True, which="minor", linewidth=0.2, alpha=0.3)
+    plt.legend(loc="upper right")
+    plt.tight_layout()
 
     OUTPUT_PLOT.parent.mkdir(parents=True, exist_ok=True)
-    figure.savefig(OUTPUT_PLOT, dpi=200)
+    plt.savefig(OUTPUT_PLOT, bbox_inches="tight")
+
     print(
-        f"Plotted {len(wavelengths_um)} rows from {OUTPUT_CSV}\n"
+        f"Plotted {len(columns["wavelength_nm"])} rows from {OUTPUT_CSV}\n"
         f"Wrote {OUTPUT_PLOT}"
     )
     plt.show()

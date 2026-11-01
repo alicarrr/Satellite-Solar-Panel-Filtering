@@ -96,9 +96,9 @@ plt.rcParams.update({
     "font.size": 12,
     "axes.labelsize": 12,
     "axes.titlesize": 12,
-    "legend.fontsize": 10,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
 })
 
 # =============================================================================
