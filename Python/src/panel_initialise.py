@@ -4,14 +4,18 @@ Edit the settings below, then run this file (no command-line arguments).
 Requires: numpy, scipy, pandas, PyYAML, matplotlib, solcore; tested with
 Solcore 5.10.1. Keep the project's constants.py beside these scripts.
 
-Model: a bare, homogeneous silicon p-on-n wafer in vacuum, with phase-averaged
+Model: a bare, homogeneous silicon n-on-p wafer in vacuum, with phase-averaged
 optics. This represents the cell material, not coverglass, contacts, coatings
-or a complete spacecraft panel. The device parameters below are illustrative.
+or a complete spacecraft panel. Geometry, doping, diffusion lengths and relative
+permittivity follow Solcore Education's Example 1a: Simple Si solar cell.
+Surface recombination and shunt resistance use the documented Solcore DA defaults.
 n,k alone determine optics; they do NOT specify the junction's efficiency.
 
 R/A/T use the supplied n,k at its stated temperature. Electrical properties
-vary with temperature through the band gap, intrinsic carrier density and
-diffusion lengths. Optical temperature shifts and radiation damage are omitted.
+vary with temperature through the band gap, intrinsic carrier density and dark
+current; the example's diffusion lengths are fixed. Optical temperature shifts
+and radiation damage are omitted. Other existing numerical settings and spectral
+approximations are retained from the supplied script.
 Electrical/thermal fractions are an allocation at one-sun AM0 maximum power,
 as expected by the existing optimiser; they are not universal material constants.
 All absorbed power not exported electrically is assigned to heat; escaping
@@ -20,6 +24,7 @@ not heat. Normal-incidence absorption is the existing optimiser's approximation
 to emissivity; this script does not change that optimiser.
 
 Sources:
+https://qpv-research-group.github.io/solcore-education/solar-cell-simulation/notebooks/1a-simple_cell.html
 https://refractiveindex.info/?shelf=main&book=Si&page=Franta-300K
 https://docs.solcore.solar/en/latest/Optics/tmm.html
 https://docs.solcore.solar/en/latest/Solvers/depletion.html
@@ -41,6 +46,21 @@ from solcore.structure import Junction, Layer
 
 from constants import c, h, k, nm, q
 
+import matplotlib.pyplot as plt
+# Latex format in plots
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Computer Modern Roman"],
+    "font.size": 12,
+    "axes.labelsize": 12,
+    "axes.titlesize": 12,
+    "legend.fontsize": 10,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+})
+
+
 
 # Settings: use the SAME simulation pickle in this file and the optimiser.
 here = Path(__file__).resolve().parent
@@ -50,18 +70,25 @@ simulation_pickle_file = here / "Simulation Data" / "simulation_data.pkl"
 output_file = here / "Solar Panel Properties" / "silicon_single_junction_spectral_lookup.pkl"
 plot_file = here / "Solar Panel Properties" / "silicon_spectral_properties.png"
 make_plot = True
+show_titles = True           # True: titles above each panel; False: no titles (e.g. use report captions)
+separate_figures = False     # False: one 2x2 figure; True: four separate figures
+separate_figure_size = (6.5, 4.5)   # inches per figure when separate_figures is True
+# Separate figures are saved beside plot_file as <name>_optics.png, _partition, _temperature, _power.
 
 material_name = "Si"          # MUST match the material in nk_file.
 temperature_c = np.arange(-100.0, 300.0 + 0.1, 5.0)
-wafer_thickness_m = 175e-6
-emitter_thickness_m = 0.3e-6
-emitter_acceptors_m3 = 1e24   # 1e18 cm^-3; p-type front emitter.
-base_donors_m3 = 1e22        # 1e16 cm^-3; n-type base.
-electron_lifetime_s = 1e-6   # Minority electrons in the emitter, assumed constant.
-hole_lifetime_s = 1e-4       # Minority holes in the base, assumed constant.
-front_srv_m_s = 100.0
-rear_srv_m_s = 100.0
-shunt_resistance_ohm_m2 = 1e6
+# Solcore Education, Example 1a: 600 nm n-type emitter + 200 um p-type base.
+wafer_thickness_m = 200.6e-6
+emitter_thickness_m = 0.6e-6
+emitter_donors_m3 = 1e27     # Tutorial value: 1e21 cm^-3, converted to SI.
+base_acceptors_m3 = 1e22    # Tutorial value: 1e16 cm^-3, converted to SI.
+emitter_hole_diffusion_length_m = 10e-6
+base_electron_diffusion_length_m = 400e-6
+relative_permittivity = 11.7
+# Example 1a omits these losses; these are the documented DA solver defaults.
+front_srv_m_s = 0.0
+rear_srv_m_s = 0.0
+shunt_resistance_ohm_m2 = 1e14
 voltage_grid_size = 4001
 
 # Below 200 nm the simple single-pair junction model is not used: absorbed
@@ -146,19 +173,18 @@ def calculate_optics(wavelengths_nm, n, extinction):
 
 
 def make_junction(temperature_k):
-    """Solcore DA homojunction, with temperature-dependent Eg, ni and L=sqrt(D*tau)."""
+    """Example 1a n-on-p junction with fixed, example-supplied diffusion lengths."""
     reference = material(material_name)(T=300.0)
     states_scale = (temperature_k / 300.0) ** 1.5
-    common = dict(T=temperature_k, Nc=reference.Nc * states_scale, Nv=reference.Nv * states_scale)
-    emitter = material(material_name)(Na=emitter_acceptors_m3, **common)
-    base = material(material_name)(Nd=base_donors_m3, **common)
-    # Mobilities use Solcore's material model; lifetimes and SRVs are fixed
-    # assumptions. D still varies with kT/q even if the mobility model is constant.
-    emitter.electron_diffusion_length = np.sqrt(emitter.electron_mobility * k * temperature_k / q * electron_lifetime_s)
-    base.hole_diffusion_length = np.sqrt(base.hole_mobility * k * temperature_k / q * hole_lifetime_s)
+    common = dict(T=temperature_k, Nc=reference.Nc * states_scale,
+                  Nv=reference.Nv * states_scale, relative_permittivity=relative_permittivity)
+    emitter = material(material_name)(Nd=emitter_donors_m3,
+                                     hole_diffusion_length=emitter_hole_diffusion_length_m, **common)
+    base = material(material_name)(Na=base_acceptors_m3,
+                                  electron_diffusion_length=base_electron_diffusion_length_m, **common)
     junction = Junction([Layer(emitter_thickness_m, emitter, role="emitter"),
                          Layer(wafer_thickness_m - emitter_thickness_m, base, role="base")],
-                        kind="DA", T=temperature_k, sp=front_srv_m_s, sn=rear_srv_m_s,
+                        kind="DA", T=temperature_k, sn=front_srv_m_s, sp=rear_srv_m_s,
                         R_shunt=shunt_resistance_ohm_m2)
     return junction, base.band_gap
 
@@ -189,12 +215,15 @@ def mpp_from_dark_iv(junction, temperature_k, photocurrent):
 
     Use the same zero-bias collection approximation as Solcore DA.
     Series resistance and bias-dependent collection are omitted in this model.
+    Solcore uses negative forward voltages and negative dark currents for this
+    n-on-p junction. Convert them to a positive forward-voltage/current axis
+    here; saved Vmpp, Jmpp and Voc remain positive generating magnitudes.
     """
     ni = junction[1].material.ni
-    built_in_v = k * temperature_k / q * np.log(emitter_acceptors_m3 * base_donors_m3 / ni ** 2)
+    built_in_v = k * temperature_k / q * np.log(emitter_donors_m3 * base_acceptors_m3 / ni ** 2)
     voltage = np.linspace(0, built_in_v - 0.002, voltage_grid_size)
-    iv_depletion(junction, State(T=temperature_k, internal_voltages=voltage, light_iv=False))
-    dark = np.asarray(junction.current)
+    iv_depletion(junction, State(T=temperature_k, internal_voltages=-voltage, light_iv=False))
+    dark = -np.asarray(junction.current)
     if not np.isfinite(dark).all() or np.any(np.diff(dark) <= 0) or dark[-1] < photocurrent:
         raise ValueError("The dark IV does not bracket the photocurrent; check the junction parameters.")
     power = voltage * (photocurrent - dark)
@@ -265,20 +294,27 @@ def build_lookup():
         print(f"{temp:6.1f} C: Voc={metrics['voc_V'][-1]:.3f} V, AM0 Pmpp={pmpp:.2f} W/m²")
 
     optical_shape = lambda values: np.broadcast_to(values, shape).copy()
-    metadata.update({"schema_version": 1, "material": material_name, "model": "Solcore TMM + DA bare homojunction", "solcore_version": version("solcore"),
+    metadata.update({"schema_version": 1, "material": material_name, "model": "Solcore TMM + DA bare n-on-p homojunction", "solcore_version": version("solcore"),
+                     "cell_parameter_source": "https://qpv-research-group.github.io/solcore-education/solar-cell-simulation/notebooks/1a-simple_cell.html",
+                     "loss_parameter_source": "https://docs.solcore.solar/en/latest/Solvers/depletion.html",
+                     "junction_polarity": "n-on-p",
                      "wavelength_source": str(simulation_pickle_file), "wavelength_unit": "nm", "temperature_unit": "degC",
                      "binning": "Gauss-Legendre flat-power bin averages; exact simulation centres and inferred edges",
                      "optical_temperature_assumption": "n,k fixed at YAML temperature; phase-averaged finite slab",
                      "electrical_absorptivity_definition": "AM0 allocation: current_response_A_per_W * Pmpp/Jph",
                      "thermal_absorptivity_definition": "total_absorptivity - electrical_absorptivity_mpp",
                      "operating_point_assumption": "Spectral conversion fractions are calibrated to one-sun AM0 MPP; changes of MPP under a filtered spectrum are not recalculated by the existing optimiser.",
+                     "electrical_metric_sign_convention": "Positive generating magnitudes; Solcore n-on-p forward voltage and dark current are negated for the MPP calculation.",
                      "wafer_thickness_m": wafer_thickness_m, "emitter_thickness_m": emitter_thickness_m,
-                     "emitter_acceptors_m3": emitter_acceptors_m3, "base_donors_m3": base_donors_m3,
-                     "electron_lifetime_s": electron_lifetime_s, "hole_lifetime_s": hole_lifetime_s,
+                     "emitter_donors_m3": emitter_donors_m3, "base_acceptors_m3": base_acceptors_m3,
+                     "emitter_hole_diffusion_length_m": emitter_hole_diffusion_length_m,
+                     "base_electron_diffusion_length_m": base_electron_diffusion_length_m,
+                     "relative_permittivity": relative_permittivity,
                      "front_srv_m_s": front_srv_m_s, "rear_srv_m_s": rear_srv_m_s,
+                     "shunt_resistance_ohm_m2": shunt_resistance_ohm_m2,
                      "illumination_for_operating_point": "AM0, one sun, on the simulation bins",
                      "electrical_minimum_nm": electrical_minimum_nm,
-                     "assumptions": "Bare wafer; normal incidence for incident power; fixed lifetimes; no series resistance, coverglass, contacts, encapsulation, radiation damage or luminescent escape."})
+                     "assumptions": "Bare wafer; normal incidence for incident power; fixed example diffusion lengths; no series resistance, coverglass, contacts, encapsulation, radiation damage or luminescent escape."})
     table = {"temperature_C": temperature_c.copy(), "wavelength_nm": wavelengths, "wavelength_bin_edges_nm": edges,
              "total_absorptivity": optical_shape(a), "reflectivity": optical_shape(r), "transmissivity": optical_shape(transmission),
              "electrical_absorptivity_mpp": electrical,
@@ -306,36 +342,75 @@ def validate_lookup(table):
         raise ValueError("The reference electrical spectrum does not integrate to Pmpp.")
 
 
-def plot_lookup(table, path):
-    import matplotlib.pyplot as plt
-
+def _plot_optics(ax, table, row):
     wavelengths = table["wavelength_nm"]
-    row = np.argmin(abs(table["temperature_C"] - 25))
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-    for key, label in (("reflectivity", "R"), ("total_absorptivity", "A"), ("transmissivity", "T")):
-        axes[0, 0].semilogx(wavelengths, table[key][row], label=label)
-    axes[0, 0].set_title("Bare wafer optics (fixed n,k temperature)")
-    for key, label in (("total_absorptivity", "Total"), ("electrical_absorptivity_mpp", "Electrical at AM0 MPP"),
-                       ("thermal_absorptivity_mpp", "Heat at AM0 MPP")):
-        axes[0, 1].semilogx(wavelengths, table[key][row], label=label)
-    axes[0, 1].set_title(f"Absorbed-power partition at {table['temperature_C'][row]:g} °C")
+    for key, label in (("reflectivity", r"$\rho(\lambda)$"), ("total_absorptivity", r"$\alpha(\lambda)$"), ("transmissivity", r"$\tau(\lambda)$")):
+        ax.semilogx(wavelengths, table[key][row], label=label)
+    if show_titles:
+        ax.set_title(r"Optical Properties of a Bare Silicon Wafer (Fixed $n$, $k$)")
+    ax.set_xlabel(r"Wavelength, $\lambda$ (nm)")
+    ax.set_ylabel("Fraction of incident power")
+    ax.set_ylim(-0.02, 1.02)
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.25)
+
+
+def _plot_partition(ax, table, row):
+    wavelengths = table["wavelength_nm"]
+    for key, label in (("total_absorptivity", r"Total, $\alpha(\lambda)$"), ("electrical_absorptivity_mpp", r"Electrical, $\alpha_{\mathrm{el}}(\lambda)$ (AM0 MPP)"),
+                       ("thermal_absorptivity_mpp", r"Heat, $\alpha_{\mathrm{th}}(\lambda)$ (AM0 MPP)")):
+        ax.semilogx(wavelengths, table[key][row], label=label)
+    if show_titles:
+        ax.set_title(rf"Electrical and Thermal Absorptivity at ${table['temperature_C'][row]:g}\,^{{\circ}}\mathrm{{C}}$")
+    ax.set_xlabel(r"Wavelength, $\lambda$ (nm)")
+    ax.set_ylabel("Fraction of incident power")
+    ax.set_ylim(-0.02, 1.02)
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.25)
+
+
+def _plot_temperature(ax, table, row):
+    wavelengths = table["wavelength_nm"]
     for index in (0, row, len(table["temperature_C"]) - 1):
-        axes[1, 0].plot(wavelengths, table["electrical_absorptivity_mpp"][index], label=f"{table['temperature_C'][index]:g} °C")
-    axes[1, 0].set_xlim(200, 1300)
-    axes[1, 0].set_title("Temperature-dependent electrical fraction (AM0)")
-    for ax in (axes[0, 0], axes[0, 1], axes[1, 0]):
-        ax.set_xlabel("Wavelength (nm)")
-        ax.set_ylabel("Fraction of incident power")
-        ax.set_ylim(-0.02, 1.02)
-        ax.legend(fontsize=8)
-    axes[1, 1].plot(table["temperature_C"], table["pmpp_W_m2"])
-    axes[1, 1].set(xlabel="Cell temperature (°C)", ylabel="AM0 maximum power (W/m²)", title="Electrical operating point")
-    for ax in axes.ravel():
-        ax.grid(alpha=0.25)
-    fig.tight_layout()
+        ax.plot(wavelengths, table["electrical_absorptivity_mpp"][index], label=rf"$T={table['temperature_C'][index]:g}\,^{{\circ}}\mathrm{{C}}$")
+    ax.set_xlim(200, 1300)
+    if show_titles:
+        ax.set_title(r"Electrical Absorptivity at Different Cell Temperatures")
+    ax.set_xlabel(r"Wavelength, $\lambda$ (nm)")
+    ax.set_ylabel(r"$\alpha_{\mathrm{el}}$")
+    ax.set_ylim(-0.02, 1.02)
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.25)
+
+
+def _plot_power(ax, table, row):
+    ax.plot(table["temperature_C"], table["pmpp_W_m2"])
+    ax.set(xlabel=r"Cell temperature, $T$ ($^{\circ}$C)", ylabel=r"AM0 maximum power, $P_{\mathrm{mpp}}$ ($\mathrm{W\,m^{-2}}$)")
+    if show_titles:
+        ax.set_title("Maximum Power Point vs. Cell Temperature (AM0)")
+    ax.grid(alpha=0.25)
+
+
+def plot_lookup(table, path):
+    """Draw the four panels as one 2x2 figure, or as four separate figures."""
+    row = np.argmin(abs(table["temperature_C"] - 25))
+    panels = (("optics", _plot_optics), ("partition", _plot_partition),
+              ("temperature", _plot_temperature), ("power", _plot_power))
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=160)
-    plt.close(fig)
+    if separate_figures:
+        for name, draw in panels:
+            fig, ax = plt.subplots(figsize=separate_figure_size)
+            draw(ax, table, row)
+            fig.tight_layout()
+            fig.savefig(path.with_name(f"{path.stem}_{name}{path.suffix}"), dpi=160)
+            plt.close(fig)
+    else:
+        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+        for ax, (_, draw) in zip(axes.ravel(), panels):
+            draw(ax, table, row)
+        fig.tight_layout()
+        fig.savefig(path, dpi=160)
+        plt.close(fig)
 
 
 def main():
