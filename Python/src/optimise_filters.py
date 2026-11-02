@@ -9,12 +9,14 @@ separate weights. Tracking penalises squared deviations above or below t_set.
 The unfiltered case is retained for comparison and initial guesses, using the
 same incident power, initial temperatures and thermal model. Its electrical
 power is not a constraint. Temperature also affects electrical conversion
-through the lookup. The lookup and hard operating temperature bounds still apply.
+through the lookup. Hard operating temperature bounds apply to the filtered
+design. The unfiltered reference can exceed those bounds, but must stay at
+positive temperature and within the electrical lookup's actual data range.
 
 The script is laid out so that every block maps one-to-one onto a numbered equation in ``Solar Panel Math''.  Summations in the maths are written as explicit ``for'' loops so the code can be read side-by-side with the LaTeX and edited in the same places.
 
     Section 1   run configuration and model inputs  (edit these)
-    Section 2   panel spectral properties (lookup table + parametric model)
+    Section 2   panel spectral properties (silicon and aluminium lookups)
     Section 3   data loading + wavelength-grid reduction
     Section 4   blackbody spectral emissive power M_lambda(lambda, T)
     Section 5   the NLP, equation by equation
@@ -84,6 +86,7 @@ import numpy as np
 import pandas as pd
 
 from constants import *
+from aluminium_initialise import load_aluminium_lookup
 
 _here = Path(__file__).resolve().parent
 
@@ -115,6 +118,7 @@ plt.rcParams.update({
 # All paths are relative to this script.
 simulation_pickle_file = _here / "Simulation Data" / "simulation_data.pkl"
 lookup_file = _here / "Solar Panel Properties" / "silicon_single_junction_spectral_lookup.pkl"
+aluminium_lookup_file = _here / "Aluminium Panel Properties" / "aluminium_spectral_lookup.pkl"
 output_file = _here / "Optimisation Results" / "filter_solution.pkl"  # saved by solving, read by plot-only mode
 plot_file = _here / "Optimisation Results" / "filter_solution.png"
 
@@ -135,9 +139,13 @@ aluminium = 1                   # M_i = 1  ->  aluminium
 # sends fluxes [W m^-2] instead, multiply q_in by A_i in Section 3.
 
 # ---- 1.4  Per-material thermal constants -------------------------------------
-panel_mass = {solar: 0.012, aluminium: 0.090}            # m  [kg]        <<CHECK>>
-panel_heat_capacity = {solar: 700.0, aluminium: 900.0}   # c  [J/kg/K]    <<CHECK>>
-panel_t0 = {solar: 293.15, aluminium: 293.15}            # T_i(0)  [K]    <<CHECK>>
+# Per panel, including the backing: 200.6 um Si on 1 mm Al for each
+# 0.02 m^2 PV face; each 0.01 m^2 passive face is a 1 mm Al plate.
+# rho_Si = 2330 kg/m^3, cp_Si = 714 J/(kg K); rho_Al = 2707 kg/m^3,
+# cp_Al = 896 J/(kg K). Effective PV cp is the mass-weighted value.
+panel_mass = {solar: 0.06348796, aluminium: 0.02707}          # m  [kg]
+panel_heat_capacity = {solar: 869.20234, aluminium: 896.0}    # c  [J/kg/K]
+panel_t0 = {solar: 293.15, aluminium: 293.15}                # T_i(0) [K], prescribed
 
 # Per-panel overrides, keyed by panel label; keys: mass, heat_capacity, T0.
 panel_overrides: dict[str, dict[str, float]] = {
@@ -155,8 +163,9 @@ internal_heat_by_area = True    # True: area weighted; False: equal per enabled 
 # ---- 1.5  Where each material's PANEL spectral properties come from ----------
 # The material UNDER the filter.  Fixed data, not decision variables.
 #   "lookup"     -> the temperature/wavelength table in lookup_file (1.6)
+#   "aluminium_lookup" -> the opaque passive spectrum from aluminium_initialise.py
 #   "parametric" -> the two-plateau model in panel_spectral below
-panel_spectral_source = {solar: "lookup", aluminium: "parametric"}
+panel_spectral_source = {solar: "lookup", aluminium: "aluminium_lookup"}
 lookup_material = solar            # which material type the lookup describes
 
 # Used only where the source is "parametric".  Kirchhoff on the panel as well,
@@ -168,7 +177,7 @@ panel_spectral = {
         "alpha_solar": 0.92, "alpha_IR": 0.85,
         "lam_c_nm": 3000.0, "blend_decades": 0.25,
     },
-    aluminium: {                   # polished / anodised aluminium      <<CHECK>>
+    aluminium: {                   # legacy assumed curve, disabled by default
         "alpha_solar": 0.15,       # absorptivity shortward of the crossover
         "alpha_IR": 0.05,          # absorptivity longward of the crossover
         "lam_c_nm": 3000.0,        # crossover wavelength                   [nm]
@@ -364,6 +373,7 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
     alpha_abs, eps_emit, rho_abs, rho_emit, alpha_elec, source = {}, {}, {}, {}, {}, {}
     t_lo, t_hi = t_min, t_max
     info: dict = {}
+    aluminium_info = None
 
     table = None
     if any(panel_spectral_source.get(m) == "lookup" for m in materials):
@@ -380,6 +390,16 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
             a_native = parametric_absorptivity(lam_native, j)
             r_native = 1.0 - a_native  # The parametric aluminium surface is opaque.
             alpha_elec[j] = None
+
+        elif src == "aluminium_lookup":
+            if j != aluminium:
+                raise ValueError("The aluminium lookup can only describe the aluminium material type.")
+            al_table = load_aluminium_lookup(aluminium_lookup_file, lam_native)
+            a_native = np.asarray(al_table["total_absorptivity"], dtype=float).copy()
+            r_native = np.asarray(al_table["reflectivity"], dtype=float).copy()
+            alpha_elec[j] = None  # Passive metal: no electrical conversion.
+            source[j] = "Rakic (1995) Table 2 reflectance + opaque aluminium"
+            aluminium_info = al_table["metadata"].copy()
 
         elif src == "lookup":
             if j != lookup_material:
@@ -426,8 +446,8 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
                     np.sum(a_native * w_emit) / np.sum(w_emit)),
             }
         else:
-            raise ValueError(f"panel_spectral_source[{j}] must be 'lookup' or "
-                             f"'parametric', got {src!r}")
+            raise ValueError(f"panel_spectral_source[{j}] must be 'lookup', "
+                             f"'aluminium_lookup' or 'parametric', got {src!r}")
 
         alpha_abs[j] = _band_average(a_native, idx, w_abs, n_lam,
                                      lam_native, data.lam_nm)
@@ -438,18 +458,24 @@ def build_panel_properties(data: "SimData", verbose: bool = True) -> PanelProper
         if min(r_native.min(), a_native.min()) < -1e-8 or r_native.max() >= 1.0:
             raise ValueError("This stack model requires non-negative panel absorption and 0 <= panel reflectivity < 1.")
 
+    if aluminium_info is not None:
+        info["aluminium"] = aluminium_info
+
     if verbose:
         print("  panel properties :")
         for j in materials:
             print(f"      M = {j}: {source[j]}"
                   + ("  (no PV conversion)" if alpha_elec[j] is None else
                      f"  alpha_elec(T) via {t_interp_method}"))
-        if info:
+        if "solcore_nm" in info:
             lo, hi = info["solcore_nm"]
             print(f"      wafer optics from lookup, with an opaque absorbing backing "
                   f"(Solcore covered {lo:.0f} - {hi:.0f} nm)")
             print(f"      Planck-weighted eps at t_set : "
                   f"{info['eps_planck_weighted']:.4f}")
+        if aluminium_info is not None:
+            print("      aluminium optics: normal-incidence Rakic (1995) data, "
+                  "opaque passive panel, no extrapolation")
         n_empty = int(np.sum(np.bincount(idx, minlength=n_lam) == 0))
         if n_empty:
             print(f"      note: {n_empty} of {n_lam} bands hold no simulation bin "
@@ -630,16 +656,21 @@ def simulate_unfiltered(data: SimData, props: PanelProperties) -> tuple[np.ndarr
     power = np.zeros_like(temperature)
     temperature[:, 0] = data.T0
     lam_nm, dlam_nm = ca.DM(data.lam_nm), ca.DM(data.dlam_nm)
-    t_lo, t_hi = props.t_bounds
     internal_heat = internal_heat_per_panel(data)
 
     for i, material in enumerate(data.material):
         mc = data.mass[i] * data.heat_cap[i]
         electrical = props.alpha_elec[material]
+        # Operating limits constrain the designed filter, not its comparison
+        # reference. A passive aluminium spectrum has no temperature lookup.
+        # For PV, never extrapolate the supplied electrical-conversion table.
+        lookup_bounds = props.lookup_info.get("T_range_K", props.t_bounds)
         for n in range(data.n_t):
             ti = temperature[i, n]
-            if not np.isfinite(ti) or not t_lo <= ti <= t_hi:
-                raise ValueError(f"Unfiltered panel {data.labels[i]} reaches {ti:.3f} K at {data.t[n]:.3f} s, outside the model bounds {t_lo:.2f} .. {t_hi:.2f} K.")
+            if not np.isfinite(ti) or ti <= 0:
+                raise ValueError(f"Unfiltered panel {data.labels[i]} reaches invalid temperature {ti:.3f} K at {data.t[n]:.3f} s; check the loads and time step.")
+            if electrical is not None and not lookup_bounds[0] <= ti <= lookup_bounds[1]:
+                raise ValueError(f"Unfiltered PV panel {data.labels[i]} reaches {ti:.3f} K at {data.t[n]:.3f} s, outside the electrical lookup range {lookup_bounds[0]:.2f} .. {lookup_bounds[1]:.2f} K. Extend and regenerate the lookup; do not extrapolate it.")
             a_elec = np.asarray(electrical(ti)).ravel() if electrical is not None else np.zeros(data.n_lam)
             power[i, n] = np.dot(a_elec, data.q_in[i, n])
             # A clear filter has alpha = rho = 0 and tau = 1.
@@ -688,6 +719,7 @@ class FilterProblem:
     unfiltered_power: np.ndarray
     e_unfiltered: float
     internal_heat_w: np.ndarray       # constant internal heat load [W per panel]
+    temperature_bounds: tuple[float, float] = (0.0, float("inf"))
 
 
 def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
@@ -875,6 +907,10 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
         print(f"  wavelength bands : {n_lam}  ({data.lam_nm[0]:.1f} .. {data.lam_nm[-1]:.0f} nm)")
         print(f"  incident energy  : e_ref = {e_ref:.4f} J")
         print(f"  unfiltered energy: {e_unfiltered:.4f} J")
+        if np.any((unfiltered_temperature < t_lo) | (unfiltered_temperature > t_hi)):
+            print(f"  reference T range: {unfiltered_temperature.min():.2f} .. "
+                  f"{unfiltered_temperature.max():.2f} K "
+                  "(reference exceeds filtered operating bounds)")
         print(f"  temperature cost : mean ((T - {t_set:.2f} K) / {t_ref_scale:g} K)^2")
         print(f"  cost weights     : electrical {w_elec:g}, temperature {w_temp:g}, smoothness {w_smooth:g}")
         print("  power comparison : diagnostic only, no minimum relative to unfiltered")
@@ -891,14 +927,15 @@ def build_problem(data: SimData, props: PanelProperties, verbose: bool = True,
                          temperature=temperature_vec, J=J, e_elec=e_elec, e_ref=e_ref, t_track=t_track,
                          p_elec=power_matrix, unfiltered_temperature=unfiltered_temperature,
                          unfiltered_power=unfiltered_power, e_unfiltered=e_unfiltered,
-                         internal_heat_w=internal_heat)
+                         internal_heat_w=internal_heat, temperature_bounds=(t_lo, t_hi))
 
 
 # =============================================================================
 # 6.  INITIAL GUESSES
 #     -------------------------------------------------------------------
-#     Every guess satisfies alpha + rho + tau = 1 and the bounds, which keeps
-#     IPOPT out of trouble.  `rng=None` gives the deterministic nominal start.
+#     Filter guesses satisfy optical conservation and property bounds.
+#     Temperatures are clipped to operating bounds; initial guesses need
+#     not satisfy the thermal dynamics. `rng=None` is the nominal start.
 # =============================================================================
 
 def make_initial_guess(prob: FilterProblem, rng: np.random.Generator | None = None) -> dict:
@@ -909,7 +946,7 @@ def make_initial_guess(prob: FilterProblem, rng: np.random.Generator | None = No
     guess = {"filters": {}, "T": {}}
     for j in prob.filter_types:
         if rng is None:
-            # The unfiltered baseline is a feasible starting point.
+            # Start with a transparent filter and reference-based temperatures.
             alpha = np.zeros(n_lam)
             tau = np.ones(n_lam)
         else:
@@ -933,7 +970,8 @@ def make_initial_guess(prob: FilterProblem, rng: np.random.Generator | None = No
 
     for i in range(data.n_p):
         spread = 0.0 if rng is None else rng.normal(scale=5.0)
-        guess["T"][i] = prob.unfiltered_temperature[i].copy() + spread
+        guess["T"][i] = np.clip(prob.unfiltered_temperature[i] + spread,
+                                *prob.temperature_bounds)
         guess["T"][i][0] = data.T0[i]
     return guess
 
@@ -1079,6 +1117,9 @@ def solution_payload(best: Solution, results: list[Solution], prob: FilterProble
         "material": prob.data.material,
         "panel_labels": prob.data.labels,
         "area": prob.data.area,
+        "mass_kg": prob.data.mass,
+        "specific_heat_J_kg_K": prob.data.heat_cap,
+        "thermal_capacitance_J_K": prob.data.mass * prob.data.heat_cap,
         "filters": best.filters,
         "panel_alpha_abs": props.alpha_abs,
         "panel_eps_emit": props.eps_emit,
