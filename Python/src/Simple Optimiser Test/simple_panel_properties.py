@@ -28,8 +28,8 @@ from constants import minute
 
 # Operating conditions. The wafer and backing form one thermal node.
 area_m2 = 0.02
-mass_kg = 0.12
-heat_capacity_j_per_kg_k = 350.0
+mass_kg = 0.06349
+heat_capacity_j_per_kg_k = 869.0
 initial_temperature_k = 293.15
 target_temperature_k = 293.15
 temperature_reference_k = 10.0
