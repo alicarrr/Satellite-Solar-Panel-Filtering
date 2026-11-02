@@ -60,8 +60,6 @@ plt.rcParams.update({
     "ytick.labelsize": 12,
 })
 
-
-
 # Settings: use the SAME simulation pickle in this file and the optimiser.
 here = Path(__file__).resolve().parent
 nk_file = here / "Solar Panel Properties" / "Si-Properties-Franta-300K.yml"
