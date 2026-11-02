@@ -1,0 +1,19 @@
+{
+  "case_id": "011_w_smooth_1",
+  "parameters": {
+    "internal_heat_load_w": 10.0,
+    "t_set": 273.15,
+    "w_elec": 100.0,
+    "w_temp": 1.0,
+    "w_smooth": 1.0,
+    "incident_power_scale": 1.0
+  },
+  "changed_parameters": [
+    "w_smooth"
+  ],
+  "n_starts": 3,
+  "random_seed": 0,
+  "verbose_ipopt": true,
+  "threads_per_worker": 1,
+  "emission_averaging_temperature_K": 273.15
+}

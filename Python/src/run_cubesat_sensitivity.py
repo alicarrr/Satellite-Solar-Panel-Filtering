@@ -44,7 +44,7 @@ reoptimise = True
 saved_study_directory = None
 
 n_starts = 3                    # total starts: one nominal + four random
-n_workers = 10                   # cases running at once, 1 runs them sequentially
+n_workers = 2                   # cases running at once, 1 runs them sequentially
 threads_per_worker = 1          # numerical-library threads in each process
 random_seed = 0                # same random starts across cases for comparison
 verbose_ipopt = True           # full iteration output, saved as it prints
@@ -427,8 +427,6 @@ def read_study(directory):
 
 
 def make_figures(directory, manifest, results):
-    import matplotlib
-    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     # Latex format in plots

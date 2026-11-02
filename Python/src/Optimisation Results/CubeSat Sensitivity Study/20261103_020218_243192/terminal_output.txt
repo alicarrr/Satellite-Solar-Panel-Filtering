@@ -1,0 +1,7 @@
+Study: /media/ali/Big SSD 1/Satellite-Solar-Panel-Filtering/Python/src/Optimisation Results/CubeSat Sensitivity Study/20261103_020218_243192
+13 cases, 3 starts per case, up to 5 cases at once.
+Started 000_baseline (PID 288986). Log: 000_baseline.txt
+Started 001_internal_heat_load_w_0 (PID 288988). Log: 001_internal_heat_load_w_0.txt
+Started 002_internal_heat_load_w_20 (PID 288990). Log: 002_internal_heat_load_w_20.txt
+Started 003_t_set_253.15 (PID 288991). Log: 003_t_set_253.15.txt
+Started 004_t_set_293.15 (PID 288992). Log: 004_t_set_293.15.txt
