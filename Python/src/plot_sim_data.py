@@ -3,8 +3,23 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import pandas as pd
 
+# latex formatting
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Computer Modern Roman"],
+    "font.size": 12,
+    "axes.labelsize": 12,
+    "axes.titlesize": 12,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12
+})
+
+
 
 simDataPickleFile = Path(__file__).resolve().parent / "Simulation Data" / "simulation_data.pkl"
+spectrum_snapshots = [(20.0, "sunlit"), (65.0, "eclipse")]  # minutes from simulation start
 
 
 def load_sim_data_from_pickle(pickleFile):
@@ -38,15 +53,45 @@ def plot_data():
     plt.legend()
     plt.grid(True, ls="--", lw=0.5)
 
-    plt.figure()
-    for i in range(N_panels):
-        plt.plot(wavelengths, panelPowersArr[-1, i, :], label=f"Panel {panelLabels[i]}")
-    plt.xlabel("Wavelength (nm)")
-    plt.ylabel("Power (W)")
-    plt.xscale("log")
-    plt.title("Spectrum of Each Panel at the Last Time Sample")
-    plt.legend()
-    plt.grid(True, which="both", ls="--", lw=0.5)
+    # plt.figure()
+    # for i in range(N_panels):
+    #     plt.plot(wavelengths, panelPowersArr[-1, i, :], label=f"Panel {panelLabels[i]}")
+    # plt.xlabel("Wavelength (nm)")
+    # plt.ylabel("Power (W)")
+    # plt.xscale("log")
+    # plt.title("Spectrum of Each Panel at the Last Time Sample")
+    # plt.legend()
+    # plt.grid(True, which="both", ls="--", lw=0.5)
+
+    # Plot figures of the spectral load at a given time, one in eclipse and one in sunlight (based on estimates of time)
+    figures = simDataPickleFile.parent / "figures"
+
+    figures.mkdir(exist_ok=True)
+
+    for requested_minutes, state in spectrum_snapshots:
+        requested_time = simulation_times[0] + 60.0 * requested_minutes
+        if not simulation_times[0] <= requested_time <= simulation_times[-1]:
+            raise ValueError(f"The {state} snapshot at {requested_minutes:g} min is outside the saved simulation. Use the full-orbit simulation_data.pkl.")
+        sample = int(np.argmin(np.abs(simulation_times - requested_time)))
+        actual_minutes = (simulation_times[sample] - simulation_times[0]) / 60.0
+        fig, axes = plt.subplots(3, 2, figsize=(6.3, 6.0), sharex=True)
+        for i, (ax, label) in enumerate(zip(axes.flat, panelLabels)):
+            ax.plot(wavelengths, panelPowersArr[sample, i, :], linewidth=0.7)
+            ax.set(xscale="log", xlim=(wavelengths.min(), wavelengths.max()))
+            ax.set_ylim(bottom=0)
+            ax.set_title(f"({chr(97 + i)}) ${label}$", loc="left")
+            if i >= 4:
+                ax.set_xlabel(r"Wavelength, $\lambda$ (nm)")
+            ax.grid(alpha=0.25)
+        fig.supylabel(r"Incident power per bin, $\dot Q_{\mathrm{in},i}(\lambda_k)$ (W)")
+
+        # fig.suptitle(f"{state.capitalize()} snapshot, $t={actual_minutes:.2f}$ min")
+        fig.tight_layout()
+        for extension in ("pdf", "png"):
+            fig.savefig(figures / f"orbital_incident_spectrum_{state}_{actual_minutes:.2f}_min.{extension}", dpi=200, bbox_inches="tight")
+        print(f"Saved {state} spectra at t = {actual_minutes:.2f} min (sample {sample}).")
+
+
 
     plt.figure()
     plt.plot(wavelengths, panelPowersArr[-1, :, :].sum(axis=0))

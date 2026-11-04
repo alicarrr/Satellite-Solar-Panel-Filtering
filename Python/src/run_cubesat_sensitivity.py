@@ -38,7 +38,7 @@ import numpy as np
 here = Path(__file__).resolve().parent
 output_root = here / "Optimisation Results" / "CubeSat Sensitivity Study"
 
-reoptimise = True
+reoptimise = False
 # None selects the newest study with saved pickles when reoptimise is False.
 # To select another run, set this to its directory (absolute or relative to here).
 saved_study_directory = None
@@ -453,34 +453,129 @@ def make_figures(directory, manifest, results):
     if make_case_plots:
         for payload in results:
             tag = payload["study"]["case_id"]
-            minutes = (np.asarray(payload["t"]) - payload["t"][0]) / 60.0
-            fig, axes = plt.subplots(3, 2, figsize=(9, 8), sharex=True, sharey=True)
+            times = np.asarray(payload["t"])
+            minutes = (times - times[0]) / 60.0
+
+            nominal = payload["study"]["parameters"] == manifest["baseline"]
+            material = np.asarray(payload["material"])
+            solar_material = payload["study"]["solar_material"]
+            filtered_colour, unfiltered_colour = "#0072B2", "#D55E00"
+            filtered_temperature = np.asarray([payload["T"][label] for label in payload["panel_labels"]])
+            unfiltered_temperature = np.asarray(payload["unfiltered_temperature_K"])
+
+            temperature_limits = {}
+
+            for group in np.unique(material):
+                values = np.r_[filtered_temperature[material == group].ravel(),
+                               unfiltered_temperature[material == group].ravel(),
+                               payload["settings"]["t_set"]]
+                padding = max(1.0, 0.05 * np.ptp(values))
+                temperature_limits[group] = (values.min() - padding, values.max() + padding)
+            fig, axes = plt.subplots(3, 2, figsize=(6.5, 5.3), sharex=True)
+
             for i, (ax, label) in enumerate(zip(axes.flat, payload["panel_labels"])):
-                ax.plot(minutes, payload["T"][label], label="Filtered")
-                ax.plot(minutes, payload["unfiltered_temperature_K"][i], "--", label="Unfiltered")
-                ax.axhline(payload["settings"]["t_set"], color="k", ls=":", label="Target")
-                ax.set(title=label, xlabel="Time [min]", ylabel="Temperature [K]")
+                ax.plot(minutes, unfiltered_temperature[i], "--", color=unfiltered_colour, label="Unfiltered")
+                ax.plot(minutes, filtered_temperature[i], color=filtered_colour, label="Filtered")
+                ax.axhline(payload["settings"]["t_set"], color="0.25", ls=":", label="Target")
+                if "t_bounds" in payload and unfiltered_temperature[i].max() > payload["t_bounds"][1]:
+                    ax.axhline(payload["t_bounds"][1], color="0.55", ls="-.", lw=0.7, label="Upper bound")
+                name = "silicon PV" if material[i] == solar_material else "aluminium"
+                ax.set_title(f"({chr(97 + i)}) ${label}$ {name}", loc="left")
+                ax.set(xlim=(minutes[0], minutes[-1]), ylim=temperature_limits[material[i]])
+
+                if i % 2 == 0:
+                    ax.set_ylabel("Temperature (K)")
+                if i >= 4:
+                    ax.set_xlabel("Time (min)")
                 ax.grid(alpha=0.25)
-            axes.flat[0].legend(fontsize=8)
+            legend = {}
+
+            for ax in axes.flat:
+                handles, labels = ax.get_legend_handles_labels()
+                legend.update(zip(labels, handles))
+            fig.legend(legend.values(), legend.keys(), loc="lower center", bbox_to_anchor=(0.5, 0.97), ncol=4, frameon=False)
             save(fig, tag + "_temperature")
 
-            fig, ax = plt.subplots(figsize=(6.5, 4))
-            ax.plot(minutes, np.asarray(payload["electrical_power_W"]).sum(axis=0), label="Filtered")
-            ax.plot(minutes, np.asarray(payload["unfiltered_electrical_power_W"]).sum(axis=0), "--", label="Unfiltered")
-            ax.set(xlabel="Time [min]", ylabel="Total electrical power [W]")
-            ax.grid(alpha=0.25)
-            ax.legend()
+            fig, axes = plt.subplots(2, 1, figsize=(6.5, 4.7), sharex=True)
+
+            for key, colour, style, label in (
+                ("unfiltered_electrical_power_W", unfiltered_colour, "--", "Unfiltered"),
+                ("electrical_power_W", filtered_colour, "-", "Filtered"),
+            ):
+                power = np.asarray(payload[key]).sum(axis=0)
+                # Use the optimiser's left-endpoint interval weights. The final
+                # sample has no following interval and contributes no energy.
+                energy_kj = np.r_[0.0, np.cumsum(power[:-1] * np.diff(times))] / 1000.0
+                axes[0].plot(minutes, power, style, color=colour, label=label)
+                axes[1].plot(minutes, energy_kj, style, color=colour, label=label)
+            axes[0].set_title("(a) Total electrical power", loc="left")
+            axes[0].set_ylabel("Electrical power (W)")
+            axes[0].legend(ncol=2)
+            axes[1].set_title("(b) Cumulative electrical energy", loc="left")
+            axes[1].set(xlabel="Time (min)", ylabel="Electrical energy (kJ)")
+            for ax in axes:
+                ax.set_xlim(minutes[0], minutes[-1])
+                ax.set_ylim(bottom=0)
+                ax.grid(alpha=0.25)
             save(fig, tag + "_power")
 
-            fig, axes = plt.subplots(2, 1, figsize=(6.5, 6), sharex=True)
-            for ax, (material, curves) in zip(axes, sorted(payload["filters"].items())):
+            wavelength_nm = np.asarray(payload["lam_nm"])
+            wavelength_edges = np.asarray(payload.get("lam_edges_nm", payload["lam_nm"]))
+            fig, axes = plt.subplots(2, 1, figsize=(6.5, 4.7), sharex=True)
+            for ax, (filter_material, curves) in zip(axes, sorted(payload["filters"].items())):
                 for name, symbol, style in (("alpha", r"$\alpha_f$", "-"), ("rho", r"$\rho_f$", "--"), ("tau", r"$\tau_f$", "-.")):
-                    ax.plot(payload["lam_nm"], curves[name], style, label=symbol)
-                ax.set(xscale="log", ylim=(0, 1), ylabel="Optical fraction", title="PV filter" if material == payload["study"]["solar_material"] else "Aluminium filter")
+                    ax.plot(wavelength_nm, curves[name], style, label=symbol)
+                ax.set(xscale="log", xlim=(wavelength_edges[0], wavelength_edges[-1]), ylim=(0, 1), ylabel="Optical fraction", title="PV filter" if filter_material == solar_material else "Aluminium filter")
                 ax.grid(alpha=0.25)
-                ax.legend(ncol=3)
-            axes[-1].set_xlabel("Wavelength [nm]")
+                ax.legend(ncol=3, loc="center left")
+            axes[-1].set_xlabel(r"Wavelength, $\lambda$ (nm)")
             save(fig, tag + "_filters")
+
+            # The saved per-panel totals are common to the nominal comparison.
+            # Export them once, without requiring the original simulation file.
+            if nominal and "incident_power_per_panel_W" in payload:
+                incident = np.asarray(payload["incident_power_per_panel_W"])
+                solar_peak = incident[material == solar_material].max() if np.any(material == solar_material) else 0.0
+                fig, axes = plt.subplots(3, 2, figsize=(6.3, 6.0), sharex=True)
+                for i, (ax, label) in enumerate(zip(axes.flat, payload["panel_labels"])):
+                    ax.plot(minutes, incident[i], color=filtered_colour, lw=0.75)
+                    peak = solar_peak if material[i] == solar_material else incident[i].max()
+                    ax.set(xlim=(minutes[0], minutes[-1]), ylim=(0, max(1.05 * peak, 1.0e-12)))
+                    name = "(silicon PV)" if material[i] == solar_material else "(aluminium)"
+                    ax.set_title(f"({chr(97 + i)}) ${label}$ {name}", loc="left")
+                    if i >= 4:
+                        ax.set_xlabel("Time (min)")
+                    ax.grid(alpha=0.25)
+                fig.supylabel("Incident Power (W)")
+                save(fig, "orbital_incident_power")
+
+            # fig, axes = plt.subplots(3, 2, figsize=(9, 8), sharex=True, sharey=True)
+            # for i, (ax, label) in enumerate(zip(axes.flat, payload["panel_labels"])):
+            #     ax.plot(minutes, payload["T"][label], label="Filtered")
+            #     ax.plot(minutes, payload["unfiltered_temperature_K"][i], "--", label="Unfiltered")
+            #     ax.axhline(payload["settings"]["t_set"], color="k", ls=":", label="Target")
+            #     ax.set(title=label, xlabel="Time [min]", ylabel="Temperature [K]")
+            #     ax.grid(alpha=0.25)
+            # axes.flat[0].legend(fontsize=8)
+            # save(fig, tag + "_temperature")
+
+            # fig, ax = plt.subplots(figsize=(6.5, 4))
+            # ax.plot(minutes, np.asarray(payload["electrical_power_W"]).sum(axis=0), label="Filtered")
+            # ax.plot(minutes, np.asarray(payload["unfiltered_electrical_power_W"]).sum(axis=0), "--", label="Unfiltered")
+            # ax.set(xlabel="Time [min]", ylabel="Total electrical power [W]")
+            # ax.grid(alpha=0.25)
+            # ax.legend()
+            # save(fig, tag + "_power")
+
+            # fig, axes = plt.subplots(2, 1, figsize=(6.5, 6), sharex=True)
+            # for ax, (material, curves) in zip(axes, sorted(payload["filters"].items())):
+            #     for name, symbol, style in (("alpha", r"$\alpha_f$", "-"), ("rho", r"$\rho_f$", "--"), ("tau", r"$\tau_f$", "-.")):
+            #         ax.plot(payload["lam_nm"], curves[name], style, label=symbol)
+            #     ax.set(xscale="log", ylim=(0, 1), ylabel="Optical fraction", title="PV filter" if material == payload["study"]["solar_material"] else "Aluminium filter")
+            #     ax.grid(alpha=0.25)
+            #     ax.legend(ncol=3)
+            # axes[-1].set_xlabel("Wavelength [nm]")
+            # save(fig, tag + "_filters")
 
     if make_comparison_plots:
         # Hold other parameters at baseline values for these comparison plots.
