@@ -52,12 +52,12 @@ plt.rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
     "font.serif": ["Computer Modern Roman"],
-    "font.size": 12,
-    "axes.labelsize": 12,
-    "axes.titlesize": 12,
-    "legend.fontsize": 10,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
+    "font.size": 14,
+    "axes.labelsize": 14,
+    "axes.titlesize": 14,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14
 })
 
 # Settings: use the SAME simulation pickle in this file and the optimiser.
@@ -66,11 +66,11 @@ nk_file = here / "Solar Panel Properties" / "Si-Properties-Franta-300K.yml"
 simulation_pickle_file = here / "Simulation Data" / "simulation_data.pkl"
 # In optimise_filters.py, point lookup_file at this output_file.
 output_file = here / "Solar Panel Properties" / "silicon_single_junction_spectral_lookup.pkl"
-plot_file = here / "Solar Panel Properties" / "silicon_spectral_properties.png"
+plot_file = here / "Solar Panel Properties" / "silicon_spectral_properties.pdf"
 make_plot = True
-show_titles = True           # True: titles above each panel; False: no titles (e.g. use report captions)
-separate_figures = False     # False: one 2x2 figure; True: four separate figures
-separate_figure_size = (6.5, 4.5)   # inches per figure when separate_figures is True
+show_titles = False           # True: titles above each panel; False: no titles (e.g. use report captions)
+separate_figures = True     # False: one 2x2 figure; True: four separate figures
+separate_figure_size = (6, 4)   # inches per figure when separate_figures is True
 # Separate figures are saved beside plot_file as <name>_optics.png, _partition, _temperature, _power.
 
 material_name = "Si"          # MUST match the material in nk_file.
@@ -342,14 +342,14 @@ def validate_lookup(table):
 
 def _plot_optics(ax, table, row):
     wavelengths = table["wavelength_nm"]
-    for key, label in (("reflectivity", r"$\rho(\lambda)$"), ("total_absorptivity", r"$\alpha(\lambda)$"), ("transmissivity", r"$\tau(\lambda)$")):
+    for key, label in (("reflectivity", r"$\rho(\lambda)$"), ("total_absorptivity", r"$\alpha(\lambda)=\varepsilon(\lambda)$"), ("transmissivity", r"$\tau(\lambda)$")):
         ax.semilogx(wavelengths, table[key][row], label=label)
     if show_titles:
         ax.set_title(r"Optical Properties of a Bare Silicon Wafer (Fixed $n$, $k$)")
     ax.set_xlabel(r"Wavelength, $\lambda$ (nm)")
     ax.set_ylabel("Fraction of incident power")
     ax.set_ylim(-0.02, 1.02)
-    ax.legend(fontsize=8)
+    ax.legend()
     ax.grid(alpha=0.25)
 
 
@@ -363,7 +363,7 @@ def _plot_partition(ax, table, row):
     ax.set_xlabel(r"Wavelength, $\lambda$ (nm)")
     ax.set_ylabel("Fraction of incident power")
     ax.set_ylim(-0.02, 1.02)
-    ax.legend(fontsize=8)
+    ax.legend()
     ax.grid(alpha=0.25)
 
 
@@ -377,7 +377,7 @@ def _plot_temperature(ax, table, row):
     ax.set_xlabel(r"Wavelength, $\lambda$ (nm)")
     ax.set_ylabel(r"$\alpha_{\mathrm{el}}$")
     ax.set_ylim(-0.02, 1.02)
-    ax.legend(fontsize=8)
+    ax.legend()
     ax.grid(alpha=0.25)
 
 
@@ -400,14 +400,14 @@ def plot_lookup(table, path):
             fig, ax = plt.subplots(figsize=separate_figure_size)
             draw(ax, table, row)
             fig.tight_layout()
-            fig.savefig(path.with_name(f"{path.stem}_{name}{path.suffix}"), dpi=160)
+            fig.savefig(path.with_name(f"{path.stem}_{name}{path.suffix}"), dpi=200, bbox_inches="tight")
             plt.close(fig)
     else:
         fig, axes = plt.subplots(2, 2, figsize=(12, 8))
         for ax, (_, draw) in zip(axes.ravel(), panels):
             draw(ax, table, row)
         fig.tight_layout()
-        fig.savefig(path, dpi=160)
+        fig.savefig(path, dpi=200, bbox_inches="tight")
         plt.close(fig)
 
 

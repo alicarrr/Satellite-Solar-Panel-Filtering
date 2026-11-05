@@ -54,12 +54,12 @@ plt.rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
     "font.serif": ["Computer Modern Roman"],
-    "font.size": 12,
-    "axes.labelsize": 12,
-    "axes.titlesize": 12,
-    "legend.fontsize": 10,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
+    "font.size": 14,
+    "axes.labelsize": 14,
+    "axes.titlesize": 14,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14
 })
 
 
@@ -740,7 +740,7 @@ def plot_transmissivity() -> None:
     columns = read_transmissivity_csv()
     # wavelengths_um = [value / 1000.0 for value in columns["wavelength_nm"]]
 
-    plt.figure(figsize=(7, 4))
+    plt.figure(figsize=(7.5, 4.5))
 
     plt.plot(columns["wavelength_nm"], columns["total_downward_transmissivity"], linewidth=0.7, label="Total downward")
     plt.plot(columns["wavelength_nm"], columns["direct_beam_transmissivity"], linewidth=0.7, label="Direct beam")

@@ -41,12 +41,12 @@ plt.rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
     "font.serif": ["Computer Modern Roman"],
-    "font.size": 12,
-    "axes.labelsize": 12,
-    "axes.titlesize": 12,
-    "legend.fontsize": 10,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
+    "font.size": 14,
+    "axes.labelsize": 14,
+    "axes.titlesize": 14,
+    "legend.fontsize": 14,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14
 })
 
 
@@ -241,16 +241,16 @@ def save_lookup(table: dict, pickle_path: Path, csv_path: Path) -> None:
 def plot_lookup(table: dict, path: Path) -> None:
     """Save a vector plot"""
 
-    fig, ax = plt.subplots(figsize=(7, 4))
+    fig, ax = plt.subplots(figsize=(6.3, 4))
     for key, label in (("reflectivity", r"$\rho(\lambda)$"), ("total_absorptivity", r"$\alpha(\lambda)=\varepsilon(\lambda)$"), ("transmissivity", r"$\tau(\lambda)=0$")):
-        ax.semilogx(table["wavelength_nm"], table[key], linewidth=1.0, label=label)
+        ax.semilogx(table["wavelength_nm"], table[key], label=label)
     ax.set(xlabel=r"Wavelength, $\lambda$ (nm)", ylabel="Fraction", ylim=(-0.02, 1.02))
     ax.set_xlim(table["wavelength_bin_edges_nm"][[0, -1]])
     ax.grid(alpha=0.25)
     ax.legend()
     fig.tight_layout()
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path)
+    fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 

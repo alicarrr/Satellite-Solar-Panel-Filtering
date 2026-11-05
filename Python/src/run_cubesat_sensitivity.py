@@ -479,7 +479,8 @@ def make_figures(directory, manifest, results):
                 ax.axhline(payload["settings"]["t_set"], color="0.25", ls=":", label="Target")
                 if "t_bounds" in payload and unfiltered_temperature[i].max() > payload["t_bounds"][1]:
                     ax.axhline(payload["t_bounds"][1], color="0.55", ls="-.", lw=0.7, label="Upper bound")
-                name = "silicon PV" if material[i] == solar_material else "aluminium"
+                    # ax.axhline(payload["t_bounds"][0], color="0.55", ls="-.", lw=0.7)
+                name = "(silicon PV)" if material[i] == solar_material else "(aluminium)"
                 ax.set_title(f"({chr(97 + i)}) ${label}$ {name}", loc="left")
                 ax.set(xlim=(minutes[0], minutes[-1]), ylim=temperature_limits[material[i]])
 
