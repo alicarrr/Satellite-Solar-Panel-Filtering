@@ -86,6 +86,7 @@ def plot_properties(properties=None):
             "panel_reflectivity": panel_reflectivity,
             "panel_transmissivity": panel_transmissivity
         }
+        
     figure_dir.mkdir(exist_ok=True)
     edges_nm = properties["wavelength_edges_nm"]
     fig, axes = plt.subplots(2, 1, figsize=(6.3, 6.5), sharex=True)

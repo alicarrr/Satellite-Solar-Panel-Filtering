@@ -77,8 +77,10 @@ SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 
 LIBRADTRAN_DIRECTORY = (SCRIPT_DIRECTORY / "../../C/lib/libRadtran-2.0.6").resolve()
 
-OUTPUT_CSV = SCRIPT_DIRECTORY / "earth_atmosphere_transmissivity.csv"
-OUTPUT_PLOT = SCRIPT_DIRECTORY / "earth_atmosphere_transmissivity.pdf"
+OUTPUT_DIRECTORY = (SCRIPT_DIRECTORY / "../../dat files").resolve()
+
+OUTPUT_CSV = OUTPUT_DIRECTORY / "earth_atmosphere_transmissivity.csv"
+OUTPUT_PLOT = OUTPUT_DIRECTORY / "earth_atmosphere_transmissivity.pdf"
 
 # LOWTRAN supports roughly 250 nm to just below 100000 nm (100 micrometres).
 # The hybrid mode reaches down to 120 nm through the REPTRAN solar table.

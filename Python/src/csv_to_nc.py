@@ -1,6 +1,9 @@
 import argparse
 import pandas as pd
 import xarray as xr
+from pathlib import Path
+
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 
 
 def csv_to_netcdf(csv_file: str, nc_file: str) -> None:
@@ -52,7 +55,8 @@ if __name__ == "__main__":
 
     # args = parser.parse_args()
 
-    csv_file = "./earth_atmosphere_transmissivity.csv"
-    nc_file = "./earth_atmosphere_transmissivity.nc"
+    OUTPUT_DIRECTORY = (SCRIPT_DIRECTORY / "../../dat files").resolve()
+    csv_file = OUTPUT_DIRECTORY / "./earth_atmosphere_transmissivity.csv"
+    nc_file = OUTPUT_DIRECTORY / "./earth_atmosphere_transmissivity.nc"
 
     csv_to_netcdf(csv_file, nc_file)

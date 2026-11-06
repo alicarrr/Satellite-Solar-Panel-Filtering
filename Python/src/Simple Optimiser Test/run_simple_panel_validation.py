@@ -430,32 +430,6 @@ def plot_validation(payload):
 
     # Compare temperatures, electrical output and emission over time.
     minutes = payload["t"] / minute
-    
-    # figure, axes = plt.subplots(3, 1, figsize=(7, 7), sharex=True)
-    # axes[0].plot(minutes, baseline["temperature"], "C0--", label="Unfiltered")
-    # axes[0].plot(minutes, cases["energy_only"]["temperature"], "C1:", label="Energy only")
-    # axes[0].plot(minutes, combined["temperature"], "C2-", label="Combined")
-    # axes[0].axhline(
-    #     payload["settings"]["t_set"], color="k", linestyle=":",
-    #     label=r"Target, $T_{\mathrm{set}}$",
-    # )
-    # axes[0].set_ylabel(r"Temperature, $T(t)$ (K)")
-    # axes[1].plot(minutes, np.full(minutes.size, baseline["power"]), "C0--", label="Unfiltered")
-    # axes[1].plot(minutes, np.full(minutes.size, combined["power"]), "C2-", label="Combined cost")
-    # axes[1].set(ylabel="Electrical power,\n" + r"$\dot Q_{\mathrm{elec}}(t)$ (W)", ylim=(0, 3))
-    # axes[2].plot(minutes, baseline["emitted"], "C0--", label="Unfiltered")
-    # axes[2].plot(minutes, combined["emitted"], "C2-", label="Combined")
-    # axes[2].set(
-    #     xlabel=r"Time, $t$ (min)",
-    #     ylabel="Thermal emission,\n" + r"$\dot Q_{\mathrm{emit}}(t)$ (W)",
-    # )
-    # for axis in axes:
-    #     axis.set_xlim(0, minutes[-1])
-    #     axis.legend()
-    #     axis.grid(alpha=0.25)
-    # figure.tight_layout()
-    # figure.savefig(panel.figure_dir / "simple_panel_response.pdf")
-    # plt.show()
 
     plt.figure(figsize=(6.3, 4))
     plt.plot(minutes, baseline["temperature"], "C0--", label="Unfiltered")
