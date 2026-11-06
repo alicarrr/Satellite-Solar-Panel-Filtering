@@ -30,6 +30,20 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import matplotlib.pyplot as plt
+
+# Latex format in plots
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Computer Modern Roman"],
+    "font.size": 12,
+    "axes.labelsize": 12,
+    "axes.titlesize": 12,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12
+})
 
 
 # =============================================================================
@@ -56,7 +70,7 @@ baseline = {
     "w_elec": 100.0,                   # w_E, electrical energy weight
     "w_temp": 1.0,                     # normalised temperature penalty weight
     "w_smooth": 1.0e-3,                # w_S, filter roughness weight
-    "incident_power_scale": 1.0,       # multiplies solar + albedo + Earth IR
+    "incident_power_scale": 1.0       # multiplies solar + albedo + Earth IR
 }
 
 # Include the baseline value in each list. A singleton means no sweep.
@@ -70,7 +84,7 @@ parameter_values = {
     "w_elec": [10.0, 100.0, 1000.0],
     "w_temp": [0.1, 1.0, 10.0],
     "w_smooth": [0.0, 1.0e-3, 1.0, 1000.0],  # wide range: baseline is a small tie-breaker
-    "incident_power_scale": [1.0],       # e.g. [0.75, 1.0, 1.25]
+    "incident_power_scale": [1.0]       # e.g. [0.75, 1.0, 1.25]
 }
 sweep_mode = "one_at_a_time"            # or "full_factorial" for all combinations
 
@@ -84,7 +98,7 @@ parameter_labels = {
     "w_elec": r"Electrical weight $w_E$",
     "w_temp": r"Temperature weight $w_T$",
     "w_smooth": r"Smoothness weight $w_S$",
-    "incident_power_scale": "Incident radiation multiplier",
+    "incident_power_scale": "Incident radiation multiplier"
 }
 
 
@@ -206,7 +220,7 @@ def calculate_metrics(payload):
             "pv_tracking_rmse_K": float(np.sqrt(np.mean(error[pv] ** 2))),
             "aluminium_tracking_rmse_K": float(np.sqrt(np.mean(error[~pv] ** 2))),
             "minimum_temperature_K": float(temperature.min()),
-            "maximum_temperature_K": float(temperature.max()),
+            "maximum_temperature_K": float(temperature.max())
         }
 
     filtered_t = np.stack([payload["T"][lab] for lab in labels])
@@ -427,20 +441,7 @@ def read_study(directory):
 
 
 def make_figures(directory, manifest, results):
-    import matplotlib.pyplot as plt
-
-    # Latex format in plots
-    plt.rcParams.update({
-        "text.usetex": True,
-        "font.family": "serif",
-        "font.serif": ["Computer Modern Roman"],
-        "font.size": 12,
-        "axes.labelsize": 12,
-        "axes.titlesize": 12,
-        "legend.fontsize": 10,
-        "xtick.labelsize": 12,
-        "ytick.labelsize": 12,
-    })
+    # Plot all figures
     figures = directory / "figures"
     figures.mkdir(exist_ok=True)
 
@@ -466,9 +467,7 @@ def make_figures(directory, manifest, results):
             temperature_limits = {}
 
             for group in np.unique(material):
-                values = np.r_[filtered_temperature[material == group].ravel(),
-                               unfiltered_temperature[material == group].ravel(),
-                               payload["settings"]["t_set"]]
+                values = np.r_[filtered_temperature[material == group].ravel(), unfiltered_temperature[material == group].ravel(), payload["settings"]["t_set"]]
                 padding = max(1.0, 0.05 * np.ptp(values))
                 temperature_limits[group] = (values.min() - padding, values.max() + padding)
             fig, axes = plt.subplots(3, 2, figsize=(6.5, 5.3), sharex=True)
@@ -499,10 +498,7 @@ def make_figures(directory, manifest, results):
 
             fig, axes = plt.subplots(2, 1, figsize=(6.5, 4.7), sharex=True)
 
-            for key, colour, style, label in (
-                ("unfiltered_electrical_power_W", unfiltered_colour, "--", "Unfiltered"),
-                ("electrical_power_W", filtered_colour, "-", "Filtered"),
-            ):
+            for key, colour, style, label in (("unfiltered_electrical_power_W", unfiltered_colour, "--", "Unfiltered"), ("electrical_power_W", filtered_colour, "-", "Filtered")):
                 power = np.asarray(payload[key]).sum(axis=0)
                 # Use the optimiser's left-endpoint interval weights. The final
                 # sample has no following interval and contributes no energy.
@@ -531,6 +527,35 @@ def make_figures(directory, manifest, results):
                 ax.legend(ncol=3, loc="center left")
             axes[-1].set_xlabel(r"Wavelength, $\lambda$ (nm)")
             save(fig, tag + "_filters")
+
+            if nominal:
+                coefficients = (("alpha", r"$\alpha_f$", "-"), ("rho", r"$\rho_f$", "--"), ("tau", r"$\tau_f$", "-."))
+                for filter_material, curves in sorted(payload["filters"].items()):
+                    fig, ax = plt.subplots(figsize=(6.5, 2.7))
+                    for name, symbol, style in coefficients:
+                        ax.plot(wavelength_nm, curves[name], style, label=symbol)
+                    ax.set(xscale="log", xlim=(wavelength_edges[0], wavelength_edges[-1]), ylim=(0, 1), xlabel=r"Wavelength, $\lambda$ (nm)", ylabel="Optical fraction")
+                    ax.grid(alpha=0.25)
+                    ax.legend(ncol=3, loc="center left")
+                    suffix = "_pv_filter" if filter_material == solar_material else "_aluminium_filter"
+                    save(fig, tag + suffix)
+
+                power_fig, power_ax = plt.subplots(figsize=(6.5, 2.7))
+                energy_fig, energy_ax = plt.subplots(figsize=(6.5, 2.7))
+                power_styles = (("unfiltered_electrical_power_W", unfiltered_colour, "--", "Unfiltered"), ("electrical_power_W", filtered_colour, "-", "Filtered"))
+                for key, colour, style, label in power_styles:
+                    power = np.asarray(payload[key]).sum(axis=0)
+                    energy_kj = np.r_[0.0, np.cumsum(power[:-1] * np.diff(times))] / 1000.0
+                    power_ax.plot(minutes, power, style, color=colour, label=label)
+                    energy_ax.plot(minutes, energy_kj, style, color=colour, label=label)
+
+                power_panels = ((power_fig, power_ax, "_electrical_power", "Electrical power (W)"), (energy_fig, energy_ax, "_cumulative_energy", "Electrical energy (kJ)"))
+                for fig, ax, suffix, ylabel in power_panels:
+                    ax.set(xlim=(minutes[0], minutes[-1]), xlabel="Time (min)", ylabel=ylabel)
+                    ax.set_ylim(bottom=0)
+                    ax.grid(alpha=0.25)
+                    ax.legend(ncol=2)
+                    save(fig, tag + suffix)
 
             # The saved per-panel totals are common to the nominal comparison.
             # Export them once, without requiring the original simulation file.

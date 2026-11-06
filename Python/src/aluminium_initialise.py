@@ -18,7 +18,7 @@ absorption is also the optimiser's approximation to hemispherical emissivity.
 All optical properties are held independent of temperature. The 1 mm thermal
 panel thickness is not used to fit an optical spectrum: opacity is assumed.
 
-Dependencies: numpy; pandas to unpickle the existing simulation's DataFrames;
+Dependencies: numpy, pandas to unpickle the existing simulation's DataFrames,
 matplotlib only if make_plot is True. Solcore and network access are not needed.
 
 Paper: https://doi.org/10.1364/AO.34.004755
@@ -67,7 +67,7 @@ SOURCE_YAML_SHA256 = "e93b31fe821551836e5b000949c67c633b8a1ca1f2c5549f4db0f1c03b
 
 
 def infer_bin_edges(wavelengths_nm: np.ndarray) -> np.ndarray:
-    """Use the same midpoint/extrapolated edges as the silicon initialiser."""
+    # Use the same midpoint/extrapolated edges as the silicon initialiser.
     wavelengths = np.asarray(wavelengths_nm, dtype=float)
     if (wavelengths.ndim != 1 or wavelengths.size < 2
             or not np.isfinite(wavelengths).all() or wavelengths[0] <= 0
@@ -82,7 +82,7 @@ def infer_bin_edges(wavelengths_nm: np.ndarray) -> np.ndarray:
 
 
 def read_aluminium_data(path: Path = source_csv_file) -> tuple[np.ndarray, np.ndarray]:
-    """Read Table 2 R and cross-check it against independently tabulated n,k."""
+    # Read Table 2 R and cross-check it against independently tabulated n,k.
     path = Path(path)
     data = np.genfromtxt(path, names=True, delimiter=",", dtype=float, encoding="utf-8")
     required = {"wavelength_nm", "n", "k", "reflectivity_table2", "reflectivity_from_nk"}
@@ -98,7 +98,7 @@ def read_aluminium_data(path: Path = source_csv_file) -> tuple[np.ndarray, np.nd
     if not np.allclose(data["reflectivity_from_nk"], fresnel, rtol=0, atol=1e-12):
         raise ValueError("The CSV's Fresnel check does not agree with its n,k values.")
     # R and n,k were rounded independently in the paper. The maximum observed
-    # discrepancy is 7.925e-6 in absolute reflectivity; 1e-5 admits that rounding.
+    # discrepancy is 7.925e-6 in absolute reflectivity, 1e-5 admits that rounding.
     if not np.allclose(reflected, fresnel, rtol=0, atol=1e-5):
         raise ValueError("The Table 2 reflectance does not agree with the independent n,k check.")
     if np.any(reflected < 0) or np.any(reflected >= 1):
@@ -106,9 +106,8 @@ def read_aluminium_data(path: Path = source_csv_file) -> tuple[np.ndarray, np.nd
     return wavelengths, reflected
 
 
-def average_reflectivity(edges_nm: np.ndarray, source_nm: np.ndarray,
-                         source_reflectivity: np.ndarray, points: int = 3) -> np.ndarray:
-    """Average linearly interpolated R inside each bin; never extrapolate."""
+def average_reflectivity(edges_nm: np.ndarray, source_nm: np.ndarray, source_reflectivity: np.ndarray, points: int = 3) -> np.ndarray:
+    # Average linearly interpolated R inside each bin, never extrapolate.
     edges = np.asarray(edges_nm, dtype=float)
     wavelengths = np.asarray(source_nm, dtype=float)
     reflected = np.asarray(source_reflectivity, dtype=float)
@@ -132,7 +131,7 @@ def average_reflectivity(edges_nm: np.ndarray, source_nm: np.ndarray,
 
 
 def build_lookup(wavelengths_nm: np.ndarray, data_path: Path = source_csv_file) -> dict:
-    """Build temperature-independent fractions on the exact simulation grid."""
+    # Build temperature-independent fractions on the exact simulation grid.
     wavelengths = np.asarray(wavelengths_nm, dtype=float).copy()
     edges = infer_bin_edges(wavelengths)
     source_nm, source_reflectivity = read_aluminium_data(data_path)
@@ -173,10 +172,8 @@ def build_lookup(wavelengths_nm: np.ndarray, data_path: Path = source_csv_file) 
 
 
 def validate_lookup(table: dict, expected_wavelengths_nm: np.ndarray | None = None) -> None:
-    """Reject an incompatible grid, missing data or nonphysical fractions."""
-    required = {"schema_version", "material", "wavelength_nm", "wavelength_bin_edges_nm",
-                "total_absorptivity", "reflectivity", "transmissivity", "emissivity",
-                "electrical_absorptivity_mpp", "metadata"}
+    # Reject an incompatible grid, missing data or nonphysical fractions.
+    required = {"schema_version", "material", "wavelength_nm", "wavelength_bin_edges_nm", "total_absorptivity", "reflectivity", "transmissivity", "emissivity", "electrical_absorptivity_mpp", "metadata"}
     missing = required.difference(table)
     if missing:
         raise ValueError(f"Aluminium lookup is missing: {sorted(missing)}")
@@ -187,7 +184,7 @@ def validate_lookup(table: dict, expected_wavelengths_nm: np.ndarray | None = No
     if not np.array_equal(np.asarray(table["wavelength_bin_edges_nm"], dtype=float), edges):
         raise ValueError("Aluminium lookup bin edges do not match its wavelength centres.")
     if expected_wavelengths_nm is not None and not np.array_equal(wavelengths, np.asarray(expected_wavelengths_nm)):
-        raise ValueError("The aluminium lookup grid does not match the simulation; rerun aluminium_initialise.py.")
+        raise ValueError("The aluminium lookup grid does not match the simulation, rerun aluminium_initialise.py.")
     keys = ("total_absorptivity", "reflectivity", "transmissivity", "emissivity", "electrical_absorptivity_mpp")
     fractions = [np.asarray(table[key], dtype=float) for key in keys]
     if any(values.shape != wavelengths.shape or not np.isfinite(values).all()
@@ -203,7 +200,7 @@ def validate_lookup(table: dict, expected_wavelengths_nm: np.ndarray | None = No
 
 
 def load_aluminium_lookup(path: Path, expected_wavelengths_nm: np.ndarray | None = None) -> dict:
-    """Load a locally generated, trusted pickle; the optimiser calls this."""
+    # Load a locally generated, trusted pickle. The optimiser calls this.
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(f"Missing aluminium lookup: {path}. Run aluminium_initialise.py first.")
@@ -214,7 +211,7 @@ def load_aluminium_lookup(path: Path, expected_wavelengths_nm: np.ndarray | None
 
 
 def load_simulation_wavelengths(path: Path) -> np.ndarray:
-    """Read only wavelengths from the existing trusted simulation pickle."""
+    # Read only wavelengths from the existing trusted simulation pickle.
     with Path(path).open("rb") as stream:
         saved = pickle.load(stream)
     wavelengths = np.asarray(saved["wavelengths"], dtype=float)
@@ -223,7 +220,7 @@ def load_simulation_wavelengths(path: Path) -> np.ndarray:
 
 
 def save_lookup(table: dict, pickle_path: Path, csv_path: Path) -> None:
-    """Save a lookup for the optimiser and a readable CSV of the same bins."""
+    # Save a lookup for the optimiser and a readable CSV of the same bins.
     validate_lookup(table)
     pickle_path, csv_path = Path(pickle_path), Path(csv_path)
     pickle_path.parent.mkdir(parents=True, exist_ok=True)
@@ -239,7 +236,7 @@ def save_lookup(table: dict, pickle_path: Path, csv_path: Path) -> None:
 
 
 def plot_lookup(table: dict, path: Path) -> None:
-    """Save a vector plot"""
+    # Save a vector plot
 
     fig, ax = plt.subplots(figsize=(6.3, 4))
     for key, label in (("reflectivity", r"$\rho(\lambda)$"), ("total_absorptivity", r"$\alpha(\lambda)=\varepsilon(\lambda)$"), ("transmissivity", r"$\tau(\lambda)=0$")):
@@ -262,7 +259,7 @@ def main() -> None:
         plot_lookup(table, plot_file)
     lo, hi = table["wavelength_bin_edges_nm"][[0, -1]]
     print(f"Saved aluminium lookup: {wavelengths.size} bins covering {lo:g} .. {hi:g} nm.")
-    print(f"Source: Rakic (1995), DOI {PAPER_DOI}; no wavelength extrapolation.")
+    print(f"Source: Rakic (1995), DOI {PAPER_DOI}, no wavelength extrapolation.")
     print(f"Lookup: {output_file}")
     print(f"CSV: {output_csv_file}")
 

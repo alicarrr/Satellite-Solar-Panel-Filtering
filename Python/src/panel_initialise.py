@@ -1,7 +1,7 @@
 """Build the spectral lookup consumed by optimise_filters.py.
 
 Edit the settings below, then run this file (no command-line arguments).
-Requires: numpy, scipy, pandas, PyYAML, matplotlib, solcore; tested with
+Requires: numpy, scipy, pandas, PyYAML, matplotlib, solcore, tested with
 Solcore 5.10.1. Keep the project's constants.py beside these scripts.
 
 Model: a bare, homogeneous silicon n-on-p wafer in vacuum, with phase-averaged
@@ -9,19 +9,19 @@ optics. This represents the cell material, not coverglass, contacts, coatings
 or a complete spacecraft panel. Geometry, doping, diffusion lengths and relative
 permittivity follow Solcore Education's Example 1a: Simple Si solar cell.
 Surface recombination and shunt resistance use the documented Solcore DA defaults.
-n,k alone determine optics; they do NOT specify the junction's efficiency.
+n,k alone determine optics, they do NOT specify the junction's efficiency.
 
 R/A/T use the supplied n,k at its stated temperature. Electrical properties
 vary with temperature through the band gap, intrinsic carrier density and dark
-current; the example's diffusion lengths are fixed. Optical temperature shifts
+current, the example's diffusion lengths are fixed. Optical temperature shifts
 and radiation damage are omitted. Other existing numerical settings and spectral
 approximations are retained from the supplied script.
 Electrical/thermal fractions are an allocation at one-sun AM0 maximum power,
-as expected by the existing optimiser; they are not universal material constants.
-All absorbed power not exported electrically is assigned to heat; escaping
+as expected by the existing optimiser, they are not universal material constants.
+All absorbed power not exported electrically is assigned to heat, escaping
 luminescence is neglected. Directional emissivity follows TOTAL absorption,
 not heat. Normal-incidence absorption is the existing optimiser's approximation
-to emissivity; this script does not change that optimiser.
+to emissivity, this script does not change that optimiser.
 
 Sources:
 https://qpv-research-group.github.io/solcore-education/solar-cell-simulation/notebooks/1a-simple_cell.html
@@ -68,8 +68,8 @@ simulation_pickle_file = here / "Simulation Data" / "simulation_data.pkl"
 output_file = here / "Solar Panel Properties" / "silicon_single_junction_spectral_lookup.pkl"
 plot_file = here / "Solar Panel Properties" / "silicon_spectral_properties.pdf"
 make_plot = True
-show_titles = False           # True: titles above each panel; False: no titles (e.g. use report captions)
-separate_figures = True     # False: one 2x2 figure; True: four separate figures
+show_titles = False           # True: titles above each panel, False: no titles (e.g. use report captions)
+separate_figures = True     # False: one 2x2 figure, True: four separate figures
 separate_figure_size = (6, 4)   # inches per figure when separate_figures is True
 # Separate figures are saved beside plot_file as <name>_optics.png, _partition, _temperature, _power.
 
@@ -83,7 +83,7 @@ base_acceptors_m3 = 1e22    # Tutorial value: 1e16 cm^-3, converted to SI.
 emitter_hole_diffusion_length_m = 10e-6
 base_electron_diffusion_length_m = 400e-6
 relative_permittivity = 11.7
-# Example 1a omits these losses; these are the documented DA solver defaults.
+# Example 1a omits these losses, these are the documented DA solver defaults.
 front_srv_m_s = 0.0
 rear_srv_m_s = 0.0
 shunt_resistance_ohm_m2 = 1e14
@@ -96,13 +96,13 @@ electrical_minimum_nm = 200.0
 bin_quadrature_points = 3    # Flat-spectrum bin averages on the input bin edges.
 
 # User-selected simplification below the first YAML wavelength (31 nm here).
-# These are arbitrary optical fractions, not measured data; A = 1 - R - T.
+# These are arbitrary optical fractions, not measured data, A = 1 - R - T.
 short_wave_reflectivity = 0.0
 short_wave_transmissivity = 0.0
 
 
 def load_wavelengths(path):
-    """Copy the simulation's centres exactly; pickle inputs must be trusted."""
+    # Copy the simulation's centres exactly, pickle inputs must be trusted."""
     with open(path, "rb") as stream:
         saved = pickle.load(stream)
     wavelengths = np.asarray(saved["wavelengths"], dtype=float)
@@ -114,7 +114,7 @@ def load_wavelengths(path):
 
 
 def bin_sampling(wavelengths):
-    """Infer edges as in the optimiser; three-point quadrature averages each bin."""
+    # Infer edges as in the optimiser, three-point quadrature averages each bin.
     edges = np.r_[wavelengths[0] - 0.5 * np.diff(wavelengths)[0],
                   0.5 * (wavelengths[:-1] + wavelengths[1:]),
                   wavelengths[-1] + 0.5 * np.diff(wavelengths)[-1]]
@@ -126,7 +126,7 @@ def bin_sampling(wavelengths):
 
 
 def read_nk_yaml(path):
-    """refractiveindex.info tabulated nk uses micrometres, dimensionless n,k."""
+    # refractiveindex.info tabulated nk uses micrometres, dimensionless n,k.
     with open(path, encoding="utf-8") as stream:
         document = yaml.safe_load(stream)
     blocks = [block for block in document.get("DATA", []) if block.get("type") == "tabulated nk"]
@@ -146,7 +146,7 @@ def sample_nk(nodes_nm, bin_edges_nm):
     wavelengths, n_data, k_data, document = read_nk_yaml(nk_file)
     flat = nodes_nm.ravel()
     if bin_edges_nm[-1] > wavelengths[-1]:
-        raise ValueError(f"YAML ends at {wavelengths[-1]:g} nm; need {bin_edges_nm[-1]:g} nm. Supply wider data.")
+        raise ValueError(f"YAML ends at {wavelengths[-1]:g} nm, need {bin_edges_nm[-1]:g} nm. Supply wider data.")
     if bin_edges_nm[0] < wavelengths[0] and wavelengths[0] > 50:
         raise ValueError("Only a missing region below 50 nm may use the arbitrary short-wave extension.")
     n = np.interp(flat, wavelengths, n_data)
@@ -164,14 +164,14 @@ def sample_nk(nodes_nm, bin_edges_nm):
 
 
 def calculate_optics(wavelengths_nm, n, extinction):
-    """Vacuum/wafer/vacuum; retain rear reflection and finite transmission."""
+    # Vacuum/wafer/vacuum, retain rear reflection and finite transmission.
     stack = OptiStack([[wafer_thickness_m / nm, wavelengths_nm, n, extinction]], no_back_reflection=False)
     result = calculate_rat(stack, wavelengths_nm, angle=0, pol="u", coherent=False, coherency_list=["i"], no_back_reflection=False)
     return tuple(np.asarray(result[key], dtype=float) for key in ("R", "A", "T"))
 
 
 def make_junction(temperature_k):
-    """Example 1a n-on-p junction with fixed, example-supplied diffusion lengths."""
+    # Example 1a n-on-p junction with fixed, example-supplied diffusion lengths.
     reference = material(material_name)(T=300.0)
     states_scale = (temperature_k / 300.0) ** 1.5
     common = dict(T=temperature_k, Nc=reference.Nc * states_scale,
@@ -215,7 +215,7 @@ def mpp_from_dark_iv(junction, temperature_k, photocurrent):
     Series resistance and bias-dependent collection are omitted in this model.
     Solcore uses negative forward voltages and negative dark currents for this
     n-on-p junction. Convert them to a positive forward-voltage/current axis
-    here; saved Vmpp, Jmpp and Voc remain positive generating magnitudes.
+    here, saved Vmpp, Jmpp and Voc remain positive generating magnitudes.
     """
     ni = junction[1].material.ni
     built_in_v = k * temperature_k / q * np.log(emitter_donors_m3 * base_acceptors_m3 / ni ** 2)
@@ -223,7 +223,7 @@ def mpp_from_dark_iv(junction, temperature_k, photocurrent):
     iv_depletion(junction, State(T=temperature_k, internal_voltages=-voltage, light_iv=False))
     dark = -np.asarray(junction.current)
     if not np.isfinite(dark).all() or np.any(np.diff(dark) <= 0) or dark[-1] < photocurrent:
-        raise ValueError("The dark IV does not bracket the photocurrent; check the junction parameters.")
+        raise ValueError("The dark IV does not bracket the photocurrent, check the junction parameters.")
     power = voltage * (photocurrent - dark)
     index = np.argmax(power)
     vmpp = voltage[index]
@@ -252,7 +252,7 @@ def build_lookup():
 
     r, a, transmission = map(average, (r_nodes, a_nodes, t_nodes))
     # The sim supplies W per bin, not W/nm. Use matching bin powers for AM0
-    # normalisation; within each bin our response assumes uniform spectral power.
+    # normalisation, within each bin our response assumes uniform spectral power.
     source = LightSource(source_type="standard", version="AM0")
     _, spectral_power = source.spectrum(x=wavelengths * nm, output_units="power_density_per_m")
     reference_power = spectral_power * np.diff(edges) * nm
@@ -274,8 +274,8 @@ def build_lookup():
         eqe_nodes = np.zeros_like(flat_nm)
         eqe_nodes[active] = junction.eqe(flat_nm[active] * nm)
         if not np.isfinite(eqe_nodes).all() or np.min(eqe_nodes) < -1e-8 or np.max(eqe_nodes - a_nodes) > 1e-4:
-            raise ValueError(f"Unphysical EQE at {temp:g} C; check generation profile and collection model.")
-        # Remove numerical roundoff only; the check above prevents hiding a bad model.
+            raise ValueError(f"Unphysical EQE at {temp:g} C, check generation profile and collection model.")
+        # Remove numerical roundoff only, the check above prevents hiding a bad model.
         eqe_nodes = np.clip(eqe_nodes, 0, a_nodes)
         eqe[row] = average(eqe_nodes)
         current_response[row] = average(q * eqe_nodes * flat_nm * nm / (h * c))
@@ -390,7 +390,7 @@ def _plot_power(ax, table, row):
 
 
 def plot_lookup(table, path):
-    """Draw the four panels as one 2x2 figure, or as four separate figures."""
+    # Draw the four panels as one 2x2 figure, or as four separate figures.
     row = np.argmin(abs(table["temperature_C"] - 25))
     panels = (("optics", _plot_optics), ("partition", _plot_partition),
               ("temperature", _plot_temperature), ("power", _plot_power))

@@ -3,18 +3,6 @@
 Keep both test scripts in Simple Optimiser Test, below constants.py.
 Run it directly to plot the properties without running the optimiser.
 """
-import matplotlib.pyplot as plt
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    "font.serif": ["Computer Modern Roman"],
-    "font.size": 12,
-    "axes.labelsize": 12,
-    "axes.titlesize": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-})
 
 from pathlib import Path
 import sys
@@ -24,7 +12,21 @@ sys.path.insert(1, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 from constants import minute
+import matplotlib.pyplot as plt
 
+# latex in plots
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Computer Modern Roman"],
+    "font.size": 12,
+    "axes.labelsize": 12,
+    "axes.titlesize": 12,
+    "legend.fontsize": 10,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "patch.linewidth": 2.0 # increases line width in the stair plotting
+})
 
 # Operating conditions. The wafer and backing form one thermal node.
 area_m2 = 0.02
@@ -41,8 +43,7 @@ figure_dir = Path(__file__).resolve().parent / "simple_validation"
 
 # Interval limits in nm, number of bins and total incident power in watts.
 # Power is uniform in wavelength within each interval and constant in time.
-spectral_regions = [(300, 400, 6, 2), (400, 900, 24, 10),
-                    (900, 2500, 24, 8), (2500, 50000, 66, 0)]
+spectral_regions = [(300, 400, 6, 2), (400, 900, 24, 10), (900, 2500, 24, 8), (2500, 50000, 66, 0)]
 wavelength_edges_nm, incident_power_w = [], []
 for lower, upper, count, power in spectral_regions:
     edges = np.geomspace(lower, upper, count + 1)
@@ -83,45 +84,45 @@ def plot_properties(properties=None):
             "wafer_thermal_absorptivity": wafer_thermal_absorptivity,
             "panel_absorptivity": panel_absorptivity,
             "panel_reflectivity": panel_reflectivity,
-            "panel_transmissivity": panel_transmissivity,
+            "panel_transmissivity": panel_transmissivity
         }
     figure_dir.mkdir(exist_ok=True)
     edges_nm = properties["wavelength_edges_nm"]
-    fig, axes = plt.subplots(2, 1, figsize=(7, 6), sharex=True)
+    fig, axes = plt.subplots(2, 1, figsize=(6.3, 6.5), sharex=True)
     # Match the report: r is the receiving surface, p includes the backing.
     for ax, alpha, rho, tau, subscript, title in (
-        (axes[0], properties["wafer_absorptivity"], properties["wafer_reflectivity"], properties["wafer_transmissivity"],
-         "r", "Receiving surface"),
-        (axes[1], properties["panel_absorptivity"], properties["panel_reflectivity"], properties["panel_transmissivity"],
-         "p", "Receiving surface with backing"),
+        (axes[0], properties["wafer_absorptivity"], properties["wafer_reflectivity"], properties["wafer_transmissivity"], "r", "Receiving surface"),
+        (axes[1], properties["panel_absorptivity"], properties["panel_reflectivity"], properties["panel_transmissivity"], "p", "Receiving surface with backing")
     ):
-        ax.stairs(alpha, edges_nm, baseline=None, label=rf"$\alpha_{{{subscript}}}(\lambda)$")
-        ax.stairs(rho, edges_nm, baseline=None, label=rf"$\rho_{{{subscript}}}(\lambda)$", linestyle="--")
-        ax.stairs(tau, edges_nm, baseline=None, label=rf"$\tau_{{{subscript}}}(\lambda)$")
-        ax.set(xscale="log", xlim=(edges_nm[0], edges_nm[-1]), ylim=(-0.02, 1.02),
-               ylabel="Fraction of incident power", title=title)
+        ax.stairs(alpha, edges_nm, baseline=None, linestyle="-", zorder=2, label=rf"$\alpha_{{{subscript}}}(\lambda)$")
+        ax.stairs(rho, edges_nm, baseline=None, linestyle="--", zorder=4, label=rf"$\rho_{{{subscript}}}(\lambda)$")
+        ax.stairs(tau, edges_nm, baseline=None, linestyle="-.", zorder=3, label=rf"$\tau_{{{subscript}}}(\lambda)$")
+        # ax.stairs(alpha, edges_nm, baseline=None, label=rf"$\alpha_{{{subscript}}}(\lambda)$")
+        # ax.stairs(rho, edges_nm, baseline=None, label=rf"$\rho_{{{subscript}}}(\lambda)$", linestyle="--")
+        # ax.stairs(tau, edges_nm, baseline=None, label=rf"$\tau_{{{subscript}}}(\lambda)$")
+        ax.set(xscale="log", xlim=(edges_nm[0], edges_nm[-1]), ylim=(-0.02, 1.02), ylabel="Fraction of incident power", title=title)
         ax.legend(ncol=3)
         ax.grid(alpha=0.25)
     axes[1].set_xlabel(r"Wavelength, $\lambda$ (nm)")
     fig.tight_layout()
-    fig.savefig(figure_dir / "simple_panel_optical_properties.pdf")
+    fig.savefig(figure_dir / "simple_panel_optical_properties.pdf", dpi=200, bbox_inches="tight")
 
-    fig, ax = plt.subplots(figsize=(7, 4))
+    fig, ax = plt.subplots(figsize=(6.3, 4))
     # These fractions are relative to radiation reaching the receiving surface.
-    ax.stairs(properties["electrical_conversion"], edges_nm, baseline=None,
-              label=r"Electrical, $\beta_r(\lambda)$")
-    ax.stairs(properties["wafer_thermal_absorptivity"], edges_nm, baseline=None,
-              label=r"Wafer heat, $\alpha_{r,\mathrm{therm}}(\lambda)$")
-    ax.stairs(properties["wafer_transmissivity"], edges_nm, baseline=None,
-              label=r"Backing heat, $\tau_r(\lambda)$")
-    ax.stairs(properties["panel_absorptivity"], edges_nm, baseline=None, linestyle="--",
-              label=r"Total absorbed, $\alpha_p(\lambda)$")
-    ax.set(xscale="log", xlim=(edges_nm[0], edges_nm[-1]), ylim=(-0.02, 1.02),
-           xlabel=r"Wavelength, $\lambda$ (nm)", ylabel="Fraction of incident power")
+    ax.stairs(properties["electrical_conversion"], edges_nm, baseline=None, linestyle=":", zorder=4, label=r"Electrical, $\beta_r(\lambda)$")
+    ax.stairs(properties["wafer_thermal_absorptivity"], edges_nm, baseline=None, linestyle="-", zorder=2, label=r"Wafer heat, $\alpha_{r,\mathrm{therm}}(\lambda)$")
+    ax.stairs(properties["wafer_transmissivity"], edges_nm, baseline=None, linestyle="-.", zorder=3, label=r"Backing heat, $\tau_r(\lambda)$")
+    ax.stairs(properties["panel_absorptivity"], edges_nm, baseline=None, linestyle="--", zorder=2, label=r"Total absorbed, $\alpha_p(\lambda)$")
+
+    # ax.stairs(properties["electrical_conversion"], edges_nm, baseline=None, label=r"Electrical, $\beta_r(\lambda)$")
+    # ax.stairs(properties["wafer_thermal_absorptivity"], edges_nm, baseline=None, label=r"Wafer heat, $\alpha_{r,\mathrm{therm}}(\lambda)$")
+    # ax.stairs(properties["wafer_transmissivity"], edges_nm, baseline=None, label=r"Backing heat, $\tau_r(\lambda)$")
+    # ax.stairs(properties["panel_absorptivity"], edges_nm, baseline=None, linestyle="--", label=r"Total absorbed, $\alpha_p(\lambda)$")
+    ax.set(xscale="log", xlim=(edges_nm[0], edges_nm[-1]), ylim=(-0.02, 1.02), xlabel=r"Wavelength, $\lambda$ (nm)", ylabel="Fraction of incident power")
     ax.legend(ncol=2)
     ax.grid(alpha=0.25)
     fig.tight_layout()
-    fig.savefig(figure_dir / "simple_panel_absorption_partition.pdf")
+    fig.savefig(figure_dir / "simple_panel_absorption_partition.pdf", dpi=200, bbox_inches="tight")
 
 
 if __name__ == "__main__":

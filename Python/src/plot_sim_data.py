@@ -17,7 +17,6 @@ plt.rcParams.update({
 })
 
 
-
 simDataPickleFile = Path(__file__).resolve().parent / "Simulation Data" / "simulation_data.pkl"
 spectrum_snapshots = [(20.0, "sunlit"), (65.0, "eclipse")]  # minutes from simulation start
 
@@ -53,16 +52,6 @@ def plot_data():
     plt.legend()
     plt.grid(True, ls="--", lw=0.5)
 
-    # plt.figure()
-    # for i in range(N_panels):
-    #     plt.plot(wavelengths, panelPowersArr[-1, i, :], label=f"Panel {panelLabels[i]}")
-    # plt.xlabel("Wavelength (nm)")
-    # plt.ylabel("Power (W)")
-    # plt.xscale("log")
-    # plt.title("Spectrum of Each Panel at the Last Time Sample")
-    # plt.legend()
-    # plt.grid(True, which="both", ls="--", lw=0.5)
-
     # Plot figures of the spectral load at a given time, one in eclipse and one in sunlight (based on estimates of time)
     figures = simDataPickleFile.parent / "figures"
 
@@ -90,8 +79,6 @@ def plot_data():
         for extension in ("pdf", "png"):
             fig.savefig(figures / f"orbital_incident_spectrum_{state}_{actual_minutes:.2f}_min.{extension}", dpi=200, bbox_inches="tight")
         print(f"Saved {state} spectra at t = {actual_minutes:.2f} min (sample {sample}).")
-
-
 
     plt.figure()
     plt.plot(wavelengths, panelPowersArr[-1, :, :].sum(axis=0))
